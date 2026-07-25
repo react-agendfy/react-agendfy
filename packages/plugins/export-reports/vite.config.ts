@@ -8,12 +8,12 @@ export default defineConfig({
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'PluginExportReports',
       formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'esm.js' : 'js'}`,
+      fileName: (format) => `index.${format === 'es' ? 'es' : 'cjs'}.js`,
     },
     rollupOptions: {
       external: ['react', 'react-dom', '@react-agendfy/core'],
     },
     sourcemap: true,
   },
-  plugins: [dts({ insertTypesEntry: true })],
+  plugins: [dts({ outputDir: 'dist/types', insertTypesEntry: true, rollupTypes: true })],
 });

@@ -179,7 +179,7 @@ describe('MonthView Component', () => {
       id: '2023-01-20T00:00:00.000Z',
     };
 
-    mockDndContextOnDragEnd({ active, over });
+    mockDndContextOnDragEnd({ active, over, delta: { x: 200, y: 0 } });
 
     await waitFor(() => {
       expect(onEventUpdateMock).toHaveBeenCalled();

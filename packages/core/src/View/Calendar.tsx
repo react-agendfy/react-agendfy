@@ -16,8 +16,8 @@ import { useToast } from "../Components/Toast/Toast";
 import { useEventReminder } from "../hooks/useEventReminder";
 import { NotificationService } from "../Notify/NotificationService";
 import { updateEventsList, getFilteredEventsList } from "./../Utils/CalendarUtils";
-    // No longer need to import downloadFile or exportCalendarEvents from CalendarUtils
-    // as export logic is now handled by plugins and downloadBlob is from core index
+import { downloadBlob } from "../Utils/pluginUtils";
+// Export logic is handled by ExportPlugins; downloadBlob performs the actual file download.
 import useCalendarNavigation from "../hooks/useCalendarNavigation";
 import usePluginManagement from "../hooks/usePluginManagement";
 import { CalendarPlugin, ViewPlugin, ExportPlugin, CustomFilterPlugin, ThemePlugin } from "../types/plugins";
@@ -156,7 +156,24 @@ const Calendar: FC<CalendarProps> = ({
     config: localeConfig,
   });
 
-  const normalizedEvents = useMemo(() => normalizeEvents(events), [events]);
+  const stableDataSourcePlugins = useMemo(
+    () => dataSourcePlugins,
+    [JSON.stringify(dataSourcePlugins)]
+  );
+  const stableLocaleConfig = useMemo(() => config, [config]);
+
+  const { dataSourceEvents, isDataSourceLoading, dataSourceError } =
+    useDataSourceEvents(stableDataSourcePlugins, stableLocaleConfig, currentDate);
+
+  // Merge events fetched by data-source plugins with the user-provided events,
+  // without clobbering user events (user events win on id collisions).
+  const mergedEvents = useMemo(() => {
+    if (!dataSourceEvents || dataSourceEvents.length === 0) return events;
+    const existingIds = new Set(events.map((e) => e.id));
+    return [...events, ...dataSourceEvents.filter((e) => !existingIds.has(e.id))];
+  }, [events, dataSourceEvents]);
+
+  const normalizedEvents = useMemo(() => normalizeEvents(mergedEvents), [mergedEvents]);
 
   const filteredEvents = useMemo(
     () =>
@@ -179,13 +196,18 @@ const Calendar: FC<CalendarProps> = ({
         const dateStr = new Date().toISOString().split('T')[0];
         const fileName = `calendar-events-${dateStr}.${customExportPlugin.fileExtension}`;
         const mimeType = customExportPlugin.mimeType;
-        downloadFile(content, fileName, mimeType);
+        const payload =
+          typeof content === 'string' && mimeType
+            ? new Blob([content], { type: mimeType })
+            : content;
+        downloadBlob(payload, fileName);
       }).catch(error => {
         console.error(`Error exporting with plugin ${format}:`, error);
-        addToast({ message: `Erro ao exportar para ${format}`, type: 'error' });
+        addToast({ message: `${localeConfig.export_error || 'Failed to export'}: ${format}`, type: 'error' });
       });
     } else {
-      exportCalendarEvents(filteredEvents, localeConfig, format as any);
+      console.warn(`No export plugin registered for format "${format}".`);
+      addToast({ message: `${localeConfig.export_error || 'No export plugin for format'}: ${format}`, type: 'error' });
     }
   }, [filteredEvents, localeConfig, exportPlugins, addToast]);
 
@@ -225,14 +247,6 @@ const Calendar: FC<CalendarProps> = ({
     setPluginSearchResults(results);
     setIsSearchActive(searchTerm.length > 0);
   }, []);
-
-  const stableDataSourcePlugins = useMemo(
-    () => dataSourcePlugins,
-    [JSON.stringify(dataSourcePlugins)]
-  );
-  const stableLocaleConfig = useMemo(() => config, [config]);
-
-  useDataSourceEvents(stableDataSourcePlugins, stableLocaleConfig, currentDate);
 
   const handleResourceFilterChange = useCallback((selected: SetStateAction<string[]>) => {
     setLocalFilteredResources(selected);
@@ -451,6 +465,8 @@ const Calendar: FC<CalendarProps> = ({
         aria-atomic="true"
       >
         {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(config.lang)}`}
+        {isDataSourceLoading ? ` ${localeConfig.loading || "Loading events"}` : ""}
+        {dataSourceError ? ` ${dataSourceError}` : ""}
       </div>
             <CalendarHeader
   currentDate={currentDate}

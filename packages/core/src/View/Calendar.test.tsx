@@ -94,12 +94,43 @@ describe('Calendar Component', () => {
     { id: 'r2', name: 'Resource 2', type: 'person' },
   ];
 
+  // Resource filtering now lives in a standalone filter plugin. This lightweight
+  // inline plugin exercises the same plugin pipeline the real one uses.
+  const ResourceFilterComponent = ({ resources: res = [], filteredResources = [], onResourceFilterChange }: any) => {
+    const [open, setOpen] = React.useState(false);
+    return (
+      <div>
+        <button type="button" onClick={() => setOpen((o) => !o)}>Filter Resources</button>
+        {open && res.map((r: any) => (
+          <label key={r.id}>
+            <input
+              type="checkbox"
+              checked={filteredResources.includes(r.id)}
+              onChange={(e) =>
+                onResourceFilterChange(
+                  e.target.checked
+                    ? [...filteredResources, r.id]
+                    : filteredResources.filter((id: string) => id !== r.id)
+                )
+              }
+            />
+            {r.name}
+          </label>
+        ))}
+      </div>
+    );
+  };
+  const resourceFilterPlugin = { type: 'filter', key: 'resource-filter', component: ResourceFilterComponent };
+
   it('should render CalendarHeader and the default view (week)', async () => {
     render(
       <ToastProvider>
     <Calendar events={events} config={{ defaultView: 'week', lang: 'en' }} />
     </ToastProvider>);
-    expect(await screen.findByText('Filter Resources')).toBeInTheDocument();
+    // Resource filtering is now provided by a standalone plugin, so the built-in
+    // "Filter Resources" control is no longer rendered by default. Verify the
+    // header (view switcher) and the default week view render.
+    expect(await screen.findByText('Month')).toBeInTheDocument();
     expect(await screen.findByTestId('week-view')).toBeInTheDocument();
   });
 
@@ -203,7 +234,12 @@ it('should switch to MonthView when the view change button is clicked', async ()
   it('should apply the resource filter when the filter button is clicked', async () => {
     render(
       <ToastProvider>
-        <Calendar events={events} resources={resources} config={{ defaultView: 'week', lang: 'en' }} />
+        <Calendar
+          events={events}
+          resources={resources}
+          config={{ defaultView: 'week', lang: 'en' }}
+          plugins={[resourceFilterPlugin]}
+        />
       </ToastProvider>
     );
 
