@@ -3,17 +3,27 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TZDate } from '@date-fns/tz';
 import { DayColumn } from './DayColumn';
 
-jest.mock('./WeekTimeSlot', () => ({
-  WeekTimeSlot: ({ index }: any) => (
-    <div data-testid="week-time-slot">WeekTimeSlot {index}</div>
-  ),
-}));
-
 jest.mock('./WeekEvent', () => ({
   WeekEvent: ({ event }: any) => (
     <div data-testid="week-event">{event.title}</div>
   ),
 }));
+
+// WeekTimeSlot renders the events it receives (this is where event rendering now
+// lives after the refactor), so the mock forwards slotEvents to WeekEvent.
+jest.mock('./WeekTimeSlot', () => {
+  const { WeekEvent } = require('./WeekEvent');
+  return {
+    WeekTimeSlot: ({ index, slotEvents }: any) => (
+      <div data-testid="week-time-slot">
+        WeekTimeSlot {index}
+        {(slotEvents || []).map((event: any) => (
+          <WeekEvent key={event.id} event={event} />
+        ))}
+      </div>
+    ),
+  };
+});
 
 
 jest.mock('../../../Utils/businessHours', () => ({
@@ -45,7 +55,17 @@ describe('DayColumn Component', () => {
       end: '2023-01-01T12:30:00Z',
     },
   ];
-  const dummyGetEventsForDay = jest.fn(() => dummyEvents);
+  // An event belongs to exactly one slot (its start slot). Model that so the
+  // day's event is rendered once, matching the real containment semantics.
+  let firstSlotKey: string | null = null;
+  const dummyGetEventsForDay = jest.fn((slotKey: string) => {
+    if (firstSlotKey === null) firstSlotKey = slotKey;
+    return slotKey === firstSlotKey ? dummyEvents : [];
+  });
+  beforeEach(() => {
+    firstSlotKey = null;
+    dummyGetEventsForDay.mockClear();
+  });
   const dummyOnEventClick = jest.fn();
   const dummyOnSlotClick = jest.fn();
   const dummyOnEventResize = jest.fn();

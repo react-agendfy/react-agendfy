@@ -1,4 +1,5 @@
 import React, { memo, useCallback, useMemo } from 'react';
+import { TZDate } from "@date-fns/tz";
 import { EventProps, TimeSlotProps } from "../../../types/types";
 import { WeekEvent } from "./WeekEvent";
 import { useDroppable } from "@dnd-kit/core";
@@ -34,8 +35,10 @@ export const WeekTimeSlot = memo(
       const minutes = index * (config?.slotDuration || 30);
       const hour = slotMin + Math.floor(minutes / 60);
       const minute = minutes % 60;
-      return new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), hour, minute);
-    }, [index, dayDate, slotMin, config?.slotDuration]);
+      // Produce a TZDate in the configured timezone so downstream consumers
+      // (slot click, droppable id) stay timezone-correct.
+      return new TZDate(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), hour, minute, config?.timeZone);
+    }, [index, dayDate, slotMin, config?.slotDuration, config?.timeZone]);
 
     const { setNodeRef, isOver } = useDroppable({ id: slotTime.toISOString() });
 

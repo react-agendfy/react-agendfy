@@ -1,3 +1,1 @@
-yarn test
-// yarn lint
-
+yarn workspace @react-agendfy/core test

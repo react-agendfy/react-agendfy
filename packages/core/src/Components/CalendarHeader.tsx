@@ -51,6 +51,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           <button
             type="button"
             className="react-agendfy-prev-button react-agendfy-button react-agendfy-button-primary"
+            aria-label={`${localeConfig?.back || "Back"} ${currentView}`}
             onClick={() => onNavigate("prev")}
           >
             <ChevronLeft className="react-agendfy-icon" />
@@ -58,6 +59,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           <button
             type="button"
             className="react-agendfy-next-button react-agendfy-button react-agendfy-button-primary"
+            aria-label={`${localeConfig?.next || "Next"} ${currentView}`}
             onClick={() => onNavigate("next")}
           >
             <ChevronRight className="react-agendfy-icon" />
@@ -67,6 +69,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           <button
             type="button"
             className="react-agendfy-today-button react-agendfy-button react-agendfy-button-primary"
+            aria-label={localeConfig?.go_to_today || "Go to today"}
             onClick={() => onNavigate("today")}
           >
             {localeConfig?.today || "Today"}

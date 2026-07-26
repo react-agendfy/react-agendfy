@@ -174,7 +174,7 @@ describe("WeekEvent Component", () => {
 
     expect(dummyProps.onEventResize).toHaveBeenCalledWith({
       ...dummyEvent,
-      end: newEndTime,
+      end: newEndTime.toISOString(),
       isMultiDay: true,
     });
   });

@@ -52,8 +52,11 @@ export const expandRecurringEvents = (
         const duration = differenceInMilliseconds(originalEndDate, originalStartDate);
 
         // Cria a nova data de início a partir da ocorrência, mas com a hora do evento original.
-        // Usar `set` do date-fns é mais robusto e declarativo.
-        const newStart = set(date, {
+        // Interpretamos a ocorrência no mesmo fuso horário do evento antes de aplicar a
+        // hora original, evitando que campos de wall-clock de um TZDate sejam misturados
+        // em um Date simples (o que causava desvio entre fusos).
+        const occurrenceInTz = eventTimezone ? new TZDate(date, eventTimezone) : date;
+        const newStart = set(occurrenceInTz, {
           hours: originalStartDate.getHours(),
           minutes: originalStartDate.getMinutes(),
           seconds: originalStartDate.getSeconds(),

@@ -103,23 +103,16 @@ const MonthViewDragAndDropInteraction: React.FC<MonthViewDragAndDropInteractionP
  
        const originalStart = ensureDate(draggedEvent.start, config?.timeZone);
        const originalEnd = ensureDate(draggedEvent.end, config?.timeZone);
-       const duration = differenceInDays(originalEnd, originalStart);
+       const durationMs = originalEnd.getTime() - originalStart.getTime();
  
        const newStartDate = addDays(newDate, -dragOffset);
        const newStart = new TZDate(newStartDate, config?.timeZone);
-       const newEndDate = addDays(newStart, duration);
-       const newEnd = new TZDate(newEndDate, config?.timeZone);
- 
        newStart.setHours(
          originalStart.getHours(),
          originalStart.getMinutes(),
          originalStart.getSeconds()
        );
-       newEnd.setHours(
-         originalEnd.getHours(),
-         originalEnd.getMinutes(),
-         originalEnd.getSeconds()
-       );
+       const newEnd = new TZDate(newStart.getTime() + durationMs, config?.timeZone);
  
        const updatedEvents = events.map((ev: EventProps) =>
          ev.id === eventId
@@ -133,8 +126,10 @@ const MonthViewDragAndDropInteraction: React.FC<MonthViewDragAndDropInteractionP
  
        const updatedEvent = updatedEvents.find((ev) => ev.id === eventId);
  
+       // Consider both axes so a horizontal drag (moving to another day) is not
+       // misclassified as a click and discarded.
        if (typeof onEventClick === "function") {
-         if (Math.abs(delta.y) < 1) {
+         if (!delta || (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5)) {
            onEventClick(updatedEvent);
            return;
          }

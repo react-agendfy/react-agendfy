@@ -21,20 +21,23 @@ const BaseEvent = ({
   customClassName = "",
 }: BaseEventProps) => {
   const dragId = isMultiDay ? event.originalEventId || event.id : event.id;
-  const draggableProps = isDraggable
-    ? useDraggable({
-        id: dragId,
-        data: {
-          event,
-          isMultiDay,
-          isStart,
-          isMiddle: isMultiDay && !isStart && !isEnd,
-          isEnd,
-        },
-      })
-    : { attributes: {}, listeners: {}, setNodeRef: () => {}, transform: null, isDragging: false };
+  // Hooks must be called unconditionally (Rules of Hooks). Gate the drag behavior
+  // through the `disabled` option instead of conditionally calling the hook.
+  const draggableProps = useDraggable({
+    id: dragId,
+    data: {
+      event,
+      isMultiDay,
+      isStart,
+      isMiddle: isMultiDay && !isStart && !isEnd,
+      isEnd,
+    },
+    disabled: !isDraggable,
+  });
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = draggableProps;
+  const { setNodeRef, transform, isDragging } = draggableProps;
+  const attributes = isDraggable ? draggableProps.attributes : {};
+  const listeners = isDraggable ? draggableProps.listeners : {};
 
   let computedTop = positionStyle.top || "0";
   let computedHeight = positionStyle.height;
