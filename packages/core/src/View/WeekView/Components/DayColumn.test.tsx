@@ -172,7 +172,7 @@ describe('DayColumn Component', () => {
         isSlotSelected={dummyIsSlotSelected}
       />
     );
-    const overlayDiv = document.querySelector('div[style*="rgba(0, 128, 0, 0.1)"]');
+    const overlayDiv = document.querySelector('div.react-agendfy-business-hours');
     expect(overlayDiv).toBeInTheDocument();
   });
 });

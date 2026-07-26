@@ -123,12 +123,9 @@ const DayView: React.FC<DayViewProps> = ({
         })}
         {isToday && (
           <div
+            className="react-agendfy-now-line"
             style={{
-              position: "absolute",
               top: `${redLineOffset}px`,
-              left: 0,
-              right: 0,
-              borderTop: "2px dashed red",
               zIndex: 15,
             }}
           />

@@ -116,15 +116,10 @@ export const DayColumn = memo(
             return (
               <div
                 key={idx}
+                className="react-agendfy-business-hours"
                 style={{
-                  position: "absolute",
                   top: `${top}px`,
                   height: `${height}px`,
-                  left: 0,
-                  right: 0,
-                  backgroundColor: "rgba(0, 128, 0, 0.1)",
-                  pointerEvents: "none",
-                  zIndex: 0,
                 }}
               />
             );
@@ -186,12 +181,9 @@ export const DayColumn = memo(
             );
           })}
           <div
+            className="react-agendfy-now-line"
             style={{
-              position: "absolute",
               top: `${redLineOffset}px`,
-              left: 0,
-              right: 0,
-              borderTop: "2px dashed red",
               zIndex: 1,
             }}
           />
