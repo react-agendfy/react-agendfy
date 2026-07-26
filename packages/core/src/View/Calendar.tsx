@@ -85,6 +85,11 @@ const Calendar: FC<CalendarProps> = ({
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [currentView, setCurrentView] = useState<string>(config.defaultView);
 
+  // Scoped root element ref: theme + any theme-plugin css vars are applied
+  // here (never on document.documentElement) so the library is multi-instance
+  // safe and never leaks styles onto the host document.
+  const rootRef = useRef<HTMLDivElement>(null);
+
   const addToast = useToast();
 
   const [localeConfig, setLocaleConfig] = useState(() => {
@@ -106,10 +111,20 @@ const Calendar: FC<CalendarProps> = ({
     usePluginManagement(plugins);
 
   useEffect(() => {
-    const activeThemePlugin = themePlugins.find((p: ThemePlugin) => p.themeName === theme);
+    const root = rootRef.current;
+    if (!root) return;
 
+    // Force built-in light/dark via a scoped attribute (OS is the default).
+    if (theme === "dark" || theme === "light") {
+      root.setAttribute("data-theme", theme);
+    } else {
+      root.removeAttribute("data-theme");
+    }
+
+    // Apply any matching theme-plugin css vars to THIS root only (scoped),
+    // not to document.documentElement.
+    const activeThemePlugin = themePlugins.find((p: ThemePlugin) => p.themeName === theme);
     if (activeThemePlugin && activeThemePlugin.cssVariables) {
-      const root = document.documentElement;
       Object.entries(activeThemePlugin.cssVariables).forEach(([key, value]) => {
         root.style.setProperty(key, value);
       });
@@ -443,7 +458,7 @@ const Calendar: FC<CalendarProps> = ({
   }, [exportPlugins]);
  
   return (
-    <div className={`react-agenfy-layout theme-${theme}`}>
+    <div ref={rootRef} className={`agendfy react-agendfy-layout theme-${theme}`}>
      
       <div
         className="visually-hidden"
@@ -468,7 +483,7 @@ const Calendar: FC<CalendarProps> = ({
   exportOptions={localeConfig.export ? exportOptions : []}
   onExport={handleExport}
 />
-      <div className="react-agenfy-layout-content">{renderViewComponent()}</div>
+      <div className="react-agendfy-layout-content">{renderViewComponent()}</div>
     </div>
   );
 };

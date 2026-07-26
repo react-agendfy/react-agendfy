@@ -1,267 +1,218 @@
-.react-agenfy-monthview-container {
+.react-agendfy-monthview-container {
   width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background-color: var(--color-bg-white);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-lg);
+  background-color: var(--agendfy-color-surface);
+  box-shadow: var(--agendfy-shadow-sm);
   overflow: hidden;
 }
 
-.react-agenfy-monthview-header {
+.react-agendfy-monthview-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-gray-50);
+  border-bottom: 1px solid var(--agendfy-color-border);
+  background-color: var(--agendfy-color-surface-2);
 }
 
-.react-agenfy-monthview-day-label {
-  padding: var(--padding-0_5rem);
+.react-agendfy-monthview-day-label {
+  padding: var(--agendfy-space-2);
   text-align: center;
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--color-text-gray-700);
-  border-right: 1px solid var(--color-border);
+  font-weight: 600;
+  color: var(--agendfy-color-text-muted);
+  border-inline-end: 1px solid var(--agendfy-color-border);
 }
 
-.react-agenfy-monthview-day-label:last-child {
-  border-right: none;
+.react-agendfy-monthview-day-label:last-child {
+  border-inline-end: none;
 }
 
-.react-agenfy-monthview-grid-container {}
+.react-agendfy-monthview-grid-container {
+}
 
-.react-agenfy-monthview-week-row {
+.react-agendfy-monthview-week-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--agendfy-color-border);
 }
 
-.react-agenfy-monthview-week-row:last-child {
+.react-agendfy-monthview-week-row:last-child {
   border-bottom: none;
 }
 
-.react-agenfy-event-item {
+/* ---- day cells ---- */
+.react-agendfy-calendar-day {
+  min-height: 120px;
+  padding: var(--agendfy-space-2);
+  border-inline-end: 1px solid var(--agendfy-color-border);
+  transition: background-color var(--agendfy-transition-duration)
+    var(--agendfy-transition-timing);
+  cursor: pointer;
+  min-width: 0;
+  background-color: var(--agendfy-color-surface);
+}
+
+.react-agendfy-calendar-day:hover {
+  background-color: var(--agendfy-color-surface-hover);
+}
+
+.react-agendfy-calendar-day-today {
+  background-color: var(--agendfy-color-today-wash);
+}
+
+.react-agendfy-calendar-day-droppable-over {
+  background-color: var(--agendfy-color-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--agendfy-color-accent);
+}
+
+.react-agendfy-calendar-day-selected {
+  background-color: var(--agendfy-color-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--agendfy-color-accent);
+}
+
+.react-agendfy-calendar-day-empty {
+  background-color: var(--agendfy-color-surface-2);
+  border-inline-end: 1px solid var(--agendfy-color-border);
+  min-height: 120px;
+}
+
+.react-agendfy-calendar-day-other-month {
+  background-color: var(--agendfy-color-surface-2);
+  opacity: 0.6;
+}
+
+.react-agendfy-calendar-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--agendfy-space-2);
+}
+
+.react-agendfy-day-number {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--agendfy-color-text);
+}
+
+.react-agendfy-day-number-today {
+  color: var(--agendfy-color-accent);
+  font-weight: 700;
+}
+
+.react-agendfy-day-number-other-month {
+  color: var(--agendfy-color-text-faint);
+}
+
+.react-agendfy-hidden-events {
+  font-size: var(--font-size-xs);
+  color: var(--agendfy-color-text-muted);
+  background-color: var(--agendfy-color-surface-hover);
+  padding: 0.125rem var(--agendfy-radius-sm);
+  border-radius: var(--agendfy-radius-full);
+  cursor: pointer;
+  transition: color var(--agendfy-transition-duration)
+    var(--agendfy-transition-timing);
+}
+
+.react-agendfy-hidden-events:hover {
+  color: var(--agendfy-color-text);
+}
+
+.react-agendfy-day-events > * + * {
+  margin-top: var(--agendfy-space-1);
+}
+
+/* ---- event chips ---- */
+.react-agendfy-event-item {
   font-size: var(--font-size-xs);
   font-weight: 600;
-  border-radius: var(--radius-sm);
-  padding: var(--padding-0_125rem) var(--padding-0_375rem);
-  color: var(--color-text-white);
+  border-radius: var(--agendfy-radius-sm);
+  padding: 0.125rem var(--agendfy-radius-sm);
+  color: var(--agendfy-color-event-fg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-duration) var(--transition-timing);
+  box-shadow: var(--agendfy-shadow-sm);
+  transition: transform var(--agendfy-transition-duration)
+      var(--agendfy-transition-timing),
+    box-shadow var(--agendfy-transition-duration)
+      var(--agendfy-transition-timing);
   max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-}
-
-.react-agenfy-event-item-dragging {
-  box-shadow: var(--shadow-lg);
-  opacity: 0.7;
-  cursor: grabbing;
-}
-
-.react-agenfy-event-item-preview {
-  opacity: 0.5;
-}
-
-.react-agenfy-event-item-resources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.react-agenfy-resource-tag {
-  display: inline-block;
-  font-size: 0.65rem;
-  font-weight: 600;
-  opacity: 0.8;
-}
-.react-agenfy-calendar-day {
-  min-height: 120px;
-  padding: var(--padding-0_5rem);
-  border-right: 1px solid var(--color-border);
-  transition: background-color var(--transition-duration) var(--transition-timing);
-  cursor: pointer;
-  min-width: 0;
-}
-
-.react-agenfy-event-item-multiday-start {
-  margin-right: calc(-1 * var(--padding-0_5rem) - 1px);
-  padding-right: calc(var(--padding-0_5rem) + 1px);
-}
-.react-agenfy-event-item-multiday-end {
-  
-}
-
-.react-agenfy-event-item-multiday-middle {
-  border-radius: 0;
-  margin-left: calc(-1 * var(--padding-0_5rem) - 1px);
-  margin-right: calc(-1 * var(--padding-0_5rem) - 1px);
-  padding-left: calc(var(--padding-0_5rem) + 1px);
-  padding-right: calc(var(--padding-0_5rem) + 1px);
-  z-index: 1;
-}
-
-.react-agenfy-calendar-day-droppable-over {
-  background-color: var(--color-bg-blue-50);
-  box-shadow: inset 0 0 0 2px var(--color-border-blue-300);
-}
-
-.react-agenfy-calendar-day-selected {
-  background-color: var(--color-bg-blue-100, #dbeafe);
-  box-shadow: inset 0 0 0 1px var(--color-border-blue-300, #93c5fd);
-}
-
-.react-agenfy-calendar-day:hover {
-  background-color: var(--color-bg-gray-50);
-}
-
-.react-agenfy-calendar-day-empty {
-  background-color: var(--color-bg-gray-50);
-  border-right: 1px solid var(--color-border);
-  min-height: 120px;
-}
-
-.react-agenfy-calendar-day-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--margin-0_5rem);
-}
-
-.react-agenfy-day-number {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--color-text-gray-800);
-}
-
-.react-agenfy-day-number-today {
-  color: var(--color-text-accent-600);
-  font-weight: 700;
-}
-
-.react-agenfy-hidden-events {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-gray-500);
-  background-color: var(--color-bg-gray-100);
-  padding: var(--padding-0_125rem) var(--padding-0_375rem);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: color var(--transition-duration) var(--transition-timing);
-}
-
-.react-agenfy-hidden-events:hover {
-  color: var(--color-text-gray-700-hover);
-}
-
-.react-agenfy-day-events > * + * {
-  margin-top: var(--margin-0_25rem);
-}
-
-.react-agenfy-bg-green-200 {
-  background-color: var(--color-bg-green-200);
-}
-
-.react-agenfy-bg-blue-50 {
-  background-color: var(--color-bg-blue-50);
-}
-
-.react-agenfy-bg-white {
-  background-color: var(--color-bg-white);
-}
-
-.react-agenfy-bg-gray-50 {
-  background-color: var(--color-bg-gray-50);
-}
-
-.react-agendfy-event-item-multiday {
+  gap: var(--agendfy-space-1);
   position: relative;
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.react-agendfy-event-item-multiday-start::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 6px;
-  height: 100%;
-  cursor: ew-resize;
-  background: rgba(0, 0, 0, 0.15);
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
-  transition: background 0.2s;
-}
-
-.react-agendfy-event-item-multiday-start:hover::before {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.react-agendfy-event-item-multiday-end::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 6px;
-  height: 100%;
-  cursor: ew-resize;
-  background: rgba(0, 0, 0, 0.15);
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  transition: background 0.2s;
-}
-
-.react-agendfy-event-item-multiday-end:hover::after {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.react-agendfy-event-item.dragging {
-  opacity: 0.8;
-  border: 1px dashed #666;
-  cursor: grabbing;
-}
-
-.react-agendfy-event-item-multiday-start:hover,
-.react-agendfy-event-item-multiday-end:hover {
-  filter: brightness(0.95);
-}
-.react-agendfy-event-item {
-  pointer-events: auto;
   z-index: 2;
-  position: relative;
+  pointer-events: auto;
+}
+
+.react-agendfy-event-item:hover {
+  box-shadow: var(--agendfy-shadow-md);
+  transform: translateY(-1px);
 }
 
 .react-agendfy-event-item * {
   pointer-events: auto;
 }
 
-.react-agendfy-day-cell {
-  position: relative;
-  z-index: 1;
+.react-agendfy-event-item-content {
+  display: flex;
+  align-items: center;
+  gap: var(--agendfy-space-1);
+  min-width: 0;
+  overflow: hidden;
 }
 
-.react-agenfy-calendar-day-other-month {
-  background-color: var(--color-bg-gray-50);
-  opacity: 0.6;
+.react-agendfy-event-item-dragging {
+  box-shadow: var(--agendfy-shadow-lg);
+  opacity: 0.7;
+  cursor: grabbing;
 }
 
-.react-agenfy-day-number-other-month {
-  color: var(--color-text-gray-500);
+.react-agendfy-event-item-preview {
+  opacity: 0.5;
 }
 
-.react-agenfy-event-item-other-month {
+.react-agendfy-event-item-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--agendfy-space-1);
+}
+
+.react-agendfy-event-item-other-month {
   opacity: 0.4;
 }
 
+.react-agendfy-resource-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* multiday chip joins (handles live in EventItem.css) */
+.react-agendfy-event-item-multiday-start {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  margin-inline-end: calc(-1 * var(--agendfy-space-2) - 1px);
+  padding-inline-end: calc(var(--agendfy-space-2) + 1px);
+}
+
+.react-agendfy-event-item-multiday-end {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.react-agendfy-event-item-multiday-middle {
+  border-radius: 0;
+  margin-inline: calc(-1 * var(--agendfy-space-2) - 1px);
+  padding-inline: calc(var(--agendfy-space-2) + 1px);
+  z-index: 1;
+}
 
 @media (max-width: 640px) {
-  .react-agenfy-event-item {
+  .react-agendfy-event-item {
     padding: 2px 4px;
     font-size: 10px;
     white-space: nowrap;
@@ -270,11 +221,11 @@
     display: block;
   }
 
-  .react-agenfy-day-events > *{
+  .react-agendfy-day-events > * {
     margin-top: 2px;
   }
 
-  .react-agenfy-calendar-day {
+  .react-agendfy-calendar-day {
     min-height: 80px;
     padding: 4px;
   }

@@ -1,0 +1,296 @@
+/* =====================================================================
+   react-agendfy — v2 design tokens
+   All tokens are scoped under `.agendfy` (never :root) so the library
+   never restyles the host application. Light is the default; OS dark is
+   applied automatically and can be forced either way via [data-theme].
+   ===================================================================== */
+
+.agendfy {
+  /* ---------------------------------------------------------------
+     L1 — primitives (theme-agnostic)
+     --------------------------------------------------------------- */
+  /* spacing scale */
+  --agendfy-space-1: 0.25rem;
+  --agendfy-space-2: 0.5rem;
+  --agendfy-space-3: 0.75rem;
+  --agendfy-space-4: 1rem;
+  --agendfy-space-5: 1.5rem;
+  --agendfy-space-6: 2rem;
+  --agendfy-space-7: 3rem;
+  --agendfy-space-8: 4rem;
+
+  /* radii */
+  --agendfy-radius-sm: 0.375rem;
+  --agendfy-radius-md: 0.625rem;
+  --agendfy-radius-lg: 0.875rem;
+  --agendfy-radius-xl: 1.25rem;
+  --agendfy-radius-full: 999px;
+
+  /* typography */
+  --agendfy-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --agendfy-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  /* palette primitives */
+  --agendfy-indigo-400: #6b7bff;
+  --agendfy-indigo-500: #4353ff;
+  --agendfy-indigo-600: #313fd6;
+  --agendfy-coral-400: #ff7a7e;
+  --agendfy-coral-500: #ff5a5f;
+  --agendfy-teal-500: #0e9f9f;
+  --agendfy-amber-500: #e8a13a;
+  --agendfy-rose-500: #e2506b;
+  --agendfy-violet-500: #8b5cf6;
+  --agendfy-green-500: #2fa969;
+
+  /* ---------------------------------------------------------------
+     L3 — component / event category tokens (stable across themes)
+     --------------------------------------------------------------- */
+  --ev-work: var(--agendfy-indigo-500);
+  --ev-meeting: var(--agendfy-rose-500);
+  --ev-focus: var(--agendfy-amber-500);
+  --ev-personal: var(--agendfy-teal-500);
+  --ev-travel: var(--agendfy-violet-500);
+  --ev-free: var(--agendfy-green-500);
+
+  /* ---------------------------------------------------------------
+     L2 — semantic tokens (LIGHT — default)
+     --------------------------------------------------------------- */
+  --agendfy-color-ground: #f8fafc;
+  --agendfy-color-surface: #ffffff;
+  --agendfy-color-surface-2: #f1f5f9;
+  --agendfy-color-surface-hover: #eef2f7;
+  --agendfy-color-border: #e2e8f0;
+  --agendfy-color-border-strong: #cbd5e1;
+  --agendfy-color-text: #0f172a;
+  --agendfy-color-text-muted: #64748b;
+  --agendfy-color-text-faint: #94a3b8;
+  --agendfy-color-accent: var(--agendfy-indigo-500);
+  --agendfy-color-accent-hover: var(--agendfy-indigo-600);
+  --agendfy-color-accent-soft: #eaecff;
+  --agendfy-color-now: var(--agendfy-coral-500);
+  --agendfy-color-today-wash: #eef1ff;
+  --agendfy-color-event-fg: #ffffff;
+
+  --agendfy-focus-ring: 0 0 0 2px var(--agendfy-color-ground),
+    0 0 0 4px var(--agendfy-color-accent);
+
+  --agendfy-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+  --agendfy-shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.1),
+    0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --agendfy-shadow-lg: 0 12px 24px -6px rgba(15, 23, 42, 0.16),
+    0 4px 8px -4px rgba(15, 23, 42, 0.1);
+
+  --agendfy-transition-duration: 0.2s;
+  --agendfy-transition-timing: ease;
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------
+   L2 — semantic tokens (DARK)
+   OS default (unless the app forces light) + explicit override.
+   --------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  .agendfy:not([data-theme="light"]) {
+    --agendfy-color-ground: #0b0f17;
+    --agendfy-color-surface: #141a24;
+    --agendfy-color-surface-2: #1b2330;
+    --agendfy-color-surface-hover: #212b3a;
+    --agendfy-color-border: #263140;
+    --agendfy-color-border-strong: #364357;
+    --agendfy-color-text: #e6ecf5;
+    --agendfy-color-text-muted: #93a3b8;
+    --agendfy-color-text-faint: #5c6b81;
+    --agendfy-color-accent: var(--agendfy-indigo-400);
+    --agendfy-color-accent-hover: #8591ff;
+    --agendfy-color-accent-soft: #1e2547;
+    --agendfy-color-now: var(--agendfy-coral-400);
+    --agendfy-color-today-wash: #171e39;
+    --agendfy-color-event-fg: #0b0f17;
+
+    --agendfy-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --agendfy-shadow-md: 0 4px 10px -2px rgba(0, 0, 0, 0.5),
+      0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --agendfy-shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.6),
+      0 4px 8px -4px rgba(0, 0, 0, 0.5);
+
+    color-scheme: dark;
+  }
+}
+
+/* app-forced dark (wins regardless of OS) */
+.agendfy[data-theme="dark"] {
+  --agendfy-color-ground: #0b0f17;
+  --agendfy-color-surface: #141a24;
+  --agendfy-color-surface-2: #1b2330;
+  --agendfy-color-surface-hover: #212b3a;
+  --agendfy-color-border: #263140;
+  --agendfy-color-border-strong: #364357;
+  --agendfy-color-text: #e6ecf5;
+  --agendfy-color-text-muted: #93a3b8;
+  --agendfy-color-text-faint: #5c6b81;
+  --agendfy-color-accent: var(--agendfy-indigo-400);
+  --agendfy-color-accent-hover: #8591ff;
+  --agendfy-color-accent-soft: #1e2547;
+  --agendfy-color-now: var(--agendfy-coral-400);
+  --agendfy-color-today-wash: #171e39;
+  --agendfy-color-event-fg: #0b0f17;
+
+  --agendfy-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --agendfy-shadow-md: 0 4px 10px -2px rgba(0, 0, 0, 0.5),
+    0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --agendfy-shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.6),
+    0 4px 8px -4px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}
+
+/* app-forced light (wins regardless of OS) — re-assert light L2 */
+.agendfy[data-theme="light"] {
+  --agendfy-color-ground: #f8fafc;
+  --agendfy-color-surface: #ffffff;
+  --agendfy-color-surface-2: #f1f5f9;
+  --agendfy-color-surface-hover: #eef2f7;
+  --agendfy-color-border: #e2e8f0;
+  --agendfy-color-border-strong: #cbd5e1;
+  --agendfy-color-text: #0f172a;
+  --agendfy-color-text-muted: #64748b;
+  --agendfy-color-text-faint: #94a3b8;
+  --agendfy-color-accent: var(--agendfy-indigo-500);
+  --agendfy-color-accent-hover: var(--agendfy-indigo-600);
+  --agendfy-color-accent-soft: #eaecff;
+  --agendfy-color-now: var(--agendfy-coral-500);
+  --agendfy-color-today-wash: #eef1ff;
+  --agendfy-color-event-fg: #ffffff;
+
+  --agendfy-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+  --agendfy-shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.1),
+    0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --agendfy-shadow-lg: 0 12px 24px -6px rgba(15, 23, 42, 0.16),
+    0 4px 8px -4px rgba(15, 23, 42, 0.1);
+
+  color-scheme: light;
+}
+
+/* =====================================================================
+   Compatibility layer — maps the legacy variable names still used by
+   component CSS onto the new L2/L3 tokens. This keeps every selector
+   consuming tokens (never a raw hex) and makes all existing rules
+   automatically theme-aware. Also fixes the previously-undefined vars.
+   ===================================================================== */
+.agendfy {
+  /* colors */
+  --color-border: var(--agendfy-color-border);
+  --color-border-gray-300: var(--agendfy-color-border-strong);
+  --color-bg-white: var(--agendfy-color-surface);
+  --color-bg-gray-50: var(--agendfy-color-surface-2);
+  --color-bg-gray-100: var(--agendfy-color-surface-hover);
+  --color-bg-green-200: var(--agendfy-color-accent-soft);
+  --color-bg-accent-50: var(--agendfy-color-today-wash);
+  --color-bg-accent-800: var(--agendfy-color-accent-hover); /* was undefined */
+  --color-bg-blue-50: var(--agendfy-color-accent-soft);     /* was undefined */
+  --color-bg-blue-100: var(--agendfy-color-accent-soft);    /* was undefined */
+  --color-border-blue-300: var(--agendfy-color-accent);     /* was undefined */
+  --color-bg-hover: var(--agendfy-color-surface-hover);
+  --color-bg-view-btn-active: var(--agendfy-color-accent);
+  --color-bg-filter-btn: var(--agendfy-color-surface);
+  --color-box-shadow: var(--agendfy-shadow-sm);
+  --color-accent-checkbox: var(--agendfy-color-accent);
+  --color-clear-btn: var(--agendfy-color-now);
+  --color-text-gray-800: var(--agendfy-color-text);
+  --color-text-gray-700: var(--agendfy-color-text);
+  --color-text-gray-500: var(--agendfy-color-text-muted);
+  --color-text-accent-600: var(--agendfy-color-accent);
+  --color-text-gray-700-hover: var(--agendfy-color-text);
+  --color-text-white: var(--agendfy-color-event-fg);
+  --color-danger: var(--agendfy-color-now);
+
+  /* buttons */
+  --btn-bg: var(--agendfy-color-surface);
+  --btn-hover-bg: var(--agendfy-color-surface-hover);
+  --btn-text: var(--agendfy-color-event-fg);
+
+  /* radii */
+  --radius-lg: var(--agendfy-radius-lg);
+  --radius-sm: var(--agendfy-radius-sm);
+  --radius-full: var(--agendfy-radius-full);
+
+  /* elevation */
+  --shadow-sm: var(--agendfy-shadow-sm);
+  --shadow-lg: var(--agendfy-shadow-lg);
+  --box-shadow-md: var(--agendfy-shadow-md);
+
+  /* motion */
+  --transition-duration: var(--agendfy-transition-duration);
+  --transition-timing: var(--agendfy-transition-timing);
+
+  /* spacing / padding / margin (fix undefined vars too) */
+  --padding-0_5rem: var(--agendfy-space-2);
+  --padding-0_125rem: 0.125rem;
+  --padding-0_375rem: var(--agendfy-radius-sm);
+  --padding-p3: var(--agendfy-space-3);
+  --padding-p8: var(--agendfy-space-6);
+  --padding-p1_5: var(--agendfy-space-5);
+  --padding-p0_25: var(--agendfy-space-1); /* was undefined */
+  --padding-1rem: var(--agendfy-space-4);
+  --margin-0_25rem: var(--agendfy-space-1);
+  --margin-0_5rem: var(--agendfy-space-2);
+  --margin-0_75rem: var(--agendfy-space-3);
+  --margin-mt-0_125: 0.125rem;
+  --margin-mt-1: var(--agendfy-space-4);
+  --margin-mb-0_75: var(--agendfy-space-3);
+  --margin-mb-0_25: var(--agendfy-space-1);
+  --margin-mb-3: var(--agendfy-space-3); /* was undefined */
+  --margin-ml-0_5: var(--agendfy-space-2);
+  --margin-mr-0_25: var(--agendfy-space-1);
+
+  /* typography */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --line-height: 1.2;
+
+  /* layout */
+  --dayview-timeslot-height: 2.5rem;
+
+  /* base event sizing */
+  --baseevent-padding-small: var(--agendfy-space-1);
+  --baseevent-border-radius-small: var(--agendfy-radius-sm);
+  --baseevent-padding-medium: 0rem;
+  --baseevent-border-radius-medium: var(--agendfy-radius-md);
+  --baseevent-padding-large: var(--agendfy-space-3);
+  --baseevent-padding-min: 0rem;
+  --baseevent-border-radius-large: var(--agendfy-radius-lg);
+  --baseevent-time-font-size-small: 0.65rem;
+  --baseevent-time-font-size-medium: 0.75rem;
+  --baseevent-time-font-size-large: 0.85rem;
+}
+
+/* =====================================================================
+   Global accessibility styling (scoped to the calendar root)
+   ===================================================================== */
+.agendfy {
+  font-family: var(--agendfy-font-sans);
+  color: var(--agendfy-color-text);
+}
+
+.agendfy :focus-visible {
+  outline: none;
+  box-shadow: var(--agendfy-focus-ring);
+  border-radius: var(--agendfy-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agendfy *,
+  .agendfy *::before,
+  .agendfy *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

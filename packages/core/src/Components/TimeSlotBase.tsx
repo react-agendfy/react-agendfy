@@ -44,7 +44,7 @@ export const TimeSlotBase = memo(
       <div
         ref={setNodeRef}
         onClick={handleClickSlot}
-        className={`${containerClassName} ${isOver ? "react-agenfy-bg-green-200" : ""}`}
+        className={`${containerClassName} ${isOver ? "react-agendfy-bg-green-200" : ""}`}
       >
         {labelRenderer && labelRenderer()}
         {eventsContainerRenderer && eventsContainerRenderer(slotEvents)}

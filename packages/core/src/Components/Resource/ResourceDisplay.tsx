@@ -15,12 +15,12 @@ const ResourceDisplay = ({ resources, maxVisible = 2 }: { resources: Resource[],
   const hiddenCount = resourceList.length - maxVisible;
 
   return (
-    <div data-testid="resource-display-container" className="react-agenfy-resource-display-container">
+    <div data-testid="resource-display-container" className="react-agendfy-resource-display-container">
       {visibleResources.map((resource: Resource, index: number) => (
         <ResourceIcon key={resource.id || index} resource={resource} />
       ))}
       {hiddenCount > 0 && (
-        <span title={`${hiddenCount} more resources`} className="react-agenfy-resource-display-hidden-text">
+        <span title={`${hiddenCount} more resources`} className="react-agendfy-resource-display-hidden-text">
           +{hiddenCount}
         </span>
       )}

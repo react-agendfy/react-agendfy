@@ -50,9 +50,9 @@ export const WeekTimeSlot = memo(
     }, [slotEvents, config]);
 
     const slotClasses = [
-      "react-agenfy-weektimeslot",
-      isOver && "react-agenfy-bg-green-200",
-      isSelected && "react-agenfy-weektimeslot-selected",
+      "react-agendfy-weektimeslot",
+      isOver && "react-agendfy-bg-green-200",
+      isSelected && "react-agendfy-weektimeslot-selected",
     ].filter(Boolean).join(" ");
 
     return (

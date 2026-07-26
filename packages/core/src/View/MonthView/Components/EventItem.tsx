@@ -7,6 +7,7 @@ import { TZDate } from '@date-fns/tz';
 import { ensureDate } from '../../../Utils/DateTrannforms';
 import ResourceDisplay from '../../../Components/Resource/ResourceDisplay';
 import { BaseEventProps } from '../../../types/types';
+import { getContrastText } from '../../../Utils/colorContrast';
 import './EventItem.css';
 
 interface EventItemProps extends BaseEventProps {
@@ -68,12 +69,12 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
   const showContent = isStart || !event.isMultiDay;
  
   const className = [
-    'react-agenfy-event-item',
-    isDragging && 'react-agenfy-event-item-dragging',
-    isPreview && 'react-agenfy-event-item-preview',
-    event.isMultiDay && isStart && 'react-agenfy-event-item-multiday-start',
-    event.isMultiDay && isEnd && 'react-agenfy-event-item-multiday-end',
-    event.isMultiDay && !isStart && !isEnd && 'react-agenfy-event-item-multiday-middle',
+    'react-agendfy-event-item',
+    isDragging && 'react-agendfy-event-item-dragging',
+    isPreview && 'react-agendfy-event-item-preview',
+    event.isMultiDay && isStart && 'react-agendfy-event-item-multiday-start',
+    event.isMultiDay && isEnd && 'react-agendfy-event-item-multiday-end',
+    event.isMultiDay && !isStart && !isEnd && 'react-agendfy-event-item-multiday-middle',
   ].filter(Boolean).join(' ');
 
   const eventDurationDays = useMemo(() => {
@@ -110,6 +111,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         className={className}
         style={{
           backgroundColor: event.color || '#3490dc',
+          color: getContrastText(event.color || '#3490dc'),
           cursor: canDrag ? 'grab' : 'pointer',
           opacity: isDragging ? 0.7 : 1,
           width: '100%',
@@ -127,12 +129,12 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
       >
         {showContent && (
           <>
-            <div className="react-agenfy-event-item-content">
+            <div className="react-agendfy-event-item-content">
               <span>{event.title}</span>
               <span>{startTime}</span>
             </div>
             {event.resources?.length > 0 && (
-              <div className="react-agenfy-event-item-resources">
+              <div className="react-agendfy-event-item-resources">
                 <ResourceDisplay resources={event.resources} maxVisible={2} />
               </div>
             )}

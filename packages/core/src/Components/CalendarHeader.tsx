@@ -45,49 +45,49 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   };
 
   return (
-    <div className="fc-header-toolbar fc-toolbar">
-      <div className="fc-toolbar-chunk">
-        <div className="fc-button-group">
+    <div className="react-agendfy-header-toolbar react-agendfy-toolbar">
+      <div className="react-agendfy-toolbar-chunk">
+        <div className="react-agendfy-button-group">
           <button
             type="button"
-            className="fc-prev-button fc-button fc-button-primary"
+            className="react-agendfy-prev-button react-agendfy-button react-agendfy-button-primary"
             onClick={() => onNavigate("prev")}
           >
-            <ChevronLeft className="fc-icon" />
+            <ChevronLeft className="react-agendfy-icon" />
           </button>
           <button
             type="button"
-            className="fc-next-button fc-button fc-button-primary"
+            className="react-agendfy-next-button react-agendfy-button react-agendfy-button-primary"
             onClick={() => onNavigate("next")}
           >
-            <ChevronRight className="fc-icon" />
+            <ChevronRight className="react-agendfy-icon" />
           </button>
         </div>
-        <div className="fc-button-group">
+        <div className="react-agendfy-button-group">
           <button
             type="button"
-            className="fc-today-button fc-button fc-button-primary"
+            className="react-agendfy-today-button react-agendfy-button react-agendfy-button-primary"
             onClick={() => onNavigate("today")}
           >
             {localeConfig?.today || "Today"}
           </button>
         </div>
-        <h2 className="fc-toolbar-title">{formatTitle()}</h2>
+        <h2 className="react-agendfy-toolbar-title">{formatTitle()}</h2>
       </div>
 
-      <div className="fc-toolbar-chunk">
+      <div className="react-agendfy-toolbar-chunk">
         {headerLeftPlugins.map((plugin, i) => (
-          <div key={i} className="fc-plugin-left">{plugin}</div>
+          <div key={i} className="react-agendfy-plugin-left">{plugin}</div>
         ))}
       </div>
 
-      <div className="fc-toolbar-chunk">
-        <div className="fc-button-group">
+      <div className="react-agendfy-toolbar-chunk">
+        <div className="react-agendfy-button-group">
           {availableViews.map((view) => (
             <button
               key={view.name}
               type="button"
-              className={`fc-${view.name}-button fc-button fc-button-primary ${currentView === view.name ? "fc-button-active" : ""}`}
+              className={`react-agendfy-${view.name}-button react-agendfy-button react-agendfy-button-primary ${currentView === view.name ? "react-agendfy-button-active" : ""}`}
               onClick={() => onViewChange(view.name)}
             >
               {view.label}
@@ -96,23 +96,23 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         </div>
 
         {localeConfig?.export && exportOptions.length > 0 && onExport && (
-          <div className="fc-export-container" ref={exportRef}>
+          <div className="react-agendfy-export-container" ref={exportRef}>
             <button
               type="button"
-              className="fc-export-button fc-button fc-button-primary"
+              className="react-agendfy-export-button react-agendfy-button react-agendfy-button-primary"
               onClick={() => setIsExportOpen(!isExportOpen)}
               aria-haspopup="true"
               aria-expanded={isExportOpen}
             >
-              <Download className="fc-icon" size={16} />
+              <Download className="react-agendfy-icon" size={16} />
               <span>{localeConfig?.calendar_export || "Export"}</span>
             </button>
             {isExportOpen && (
-              <div className="fc-export-menu">
+              <div className="react-agendfy-export-menu">
                 {exportOptions.map((opt) => (
                   <button
                     key={opt.formatName}
-                    className="fc-export-option"
+                    className="react-agendfy-export-option"
                     onClick={() => {
                       onExport(opt.formatName);
                       setIsExportOpen(false);
@@ -127,7 +127,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         )}
 
         {headerRightPlugins.map((plugin, i) => (
-          <div key={i} className="fc-plugin-right">{plugin}</div>
+          <div key={i} className="react-agendfy-plugin-right">{plugin}</div>
         ))}
       </div>
     </div>

@@ -49,7 +49,7 @@ const WeekView = ({
   );
   if (isNaN  (numberOfSlots) || numberOfSlots <= 0) {
     return (
-      <div className="react-agenfy-weekview-error">
+      <div className="react-agendfy-weekview-error">
         {config?.slotDuration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas.
       </div>
     );
@@ -232,21 +232,21 @@ const WeekView = ({
       onDragStart={handleDragStart}
       collisionDetection={pointerWithin}
     >
-      <div className="react-agenfy-weekview-container">
-        <div className="react-agenfy-weekview-all-day">
-          <div className="react-agenfy-weekview-all-day-label">
-            <div className="react-agenfy-weekview-all-day-text">{config?.all_day}</div>
+      <div className="react-agendfy-weekview-container">
+        <div className="react-agendfy-weekview-all-day">
+          <div className="react-agendfy-weekview-all-day-label">
+            <div className="react-agendfy-weekview-all-day-text">{config?.all_day}</div>
           </div>
           {daysOfWeek.map((dayIndex) => {
             const dayDate = addDays(currentWeekStart, dayIndex);
             const dayAllDayEvents = allDayEventsByDay[dayIndex] || [];
             return (
-              <div key={dayIndex} className="react-agenfy-weekview-all-day-column">
+              <div key={dayIndex} className="react-agendfy-weekview-all-day-column">
                 {dayAllDayEvents.map((event) => (
                   <div
                     key={event.id}
                     style={{ backgroundColor: event.color }}
-                    className="react-agenfy-weekview-all-day-event"
+                    className="react-agendfy-weekview-all-day-event"
                   >
                     {event.title || "Event"}
                   </div>
@@ -256,14 +256,14 @@ const WeekView = ({
           })}
         </div>
         <div 
-          className="react-agenfy-weekview-timeslot-grid"
+          className="react-agendfy-weekview-timeslot-grid"
           onMouseUp={handleSelectionMouseUp}
           onMouseLeave={handleSelectionMouseUp}
         >
-          <div className="react-agenfy-weekview-timeslot-label">
-            <div className="react-agenfy-weekview-timeslot-label-top" />
+          <div className="react-agendfy-weekview-timeslot-label">
+            <div className="react-agendfy-weekview-timeslot-label-top" />
             {timeslotLabels.map((label, index) => (
-              <div key={`hour-${index}`} className="react-agenfy-weekview-timeslot">
+              <div key={`hour-${index}`} className="react-agendfy-weekview-timeslot">
                 {label}
               </div>
             ))}
@@ -273,7 +273,7 @@ const WeekView = ({
             return (
               <div
                 key={dayIndex}
-                className={`react-agenfy-weekview-day-column ${dayIndex < daysOfWeek.length - 1 ? "react-agenfy-border-right" : ""}`}
+                className={`react-agendfy-weekview-day-column ${dayIndex < daysOfWeek.length - 1 ? "react-agendfy-border-right" : ""}`}
               >
                 <DayColumn
                   dayDate={dayDate}

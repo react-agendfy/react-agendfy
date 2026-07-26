@@ -18,7 +18,7 @@ export const ResourceIcon = ({ resource }: {resource: Resource} ) => {
   return (
     <span
       title={`${resource.name} (${resource.type})`}
-      className="react-agenfy-resourceicon"
+      className="react-agendfy-resourceicon"
     >
       {getIcon(resource.type)}
     </span>

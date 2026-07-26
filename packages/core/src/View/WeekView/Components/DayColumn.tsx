@@ -81,29 +81,29 @@ export const DayColumn = memo(
 
     return (
       <div
-        className={`react-agenfy-daycolumn-container react-agenfy-today ${
-          isToday ? "react-agenfy-daycolumn-today" : ""
+        className={`react-agendfy-daycolumn-container react-agendfy-today ${
+          isToday ? "react-agendfy-daycolumn-today" : ""
         }`}
       >
         <div
-          className={`react-agenfy-daycolumn-header  react-agenfy-header-today ${
-            isToday ? "react-agenfy-daycolumn-header-today" : ""
+          className={`react-agendfy-daycolumn-header  react-agendfy-header-today ${
+            isToday ? "react-agendfy-daycolumn-header-today" : ""
           }`}
           onClick={() => {
             if (typeof onSlotClick === "function") onSlotClick(dayDate);
           }}
         >
-          <div className="react-agenfy-daycolumn-header-text">
-            <div className="react-agenfy-daycolumn-weekday">
+          <div className="react-agendfy-daycolumn-header-text">
+            <div className="react-agendfy-daycolumn-weekday">
               {format(dayDate, "EEE", { locale: getLocale(config?.lang) })}
             </div>
-            <div className="react-agenfy-daycolumn-date">
+            <div className="react-agendfy-daycolumn-date">
               {format(dayDate, "dd/MM", { locale: getLocale(config?.lang) })}
             </div>
           </div>
         </div>
         <div
-          className="react-agenfy-daycolumn-slot-container"
+          className="react-agendfy-daycolumn-slot-container"
           style={{ minHeight: timeSlots.length * 40 }}
         >
           {businessIntervals.map((interval, idx) => {

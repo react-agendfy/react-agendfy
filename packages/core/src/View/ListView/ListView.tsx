@@ -44,16 +44,16 @@ const RowComponent: React.FC<RowProps> = ({
         display: 'flex',
         flexDirection: 'column',
       }} 
-      className="react-agenfy-listview-day-container"
+      className="react-agendfy-listview-day-container"
     >
-      <div className="react-agenfy-listview-day-header-wrapper">
-        <h2 className="react-agenfy-listview-day-header">
+      <div className="react-agendfy-listview-day-header-wrapper">
+        <h2 className="react-agendfy-listview-day-header">
           {format(new TZDate(day, config?.timeZone), "EEEE, dd MMMM", {
             locale: getLocale(config?.timeZone),
           })}
         </h2>
       </div>
-      <div className="react-agenfy-listview-day-events">
+      <div className="react-agendfy-listview-day-events">
         {dayEvents.map((event: EventProps, idx: number) => (
           <ListEvent
             key={`${event.id}-${idx}`}
@@ -119,8 +119,8 @@ defaultRowHeight: 10
 
   if (daysWithEvents.length === 0) {
     return (
-      <div className="react-agenfy-listview-empty">
-        <p className="react-agenfy-listview-empty-text">
+      <div className="react-agendfy-listview-empty">
+        <p className="react-agendfy-listview-empty-text">
           There are no events for this period.
         </p>
       </div>
@@ -128,7 +128,7 @@ defaultRowHeight: 10
   }
 
   return (
-    <div className="react-agenfy-listview-container">
+    <div className="react-agendfy-listview-container">
       <List
         rowComponent={RowComponent}
         rowCount={daysWithEvents.length}

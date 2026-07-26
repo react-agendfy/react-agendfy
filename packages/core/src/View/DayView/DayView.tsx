@@ -94,7 +94,7 @@ const DayView: React.FC<DayViewProps> = ({
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div 
-        className="react-agenfy-dayview-container"
+        className="react-agendfy-dayview-container"
         style={{ position: 'relative', zIndex: 0 }}
       >
         {[...Array(numberOfSlots)].map((_, index) => {

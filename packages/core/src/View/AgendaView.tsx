@@ -28,7 +28,7 @@ const AgendaView: React.FC<ListViewProps> = ({
 
   if (relevantEvents.length === 0) {
     return (
-      <div className="react-agenfy-listview-empty">
+      <div className="react-agendfy-listview-empty">
         <p>There are no events for the next {agendaDays} days.</p>
       </div>
     );
@@ -46,16 +46,16 @@ const AgendaView: React.FC<ListViewProps> = ({
   const daysWithEvents = Object.keys(eventsByDay).sort();
 
   return (
-    <div className="react-agenfy-agendaview-container">
+    <div className="react-agendfy-agendaview-container">
       {daysWithEvents.map(dayKey => (
-        <div key={dayKey} className="react-agenfy-agendaview-day">
-          <h3 className="react-agenfy-agendaview-day-header">
+        <div key={dayKey} className="react-agendfy-agendaview-day">
+          <h3 className="react-agendfy-agendaview-day-header">
             {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang) })}
           </h3>
           {eventsByDay[dayKey].map(event => (
-            <div key={event.id} className="react-agenfy-agendaview-event" style={{ borderLeftColor: event.color }} onClick={() => onEventClick && onEventClick(event)}>
-              <div className="react-agenfy-agendaview-event-time">{format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm')}</div>
-              <div className="react-agenfy-agendaview-event-title">{event.title}</div>
+            <div key={event.id} className="react-agendfy-agendaview-event" style={{ borderLeftColor: event.color }} onClick={() => onEventClick && onEventClick(event)}>
+              <div className="react-agendfy-agendaview-event-time">{format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm')}</div>
+              <div className="react-agendfy-agendaview-event-title">{event.title}</div>
             </div>
           ))}
         </div>

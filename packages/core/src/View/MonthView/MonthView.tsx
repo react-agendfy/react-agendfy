@@ -107,21 +107,21 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
         <ResourceView resources={resources} events={expandedEvents} currentDate={currentDate} />
       )}
 
-      <div className="react-agenfy-monthview-container" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-        <div className="react-agenfy-monthview-header">
+      <div className="react-agendfy-monthview-container" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+        <div className="react-agendfy-monthview-header">
           {eachDayOfInterval({
             start: startOfWeek(new TZDate(currentDate, tz)),
             end: addDays(startOfWeek(new TZDate(currentDate, tz)), 6),
           }).map(d => (
-            <div key={d.toISOString()} className="react-agenfy-monthview-day-label">
+            <div key={d.toISOString()} className="react-agendfy-monthview-day-label">
               {format(d, 'EEEEEE', { locale })}
             </div>
           ))}
         </div>
 
-        <div className="react-agenfy-monthview-grid-container">
+        <div className="react-agendfy-monthview-grid-container">
           {weeks.map((week, i) => (
-            <div key={i} className="react-agenfy-monthview-week-row">
+            <div key={i} className="react-agendfy-monthview-week-row">
               {week.map((day, j) => (
                 <CalendarDay
                   key={day ? format(day, 'yyyy-MM-dd') : `empty-${i}-${j}`}

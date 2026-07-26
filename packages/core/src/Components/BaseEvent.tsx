@@ -5,6 +5,7 @@ import generateTooltipContent from "../Utils/generateTooltipContent";
 import ResourceDisplay from "./Resource/ResourceDisplay";
 import { BaseEventProps } from "../types/types";
 import { TZDate } from "@date-fns/tz";
+import { getContrastText } from "../Utils/colorContrast";
 
 const BaseEvent = ({
   event,
@@ -75,9 +76,12 @@ const BaseEvent = ({
     opacity: isDragging ? 0.8 : 1,
     boxShadow: isDragging ? "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" : "none",
     backgroundColor: event.color,
+    color: getContrastText(event.color),
   };
 
-  const displayTitle = event.title + "\b";
+  // Auto-contrast foreground (was hardcoded white). Removed the trailing
+  // "\b" backspace char that was a pure display artifact.
+  const displayTitle = event.title;
   const tooltipContent = generateTooltipContent(event, isMultiDay, isStart, isEnd);
 
   return (
@@ -86,16 +90,16 @@ const BaseEvent = ({
       {...listeners}
       {...attributes}
       style={eventStyle}
-      className={`react-agenfy-baseevent ${isPreview ? "react-agenfy-baseevent--preview" : ""} ${customClassName}`}
+      className={`react-agendfy-baseevent ${isPreview ? "react-agendfy-baseevent--preview" : ""} ${customClassName}`}
       title={tooltipContent}
       onClick={(e) => {
         if (!isDragging && onEventClick) onEventClick(event);
         e.stopPropagation();
       }}
     >
-      <div 
-        className="react-agenfy-baseevent__time"
-        style={{ color: 'var(--color-text-white)' }}
+      <div
+        className="react-agendfy-baseevent__time"
+        style={{ color: 'inherit' }}
       >
         {displayTitle}{" "}
         {format(new TZDate(parseISO(event.start.toString()), config?.timeZone), "HH:mm")} -{" "}

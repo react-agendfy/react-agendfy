@@ -41,7 +41,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   }, [day]);
 
   if (!day) {
-    return <div className="react-agenfy-calendar-day-empty" />;
+    return <div className="react-agendfy-calendar-day-empty" />;
   }
 
   const dayEvents = events.filter((e) => {
@@ -74,15 +74,15 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   const isOtherMonth = monthDate && !isSameMonth(day, monthDate);
 
   const classes = [
-    "react-agenfy-calendar-day",
-    isToday && "react-agenfy-calendar-day-today",
-    isOver && "react-agenfy-calendar-day-droppable-over",
-    isSelected && "react-agenfy-calendar-day-selected",
-    isOtherMonth && "react-agenfy-calendar-day-other-month",
+    "react-agendfy-calendar-day",
+    isToday && "react-agendfy-calendar-day-today",
+    isOver && "react-agendfy-calendar-day-droppable-over",
+    isSelected && "react-agendfy-calendar-day-selected",
+    isOtherMonth && "react-agendfy-calendar-day-other-month",
   ].filter(Boolean).join(" ");
 
   const handleDayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.react-agenfy-event-item') === null) {
+    if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.react-agendfy-event-item') === null) {
       e.stopPropagation();
       onDayClick?.(day);
     }
@@ -97,7 +97,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
       className={classes}
       onClick={handleDayClick}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.react-agenfy-event-item') === null) {
+        if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.react-agendfy-event-item') === null) {
           onMouseDown?.(day);
         } else {
           e.stopPropagation();
@@ -109,13 +109,13 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
       tabIndex={0}
       aria-label={format(day, "d MMMM yyyy")}
     >
-      <div className="react-agenfy-calendar-day-header">
-        <span className={`react-agenfy-day-number ${isToday ? "react-agenfy-day-number-today" : ""} ${isOtherMonth ? "react-agenfy-day-number-other-month" : ""}`}>
+      <div className="react-agendfy-calendar-day-header">
+        <span className={`react-agendfy-day-number ${isToday ? "react-agendfy-day-number-today" : ""} ${isOtherMonth ? "react-agendfy-day-number-other-month" : ""}`}>
           {format(day, "d")}
         </span>
         {hidden > 0 && (
           <span
-            className="react-agenfy-hidden-events"
+            className="react-agendfy-hidden-events"
             onClick={(e) => {
               e.stopPropagation();
               const list = sorted.slice(MAX_VISIBLE).map((ev) =>
@@ -130,7 +130,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
           </span>
         )}
       </div>
-      <div className="react-agenfy-day-events">
+      <div className="react-agendfy-day-events">
         {visible.map((event) => {
           const s = ensureDate(event.start, config?.timeZone);
           const e = ensureDate(event.end, config?.timeZone);

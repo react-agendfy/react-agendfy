@@ -78,7 +78,7 @@ describe('DayColumn Component', () => {
     expect(screen.getByText(/01\/01/i)).toBeInTheDocument();
   
     const headerDiv = screen.getByText((content, element) =>
-      element?.className.includes('react-agenfy-header-today')
+      element?.className.includes('react-agendfy-header-today')
     );
     fireEvent.click(headerDiv);
     expect(dummyOnSlotClick).toHaveBeenCalled();
@@ -130,8 +130,8 @@ describe('DayColumn Component', () => {
         isSlotSelected={dummyIsSlotSelected}
       />
     );
-    const topLevelDiv = document.querySelector('div.react-agenfy-daycolumn-container');
-    expect(topLevelDiv?.className).toMatch(/react-agenfy-today/);
+    const topLevelDiv = document.querySelector('div.react-agendfy-daycolumn-container');
+    expect(topLevelDiv?.className).toMatch(/react-agendfy-today/);
   });
 
   it('renders business intervals overlay', () => {
