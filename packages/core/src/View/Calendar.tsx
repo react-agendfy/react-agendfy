@@ -29,6 +29,8 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
     headerRightPlugins,
     interactionPlugins,
     eventRenderingPlugins,
+    isDataSourceLoading,
+    dataSourceError,
     onEventClick,
     onDayClick,
     onSlotClick,
@@ -134,6 +136,8 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
         {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(
           localeConfig.lang
         )}`}
+        {isDataSourceLoading ? ` ${localeConfig.loading || "Loading events"}` : ""}
+        {dataSourceError ? ` ${dataSourceError}` : ""}
       </div>
       <CalendarHeader
         currentDate={currentDate}

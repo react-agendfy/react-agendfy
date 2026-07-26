@@ -158,6 +158,10 @@ export interface CalendarContextValue {
   interactionPlugins: CalendarPlugin[];
   eventRenderingPlugins: CalendarPlugin[];
 
+  // data-source status
+  isDataSourceLoading: boolean;
+  dataSourceError: string | null;
+
   // user callbacks (pass-through)
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
@@ -283,10 +287,30 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     config: localeConfig,
   });
 
+  /* --- data-source plugins (phase-0: fetched events merge into pipeline) -- */
+  const stableDataSourcePlugins = useMemo(
+    () => dataSourcePlugins,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(dataSourcePlugins)]
+  );
+  const { dataSourceEvents, isDataSourceLoading, dataSourceError } =
+    useDataSourceEvents(stableDataSourcePlugins, config, state.currentDate);
+
+  // Merge events fetched by data-source plugins with the user-provided events,
+  // without clobbering user events (user events win on id collisions).
+  const mergedEvents = useMemo(() => {
+    if (!dataSourceEvents || dataSourceEvents.length === 0) return state.events;
+    const existingIds = new Set(state.events.map((e) => e.id));
+    return [
+      ...state.events,
+      ...dataSourceEvents.filter((e) => !existingIds.has(e.id)),
+    ];
+  }, [state.events, dataSourceEvents]);
+
   /* --- derived event pipeline -------------------------------------------- */
   const normalizedEvents = useMemo(
-    () => normalizeEvents(state.events),
-    [state.events]
+    () => normalizeEvents(mergedEvents),
+    [mergedEvents]
   );
 
   const filteredEvents = useMemo(
@@ -306,14 +330,6 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       state.isSearchActive,
     ]
   );
-
-  /* --- data-source plugins (fetch side-effect, parity with phase-0) ------- */
-  const stableDataSourcePlugins = useMemo(
-    () => dataSourcePlugins,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(dataSourcePlugins)]
-  );
-  useDataSourceEvents(stableDataSourcePlugins, config, state.currentDate);
 
   /* --- handlers ----------------------------------------------------------- */
   const handleEventUpdate = useCallback(
@@ -391,7 +407,11 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
         (p: ExportPlugin) => p.formatName === format
       );
       if (!customExportPlugin) {
-        console.warn(`No export plugin registered for format "${format}"`);
+        console.warn(`No export plugin registered for format "${format}".`);
+        addToast({
+          title: "Export",
+          message: `${localeConfig.export_error || "No export plugin for format"}: ${format}`,
+        });
         return;
       }
       Promise.resolve(
@@ -400,11 +420,19 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
         .then((content) => {
           const dateStr = new Date().toISOString().split("T")[0];
           const fileName = `calendar-events-${dateStr}.${customExportPlugin.fileExtension}`;
-          downloadBlob(content, fileName);
+          const mimeType = customExportPlugin.mimeType;
+          const payload =
+            typeof content === "string" && mimeType
+              ? new Blob([content], { type: mimeType })
+              : content;
+          downloadBlob(payload, fileName);
         })
         .catch((error) => {
           console.error(`Error exporting with plugin ${format}:`, error);
-          addToast({ title: "Export", message: `Erro ao exportar para ${format}` });
+          addToast({
+            title: "Export",
+            message: `${localeConfig.export_error || "Failed to export"}: ${format}`,
+          });
         });
     },
     [filteredEvents, localeConfig, exportPlugins, addToast]
@@ -535,6 +563,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     headerRightPlugins,
     interactionPlugins,
     eventRenderingPlugins,
+    isDataSourceLoading,
+    dataSourceError,
     onEventClick,
     onDayClick,
     onSlotClick,

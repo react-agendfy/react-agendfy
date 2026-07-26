@@ -123,7 +123,9 @@ const WeekView = ({
       ensureDate(draggedEvent.start, config?.timeZone)
     );
 
-    if (Math.abs(delta.y) < 1) {
+    // Consider both axes so a horizontal drag (moving to another day column)
+    // is not misclassified as a click and discarded.
+    if (!delta || (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5)) {
       onEventClick?.(draggedEvent);
       return;
     }

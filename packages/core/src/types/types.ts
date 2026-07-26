@@ -47,6 +47,10 @@ export interface Config {
   emailConfig?: NotificationServiceConfig["emailConfig"];
   export?: boolean;
   calendar_export: string;
+  /** Announced while data-source plugins are fetching events. */
+  loading?: string;
+  /** Message prefix used when an export fails or has no matching plugin. */
+  export_error?: string;
 }
 
 /** Alias kept for helpers that reference the config under an older name. */
