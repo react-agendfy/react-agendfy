@@ -23,6 +23,12 @@ export interface BaseCalendarPlugin {
   type: PluginType;
   component?: FC<any>;
   props?: Record<string, any>;
+  /** Optional human-readable description shown in tooling. */
+  description?: string;
+  /** Optional lifecycle hook invoked when the plugin is activated. */
+  activate?: () => void | Promise<void>;
+  /** Optional lifecycle hook invoked when the plugin is deactivated. */
+  deactivate?: () => void | Promise<void>;
 }
 
 export interface ViewPlugin extends BaseCalendarPlugin {

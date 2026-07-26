@@ -57,7 +57,7 @@ const ResourceFilterComponent: FC<ResourceFilterPluginProps> = ({
         <div className="fc-filter-dropdown">
           {resources.map((resource: Resource) => (
             <label key={resource.id} className="fc-filter-option">
-              <input type="checkbox" value={resource.id} checked={filteredResources.includes(resource.id)} onChange={(e) => handleResourceChange(resource.id, e.target.checked)} />
+              <input type="checkbox" value={resource.id} checked={filteredResources.includes(String(resource.id))} onChange={(e) => handleResourceChange(String(resource.id), e.target.checked)} />
               <span>{resource.name}</span>
             </label>
           ))}

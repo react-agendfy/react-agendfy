@@ -99,7 +99,7 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     setSelecting(false); setSelStart(null); setSelEnd(null);
   };
 
-  const isSelected = (d: Date) => selecting && selStart && selEnd && d >= (selStart < selEnd ? selStart : selEnd) && d <= (selStart > selEnd ? selStart : selEnd);
+  const isSelected = (d: Date): boolean => Boolean(selecting && selStart && selEnd && d >= (selStart < selEnd ? selStart : selEnd) && d <= (selStart > selEnd ? selStart : selEnd));
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

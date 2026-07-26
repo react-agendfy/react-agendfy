@@ -77,7 +77,7 @@ import {
     zhTW,
   } from 'date-fns/locale';
   
-  export const getLocale = (lang: string) => {
+  export const getLocale = (lang?: string) => {
     switch (lang) {
       case 'af': return af;
       case 'arSA': return arSA;

@@ -20,12 +20,12 @@ const darkThemePlugin: ThemePlugin = {
     '--color-bg-view-today-500': '#60a5fa',
   },
   activate() {
-    Object.entries(this.cssVariables).forEach(([k, v]) => {
-      document.documentElement.style.setProperty(k, v);
+    Object.entries(this.cssVariables ?? {}).forEach(([k, v]) => {
+      document.documentElement.style.setProperty(k, String(v));
     });
   },
   deactivate() {
-    Object.keys(this.cssVariables).forEach(k => {
+    Object.keys(this.cssVariables ?? {}).forEach(k => {
       document.documentElement.style.removeProperty(k);
     });
   }

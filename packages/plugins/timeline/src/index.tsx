@@ -47,7 +47,7 @@ const ResourceRow: React.FC<{
         </div>
       </div>
       {/* Renderiza os filhos recursivamente */}
-      {resource.children?.map(child => (
+      {resource.children?.map((child: Resource) => (
         <ResourceRow
           key={child.id}
           resource={child}

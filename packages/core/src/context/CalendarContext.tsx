@@ -13,6 +13,7 @@ import {
   CalendarProps,
   CalendarView,
   Config,
+  DateRangeSelection,
   EventProps,
   ExportOption,
   Resource,
@@ -170,7 +171,7 @@ export interface CalendarContextValue {
   // handlers
   handleEventUpdate: (event: EventProps) => void;
   handleEventResize: (event: EventProps) => void;
-  handleDateRangeSelect: (event: EventProps) => void;
+  handleDateRangeSelect: (event: EventProps | DateRangeSelection) => void;
   handleViewChange: (view: string) => void;
   handleResourceFilterChange: (selected: string[] | ((prev: string[]) => string[])) => void;
   handleExport: (format: string) => void;
@@ -349,8 +350,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   );
 
   const handleDateRangeSelect = useCallback(
-    (rangeEvent: EventProps) => {
-      dispatch({ type: "UPDATE_EVENT", payload: rangeEvent });
+    (rangeEvent: EventProps | DateRangeSelection) => {
+      // A bare range selection has no id, so updateEventsList leaves the
+      // events list untouched (parity with the pre-refactor behavior).
+      dispatch({ type: "UPDATE_EVENT", payload: rangeEvent as EventProps });
       onDateRangeSelect?.(rangeEvent);
     },
     [onDateRangeSelect]

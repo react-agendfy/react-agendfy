@@ -51,6 +51,12 @@ export interface Config {
   loading?: string;
   /** Message prefix used when an export fails or has no matching plugin. */
   export_error?: string;
+  /** Accessible label for the "previous" navigation button. */
+  back?: string;
+  /** Accessible label for the "next" navigation button. */
+  next?: string;
+  /** Accessible label for the "today" navigation button. */
+  go_to_today?: string;
 }
 
 /** Alias kept for helpers that reference the config under an older name. */
@@ -70,7 +76,7 @@ export interface WeekProps  {
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
   onEventResize?: (event: EventProps) => void;
-  onDateRangeSelect?: (selection: EventProps) => void;
+  onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
   currentDate: TZDate,
   slotMin: string,
   slotMax: string,
@@ -80,15 +86,16 @@ export interface WeekProps  {
 }
 
 export interface CalendarDayProps {
-  day: TZDate | null;
+  day: TZDate | Date | null;
   events?: EventProps[];
-  onDayClick?: (day: TZDate) => void;
+  onDayClick?: (day: Date) => void;
   onEventClick?: (event: EventProps) => void;
-  onEventResize?: (event: EventProps) => void;
+  /** Resize lifecycle callback: "start" marks resize begin, "stop" delivers the resized event. */
+  onEventResize?: (status: "start" | "stop", event?: EventProps) => void;
   onMouseDown?: (day: Date) => void;
   onMouseMove?: (day: Date) => void;
   isSelected?: boolean;
-  monthDate?: TZDate;
+  monthDate?: TZDate | Date;
   isDroppable?: boolean;
   isDropTarget?: boolean;
   config: Config;
@@ -133,7 +140,7 @@ export interface MonthViewProps {
   currentDate?: TZDate;
   onEventUpdate?: (updatedEvent: EventProps) => void;
   onEventResize?: (updatedEvent: EventProps) => void;
-  onDateRangeSelect?: (range: EventProps) => void;
+  onDateRangeSelect?: (range: EventProps | DateRangeSelection) => void;
   onDayClick?: (day: Date) => void;
   onEventClick?: (event: EventProps) => void;
   config: Config;
@@ -184,7 +191,7 @@ export interface CalendarProps {
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
-  onDateRangeSelect?: (selection: EventProps) => void;
+  onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
   onDateChange?: (date: Date) => void;
 }
 
@@ -204,7 +211,8 @@ export interface TimeSlotProps {
 export interface DayColumnProps {
   dayDate: any;
   events: EventProps[];
-  getEventsForDay: (dayDate: Date) => EventProps[];
+  /** Returns the events for a slot, keyed by the slot's ISO timestamp. */
+  getEventsForDay: (slotKey: string) => EventProps[];
   timeSlots: number[];
   onEventUpdate?: (event: EventProps) => void;
   onEventClick?: (event: EventProps) => void;

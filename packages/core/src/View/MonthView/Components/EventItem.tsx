@@ -9,13 +9,12 @@ import ResourceDisplay from '../../../Components/Resource/ResourceDisplay';
 import { BaseEventProps } from '../../../types/types';
 import './EventItem.css';
 
-interface EventItemProps extends BaseEventProps {
+interface EventItemProps extends Omit<BaseEventProps, 'onEventResize'> {
   dayWidth: number;
   isPreview?: boolean;
   isStart: boolean;
   onEventResize?: (status: 'start' | 'stop', event?: BaseEventProps['event']) => void;
   isEnd: boolean;
-  config?: any;
 }
 
 const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?: boolean }> = ({
@@ -52,7 +51,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
       const daysAdded = Math.max(0, Math.round(delta.width / dayWidth));
       if (daysAdded > 0) {
         const newEnd = addDays(eventStart, differenceInDays(eventEnd, eventStart) + daysAdded);
-        onEventResize({ ...event, end: newEnd.toISOString(), isMultiDay: !isSameDay(eventStart, newEnd) });
+        onEventResize('stop', { ...event, end: newEnd.toISOString(), isMultiDay: !isSameDay(eventStart, newEnd) });
       }
     }
   };
