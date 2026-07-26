@@ -37,15 +37,13 @@ jobs:
       - name: Lint
         run: yarn lint
 
-      # Typecheck is currently non-blocking: packages/core/src still has
-      # pre-existing type errors to clean up. Drop continue-on-error once green.
+      # Plugin packages use project references to @react-agendfy/core, so they
+      # are checked with `tsc -b` (build mode), which emits core's declaration
+      # files first and then typechecks each plugin against them.
       - name: Typecheck
-        continue-on-error: true
         run: |
           npx tsc --noEmit -p packages/core/tsconfig.json
-          npx tsc --noEmit -p packages/plugins/filters/tsconfig.json
-          npx tsc --noEmit -p packages/plugins/timeline/tsconfig.json
-          npx tsc --noEmit -p packages/plugins/theme/tsconfig.json
+          npx tsc -b packages/plugins/filters packages/plugins/timeline packages/plugins/theme
 
       - name: Test core
         run: yarn workspace @react-agendfy/core test

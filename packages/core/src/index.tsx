@@ -2,7 +2,16 @@ import './index.css';
 import React from "react";
 import {
   CalendarProps,
+  CalendarConfig,
+  CalendarHeaderProps,
+  CalendarView,
+  Config,
+  DateRangeSelection,
+  DayViewProps,
   EventProps,
+  ExportOption,
+  ListViewProps,
+  MonthViewProps,
   Resource,
 } from "./types/types";
 import {
@@ -25,7 +34,7 @@ import { downloadBlob } from './Utils/pluginUtils';
 const WrappedCalendar = React.forwardRef<HTMLDivElement, CalendarProps>((props, ref) => {
   return (
     <ToastProvider>
-      <CalendarComponent events={[]} {...props} ref={ref} />
+      <CalendarComponent {...props} events={props.events ?? []} ref={ref} />
     </ToastProvider>
   );
 });
@@ -34,6 +43,15 @@ WrappedCalendar.displayName = 'WrappedCalendar';
 export { WrappedCalendar as Calendar, ensureDate, downloadBlob };
 export type {
   CalendarProps,
+  CalendarConfig,
+  CalendarHeaderProps,
+  CalendarView,
+  Config,
+  DateRangeSelection,
+  DayViewProps,
+  ListViewProps,
+  MonthViewProps,
+  ExportOption,
   EventProps,
   EventLike,
   NotificationServiceConfig,

@@ -69,7 +69,7 @@ const BaseEvent = ({
     }
   }
 
-  const eventStyle = {
+  const eventStyle: React.CSSProperties = {
     ...positionStyle,
     width: "100%",
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,

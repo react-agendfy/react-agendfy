@@ -19,7 +19,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   config,
 }: TimeSlotProps) => {
   const slotTime = getSlotTime(dayDate, slotMin, config?.slotDuration!, index, config?.timeZone!);
-  const { setNodeRef } = useDroppable({ id: slotTime });
+  const { setNodeRef } = useDroppable({ id: slotTime.toISOString() });
 
   const handleClickSlot = useCallback(() => {
     if (onSlotClick) {

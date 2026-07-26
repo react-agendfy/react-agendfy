@@ -10,12 +10,12 @@ interface CalendarEvent {
   [key: string]: any;
 }
 
-export const expandRecurringEvents = (
-  events: CalendarEvent[],
+export const expandRecurringEvents = <T extends CalendarEvent>(
+  events: T[],
   viewStartDate: Date,
   viewEndDate: Date,
   timezone?: string
-): CalendarEvent[] => {
+): T[] => {
   const start = timezone
     ? new TZDate(viewStartDate, timezone)
     : viewStartDate;
@@ -23,7 +23,7 @@ export const expandRecurringEvents = (
     ? new TZDate(viewEndDate, timezone)
     : viewEndDate;
 
-  const expandedEvents: CalendarEvent[] = [];
+  const expandedEvents: T[] = [];
 
   events.forEach((event) => {
     // Se o evento não possui recorrência, adicionar diretamente

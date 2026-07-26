@@ -29,3 +29,6 @@ src/plugins
 !.yarn/sdks
 .yarn/cache/
 .pnp.*
+# TypeScript incremental build metadata
+*.tsbuildinfo
+.claude/

@@ -16,8 +16,9 @@ export const DndContextComponent = ({
   handleDragEnd,
   children,
 }: Omit<WeekProps, "events"> & {
-  events: EventProps;
+  events: EventProps[];
   slotDuration?: number;
+  handleDragEnd?: (event: any) => void;
   children: React.ReactNode;
 }) => {
   const draggedEventRef = useRef<EventProps | null>(null);

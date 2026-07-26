@@ -45,8 +45,8 @@ const darkThemePlugin: ThemePlugin = {
       target || (typeof document !== 'undefined' ? document.documentElement : undefined);
     if (!el) return;
     el.setAttribute('data-theme', 'dark');
-    Object.entries(this.cssVariables!).forEach(([k, v]) => {
-      el.style.setProperty(k, v);
+    Object.entries(this.cssVariables ?? {}).forEach(([k, v]) => {
+      el.style.setProperty(k, String(v));
     });
   },
   deactivate(target?: HTMLElement) {
@@ -54,7 +54,7 @@ const darkThemePlugin: ThemePlugin = {
       target || (typeof document !== 'undefined' ? document.documentElement : undefined);
     if (!el) return;
     if (el.getAttribute('data-theme') === 'dark') el.removeAttribute('data-theme');
-    Object.keys(this.cssVariables!).forEach(k => {
+    Object.keys(this.cssVariables ?? {}).forEach(k => {
       el.style.removeProperty(k);
     });
   }

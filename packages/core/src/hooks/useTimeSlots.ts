@@ -2,7 +2,15 @@ import { useMemo } from "react";
 import { format, setHours, setMinutes, startOfDay } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 
-export const useTimeSlots = ({ startHour, endHour, slotDuration, currentDate, timeZone }) => {
+interface UseTimeSlotsProps {
+  startHour: number;
+  endHour: number;
+  slotDuration: number;
+  currentDate: Date;
+  timeZone: string;
+}
+
+export const useTimeSlots = ({ startHour, endHour, slotDuration, currentDate, timeZone }: UseTimeSlotsProps) => {
   // Calculate number of slots
   const numberOfSlots = useMemo(
     () => ((endHour - startHour) * 60) / slotDuration,

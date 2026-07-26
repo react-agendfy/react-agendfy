@@ -14,21 +14,21 @@ import { ListEvent } from "./Components/ListEvent";
 import { EventProps, ListViewProps } from "../../types/types";
 import { getLocale } from "../../Utils/locate";
 
-interface RowProps extends RowComponentProps<{
+interface ListRowData {
   daysWithEvents: Date[];
   eventsByDay: Record<string, EventProps[]>;
   onEventClick?: (event: EventProps) => void;
   config?: any;
-}> {}
+}
 
-const RowComponent: React.FC<RowProps> = ({ 
-  index, 
+const RowComponent = ({
+  index,
   style,
   daysWithEvents,
   eventsByDay,
   onEventClick,
   config,
-}) => {
+}: RowComponentProps<ListRowData>): React.ReactElement => {
   const day = daysWithEvents[index];
   const dayKey = format(day, "yyyy-MM-dd");
   const dayEvents = eventsByDay[dayKey] || [];
@@ -71,8 +71,8 @@ const RowComponent: React.FC<RowProps> = ({
 const ListView: React.FC<ListViewProps> = ({
   events,
   onEventClick,
-  currentDate = new TZDate(new Date(), config?.timeZone),
   config,
+  currentDate = new TZDate(new Date(), config?.timeZone),
 }) => {
   const monthStart = startOfMonth(new TZDate(currentDate, config?.timeZone || 'UTC'));
   const monthEnd = endOfMonth(new TZDate(currentDate, config?.timeZone || 'UTC'));

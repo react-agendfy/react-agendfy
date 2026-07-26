@@ -46,7 +46,7 @@ const MonthViewDragAndDropInteraction: React.FC<MonthViewDragAndDropInteractionP
          return;
        }
  
-       const originalEvent = events.find((ev) => ev.id === eventId);
+       const originalEvent = events.find((ev: EventProps) => ev.id === eventId);
        if (!originalEvent) return;
  
        let offset = 0;
@@ -98,7 +98,7 @@ const MonthViewDragAndDropInteraction: React.FC<MonthViewDragAndDropInteractionP
        const newDate = parseISO(newDateStr);
        if (!isValid(newDate)) return;
  
-       const draggedEvent = events.find((ev) => ev.id === eventId);
+       const draggedEvent = events.find((ev: EventProps) => ev.id === eventId);
        if (!draggedEvent) return;
  
        const originalStart = ensureDate(draggedEvent.start, config?.timeZone);
@@ -124,7 +124,7 @@ const MonthViewDragAndDropInteraction: React.FC<MonthViewDragAndDropInteractionP
            : ev
        );
  
-       const updatedEvent = updatedEvents.find((ev) => ev.id === eventId);
+       const updatedEvent = updatedEvents.find((ev: EventProps) => ev.id === eventId);
  
        // Consider both axes so a horizontal drag (moving to another day) is not
        // misclassified as a click and discarded.

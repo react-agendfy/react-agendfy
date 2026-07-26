@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { EventProps } from '../types/types';
 
 /**
  * Generates the tooltip content for a calendar event.
@@ -10,7 +11,12 @@ import { format } from 'date-fns';
  * @returns {string} - tooltip content
  */
 
-function generateTooltipContent(event, isMultiDay, isStart, isEnd) {
+function generateTooltipContent(
+  event: EventProps,
+  isMultiDay: boolean,
+  isStart: boolean,
+  isEnd: boolean
+): string {
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
   
@@ -26,7 +32,7 @@ function generateTooltipContent(event, isMultiDay, isStart, isEnd) {
   const displayTitle = event.title;
 
   const resourcesInfo = event.resources && event.resources.length > 0
-    ? `\n\n: ${event.resources.map(r => r.name).join(', ')}`
+    ? `\n\n: ${event.resources.map((r: { name?: string }) => r.name).join(', ')}`
     : '';
 
   const tooltipContent = `${displayTitle}\n\n${timeDisplay}${event?.isRecurrenceInstance ? '\n\n()' : ''}${resourcesInfo}`;
