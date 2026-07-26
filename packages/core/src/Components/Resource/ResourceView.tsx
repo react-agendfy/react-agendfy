@@ -20,9 +20,9 @@ const ResourceView = ({ resources, events, currentDate }: any) => {
             </div>
             <div className="react-agenfy-resourceview-item-events">
               {events
-                .filter((event: EventProps) => 
-                  event.resources && 
-                  event.resources.some(r => r.id === resource.id)
+                .filter((event: EventProps) =>
+                  event.resources &&
+                  event.resources.some((r: Resource) => r.id === resource.id)
                 )
                 .map((event: EventProps) => (
                   <div key={event.id} className="react-agenfy-resourceview-event">

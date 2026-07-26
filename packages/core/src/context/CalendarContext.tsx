@@ -1,0 +1,553 @@
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  ReactNode,
+  FC,
+  Dispatch,
+} from "react";
+import { TZDate } from "@date-fns/tz";
+import {
+  CalendarProps,
+  CalendarView,
+  Config,
+  EventProps,
+  ExportOption,
+  Resource,
+} from "../types/types";
+import {
+  CalendarPlugin,
+  ExportPlugin,
+  ThemePlugin,
+  ViewPlugin,
+} from "../types/plugins";
+import { getLocale } from "../Utils/locate";
+import { normalizeEvents } from "../Utils/calendarHelpers";
+import { getFilteredEventsList, updateEventsList } from "../Utils/CalendarUtils";
+import { downloadBlob } from "../Utils/pluginUtils";
+import { useToast } from "../Components/Toast/Toast";
+import { useEventReminder } from "../hooks/useEventReminder";
+import { NotificationService } from "../Notify/NotificationService";
+import useCalendarNavigation from "../hooks/useCalendarNavigation";
+import usePluginManagement from "../hooks/usePluginManagement";
+import useDataSourceEvents from "../hooks/useDataSourceEvents";
+
+export const defaultConfig: Config = {
+  timeZone: "America/Sao_Paulo",
+  defaultView: "week",
+  slotDuration: 15,
+  slotLabelFormat: "HH:mm",
+  slotMin: "00:00",
+  slotMax: "23:59",
+  lang: "en",
+  today: "Today",
+  monthView: "Month",
+  weekView: "Week",
+  dayView: "Day",
+  listView: "List",
+  agenda: "Agenda",
+  all_day: "All Day",
+  clear_filter: "Clear Filters",
+  filter_resources: "Filter Resources",
+  businessHours: {
+    enabled: true,
+    intervals: [
+      { daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "17:00" },
+    ],
+  },
+  alerts: {
+    enabled: false,
+    thresholdMinutes: 15,
+  },
+  export: true,
+  calendar_export: "Export",
+};
+
+/* -------------------------------------------------------------------------- */
+/* Reducer                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export interface CalendarState {
+  currentDate: TZDate;
+  events: EventProps[];
+  localFilteredResources: string[];
+  pluginFilteredEvents: EventProps[];
+  pluginSearchResults: EventProps[];
+  isSearchActive: boolean;
+  currentView: string;
+}
+
+export type CalendarAction =
+  | { type: "SET_CURRENT_DATE"; payload: TZDate }
+  | { type: "SET_VIEW"; payload: string }
+  | { type: "UPDATE_EVENT"; payload: EventProps }
+  | { type: "SYNC_EVENTS"; payload: EventProps[] }
+  | {
+      type: "SET_RESOURCE_FILTER";
+      payload: string[] | ((prev: string[]) => string[]);
+    }
+  | { type: "SET_PLUGIN_FILTERED_EVENTS"; payload: EventProps[] }
+  | { type: "SET_PLUGIN_SEARCH"; payload: { searchTerm: string; results: EventProps[] } };
+
+export function calendarReducer(
+  state: CalendarState,
+  action: CalendarAction
+): CalendarState {
+  switch (action.type) {
+    case "SET_CURRENT_DATE":
+      return { ...state, currentDate: action.payload };
+    case "SET_VIEW":
+      return { ...state, currentView: action.payload };
+    case "UPDATE_EVENT":
+      return { ...state, events: updateEventsList(state.events, action.payload) };
+    case "SYNC_EVENTS":
+      return {
+        ...state,
+        events: action.payload,
+        pluginFilteredEvents: action.payload,
+        pluginSearchResults: action.payload,
+        isSearchActive: false,
+      };
+    case "SET_RESOURCE_FILTER":
+      return {
+        ...state,
+        localFilteredResources:
+          typeof action.payload === "function"
+            ? action.payload(state.localFilteredResources)
+            : action.payload,
+      };
+    case "SET_PLUGIN_FILTERED_EVENTS":
+      return { ...state, pluginFilteredEvents: action.payload };
+    case "SET_PLUGIN_SEARCH":
+      return {
+        ...state,
+        pluginSearchResults: action.payload.results,
+        isSearchActive: action.payload.searchTerm.length > 0,
+      };
+    default:
+      return state;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Context value                                                               */
+/* -------------------------------------------------------------------------- */
+
+export interface CalendarContextValue {
+  state: CalendarState;
+  dispatch: Dispatch<CalendarAction>;
+
+  // configuration / meta
+  config: Partial<Config>;
+  localeConfig: Config;
+  theme: string;
+  resources: Resource[];
+
+  // derived data
+  normalizedEvents: EventProps[];
+  filteredEvents: EventProps[];
+  availableViews: { name: string; label: string }[];
+  customViews: Record<string, FC<any>>;
+  exportOptions: ExportOption[];
+  headerLeftPlugins: ReactNode[];
+  headerRightPlugins: ReactNode[];
+
+  // plugin categories consumed by views
+  interactionPlugins: CalendarPlugin[];
+  eventRenderingPlugins: CalendarPlugin[];
+
+  // user callbacks (pass-through)
+  onEventClick?: (event: EventProps) => void;
+  onDayClick?: (day: Date) => void;
+  onSlotClick?: (slotTime: Date) => void;
+
+  // handlers
+  handleEventUpdate: (event: EventProps) => void;
+  handleEventResize: (event: EventProps) => void;
+  handleDateRangeSelect: (event: EventProps) => void;
+  handleViewChange: (view: string) => void;
+  handleResourceFilterChange: (selected: string[] | ((prev: string[]) => string[])) => void;
+  handleExport: (format: string) => void;
+  navigate: (direction: "prev" | "next" | "today") => void;
+}
+
+export const CalendarContext = createContext<CalendarContextValue | null>(null);
+
+/* -------------------------------------------------------------------------- */
+/* Provider                                                                    */
+/* -------------------------------------------------------------------------- */
+
+type CalendarProviderProps = CalendarProps & { children: ReactNode };
+
+export const CalendarProvider: FC<CalendarProviderProps> = ({
+  events: initialEvents = [],
+  config = defaultConfig,
+  resources = [],
+  theme = "default",
+  filteredResources = [],
+  plugins = [],
+  emailAdapter,
+  emailConfig,
+  onEventUpdate,
+  onEventResize,
+  onEventClick,
+  onDayClick,
+  onSlotClick,
+  onDateRangeSelect,
+  children,
+}) => {
+  const timeZone = config.timeZone || defaultConfig.timeZone;
+
+  const [state, dispatch] = useReducer(calendarReducer, undefined, () => ({
+    currentDate: new TZDate(new Date(), timeZone),
+    events: initialEvents,
+    localFilteredResources: filteredResources,
+    pluginFilteredEvents: initialEvents,
+    pluginSearchResults: initialEvents,
+    isSearchActive: false,
+    currentView: config.defaultView || defaultConfig.defaultView,
+  }));
+
+  const addToast = useToast();
+
+  // localeConfig is derived: base config + defaults + locale, with the active
+  // view reflected in `defaultView` (keeps parity with the previous behavior
+  // where switching views also updated the config passed down to views).
+  const localeConfig = useMemo(() => {
+    const finalConfig = { ...defaultConfig, ...config };
+    return {
+      ...finalConfig,
+      ...getLocale(finalConfig.lang),
+      defaultView: state.currentView as CalendarView,
+    } as Config;
+  }, [config, state.currentView]);
+
+  const {
+    filterPlugins,
+    searchPlugins,
+    dataSourcePlugins,
+    customViewPlugins,
+    eventRenderingPlugins,
+    interactionPlugins,
+    themePlugins,
+    exportPlugins,
+  } = usePluginManagement(plugins);
+
+  /* --- theme plugin css variables ---------------------------------------- */
+  useEffect(() => {
+    const activeThemePlugin = themePlugins.find(
+      (p: ThemePlugin) => p.themeName === theme
+    );
+    if (activeThemePlugin && activeThemePlugin.cssVariables) {
+      const root = document.documentElement;
+      Object.entries(activeThemePlugin.cssVariables).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+      return () => {
+        Object.keys(activeThemePlugin.cssVariables!).forEach((key) => {
+          root.style.removeProperty(key);
+        });
+      };
+    }
+  }, [theme, themePlugins]);
+
+  /* --- keep events in sync with the `events` prop ------------------------ */
+  useEffect(() => {
+    dispatch({ type: "SYNC_EVENTS", payload: initialEvents });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEvents]);
+
+  /* --- notification permission ------------------------------------------- */
+  useEffect(() => {
+    if (
+      localeConfig.alerts?.enabled &&
+      "Notification" in window &&
+      Notification.permission !== "granted"
+    ) {
+      Notification.requestPermission();
+    }
+  }, [localeConfig.alerts?.enabled]);
+
+  const notificationService = useMemo(
+    () => new NotificationService({ emailAdapter, emailConfig }),
+    [emailAdapter, emailConfig]
+  );
+
+  useEventReminder({
+    events: state.events,
+    notificationService,
+    addToast,
+    alertConfig: localeConfig.alerts ?? { enabled: false },
+    config: localeConfig,
+  });
+
+  /* --- derived event pipeline -------------------------------------------- */
+  const normalizedEvents = useMemo(
+    () => normalizeEvents(state.events),
+    [state.events]
+  );
+
+  const filteredEvents = useMemo(
+    () =>
+      getFilteredEventsList(
+        normalizedEvents,
+        state.localFilteredResources,
+        state.pluginFilteredEvents,
+        state.pluginSearchResults,
+        state.isSearchActive
+      ),
+    [
+      normalizedEvents,
+      state.localFilteredResources,
+      state.pluginFilteredEvents,
+      state.pluginSearchResults,
+      state.isSearchActive,
+    ]
+  );
+
+  /* --- data-source plugins (fetch side-effect, parity with phase-0) ------- */
+  const stableDataSourcePlugins = useMemo(
+    () => dataSourcePlugins,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(dataSourcePlugins)]
+  );
+  useDataSourceEvents(stableDataSourcePlugins, config, state.currentDate);
+
+  /* --- handlers ----------------------------------------------------------- */
+  const handleEventUpdate = useCallback(
+    (updatedEvent: EventProps) => {
+      dispatch({ type: "UPDATE_EVENT", payload: updatedEvent });
+      onEventUpdate?.(updatedEvent);
+    },
+    [onEventUpdate]
+  );
+
+  const handleEventResize = useCallback(
+    (resizeEvent: EventProps) => {
+      dispatch({ type: "UPDATE_EVENT", payload: resizeEvent });
+      onEventResize?.(resizeEvent);
+    },
+    [onEventResize]
+  );
+
+  const handleDateRangeSelect = useCallback(
+    (rangeEvent: EventProps) => {
+      dispatch({ type: "UPDATE_EVENT", payload: rangeEvent });
+      onDateRangeSelect?.(rangeEvent);
+    },
+    [onDateRangeSelect]
+  );
+
+  const handleViewChange = useCallback((newView: string) => {
+    dispatch({ type: "SET_VIEW", payload: newView });
+  }, []);
+
+  const handleResourceFilterChange = useCallback(
+    (selected: string[] | ((prev: string[]) => string[])) => {
+      dispatch({ type: "SET_RESOURCE_FILTER", payload: selected });
+    },
+    []
+  );
+
+  const handleFilterChangeFromPlugin = useCallback((filtered: EventProps[]) => {
+    dispatch({ type: "SET_PLUGIN_FILTERED_EVENTS", payload: filtered });
+  }, []);
+
+  const handleSearchFromPlugin = useCallback(
+    (searchTerm: string, results: EventProps[]) => {
+      dispatch({ type: "SET_PLUGIN_SEARCH", payload: { searchTerm, results } });
+    },
+    []
+  );
+
+  const setCurrentDate = useCallback(
+    (date: Date) => {
+      dispatch({ type: "SET_CURRENT_DATE", payload: new TZDate(date, timeZone) });
+    },
+    [timeZone]
+  );
+
+  const { navigateToday, navigateBack, navigateForward } = useCalendarNavigation({
+    currentDate: state.currentDate,
+    defaultView: state.currentView,
+    timeZone,
+    setCurrentDate,
+  });
+
+  const navigate = useCallback(
+    (direction: "prev" | "next" | "today") => {
+      if (direction === "today") navigateToday();
+      else if (direction === "prev") navigateBack();
+      else if (direction === "next") navigateForward();
+    },
+    [navigateToday, navigateBack, navigateForward]
+  );
+
+  const handleExport = useCallback(
+    (format: string) => {
+      const customExportPlugin = exportPlugins.find(
+        (p: ExportPlugin) => p.formatName === format
+      );
+      if (!customExportPlugin) {
+        console.warn(`No export plugin registered for format "${format}"`);
+        return;
+      }
+      Promise.resolve(
+        customExportPlugin.exportFunction(filteredEvents, localeConfig)
+      )
+        .then((content) => {
+          const dateStr = new Date().toISOString().split("T")[0];
+          const fileName = `calendar-events-${dateStr}.${customExportPlugin.fileExtension}`;
+          downloadBlob(content, fileName);
+        })
+        .catch((error) => {
+          console.error(`Error exporting with plugin ${format}:`, error);
+          addToast({ title: "Export", message: `Erro ao exportar para ${format}` });
+        });
+    },
+    [filteredEvents, localeConfig, exportPlugins, addToast]
+  );
+
+  /* --- available views & custom views ------------------------------------ */
+  const availableViews = useMemo(() => {
+    const defaultViews = [
+      { name: "month", label: localeConfig.monthView },
+      { name: "week", label: localeConfig.weekView },
+      { name: "day", label: localeConfig.dayView },
+      { name: "list", label: localeConfig.listView },
+      { name: "agenda", label: localeConfig.agenda },
+    ];
+    const customViews = customViewPlugins.map((plugin: ViewPlugin) => ({
+      name: plugin.viewName,
+      label: plugin.props?.label || plugin.viewName,
+    }));
+    return [...defaultViews, ...customViews];
+  }, [localeConfig, customViewPlugins]);
+
+  const customViews = useMemo(() => {
+    const views: Record<string, FC<any>> = {};
+    customViewPlugins.forEach((plugin: ViewPlugin) => {
+      if (plugin.viewName && plugin.component) {
+        views[plugin.viewName] = plugin.component;
+      }
+    });
+    return views;
+  }, [customViewPlugins]);
+
+  /* --- header plugins (filter/search), split left/right ------------------ */
+  const combinedExclusivePlugins = useMemo(() => {
+    type Entry = { plugin: CalendarPlugin; sources: Set<"filter" | "search"> };
+    const map = new Map<string, Entry>();
+    const makeKey = (p: CalendarPlugin, idx: number) => p.key || `${p.type}-${idx}`;
+
+    filterPlugins.forEach((p, idx) => {
+      const k = makeKey(p, idx);
+      const existing = map.get(k);
+      if (existing) existing.sources.add("filter");
+      else map.set(k, { plugin: p, sources: new Set(["filter"]) });
+    });
+
+    searchPlugins.forEach((p, idx) => {
+      const k = makeKey(p, idx);
+      const existing = map.get(k);
+      if (existing) existing.sources.add("search");
+      else map.set(k, { plugin: p, sources: new Set(["search"]) });
+    });
+
+    const leftList: CalendarPlugin[] = [];
+    const rightList: CalendarPlugin[] = [];
+    map.forEach(({ plugin, sources }) => {
+      if (plugin.location === "left") {
+        leftList.push(plugin);
+      } else if (plugin.location === "right") {
+        rightList.push(plugin);
+      } else if (sources.has("search") && !sources.has("filter")) {
+        rightList.push(plugin);
+      } else {
+        leftList.push(plugin);
+      }
+    });
+    return { leftList, rightList };
+  }, [filterPlugins, searchPlugins]);
+
+  const renderPluginList = useCallback(
+    (list: CalendarPlugin[], side: "left" | "right"): ReactNode[] =>
+      list.map((plugin, idx) => {
+        const Component = plugin.component as FC<any> | undefined;
+        return Component ? (
+          <Component
+            key={plugin.key ?? `${side}-${idx}`}
+            events={normalizedEvents}
+            onFilterChange={handleFilterChangeFromPlugin}
+            onSearch={handleSearchFromPlugin}
+            config={localeConfig}
+            resources={resources}
+            filteredResources={state.localFilteredResources}
+            onResourceFilterChange={handleResourceFilterChange}
+            {...plugin.props}
+          />
+        ) : null;
+      }),
+    [
+      normalizedEvents,
+      handleFilterChangeFromPlugin,
+      handleSearchFromPlugin,
+      localeConfig,
+      resources,
+      state.localFilteredResources,
+      handleResourceFilterChange,
+    ]
+  );
+
+  const headerLeftPlugins = useMemo(
+    () => renderPluginList(combinedExclusivePlugins.leftList, "left"),
+    [combinedExclusivePlugins, renderPluginList]
+  );
+  const headerRightPlugins = useMemo(
+    () => renderPluginList(combinedExclusivePlugins.rightList, "right"),
+    [combinedExclusivePlugins, renderPluginList]
+  );
+
+  const exportOptions = useMemo<ExportOption[]>(
+    () =>
+      exportPlugins.map((plugin: ExportPlugin) => ({
+        formatName: plugin.formatName,
+        label: plugin.label,
+      })),
+    [exportPlugins]
+  );
+
+  const value: CalendarContextValue = {
+    state,
+    dispatch,
+    config,
+    localeConfig,
+    theme,
+    resources,
+    normalizedEvents,
+    filteredEvents,
+    availableViews,
+    customViews,
+    exportOptions,
+    headerLeftPlugins,
+    headerRightPlugins,
+    interactionPlugins,
+    eventRenderingPlugins,
+    onEventClick,
+    onDayClick,
+    onSlotClick,
+    handleEventUpdate,
+    handleEventResize,
+    handleDateRangeSelect,
+    handleViewChange,
+    handleResourceFilterChange,
+    handleExport,
+    navigate,
+  };
+
+  return (
+    <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>
+  );
+};

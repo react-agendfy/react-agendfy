@@ -1,4 +1,4 @@
-import { CalendarConfig, LocaleConfig } from "../types/types";
+import { Config, LocaleConfig } from "../types/types";
 
   export const getLocaleConfig = (lang: string): LocaleConfig => {
     if (lang === 'pt') {
@@ -18,7 +18,8 @@ import { CalendarConfig, LocaleConfig } from "../types/types";
     }
   };
 
- export  const config: CalendarConfig = {
+ export  const config: Config = {
+    timeZone: "America/Sao_Paulo",
     defaultView: "month",
     slotDuration: 15,
     slotLabelFormat: "HH:mm",
@@ -29,6 +30,11 @@ import { CalendarConfig, LocaleConfig } from "../types/types";
     monthView: 'Month',
     weekView: 'Week',
     dayView: 'Day',
+    listView: 'List',
+    agenda: 'Agenda',
+    all_day: 'All Day',
+    filter_resources: 'Filter Resources',
+    calendar_export: 'Export',
     businessHours: {
       enabled: true,
       intervals: [

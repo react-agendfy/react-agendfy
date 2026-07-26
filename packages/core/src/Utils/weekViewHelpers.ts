@@ -12,7 +12,11 @@ export const calculateNumberOfSlots = (slotMin: string, slotMax: string, slotDur
 };
 
 
-export const getCurrentWeekStart = (currentDate: Date, timeZone: string, weekStartsOn = 0): Date => {
+export const getCurrentWeekStart = (
+  currentDate: Date,
+  timeZone: string,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0
+): Date => {
   return startOfWeek(new TZDate(currentDate, timeZone), { weekStartsOn });
 };
 

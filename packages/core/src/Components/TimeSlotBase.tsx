@@ -25,7 +25,7 @@ export const TimeSlotBase = memo(
     children?: React.ReactNode;
     containerClassName?: string;
     labelRenderer?: () => React.ReactNode;
-    eventsContainerRenderer?: (positionedEvents: EventProps) => React.ReactNode;
+    eventsContainerRenderer?: (positionedEvents: EventProps[]) => React.ReactNode;
     dropId?: string | Date;
     isOver?: boolean;
   }) => {

@@ -6,8 +6,8 @@ import { getLocale } from '../Utils/locate';
 
 const AgendaView: React.FC<ListViewProps> = ({
   events,
-  currentDate = new TZDate(new Date(), config?.timeZone),
   config,
+  currentDate = new TZDate(new Date(), config?.timeZone),
   onEventClick,
 }) => {
   const agendaDays = 7;
@@ -50,7 +50,7 @@ const AgendaView: React.FC<ListViewProps> = ({
       {daysWithEvents.map(dayKey => (
         <div key={dayKey} className="react-agenfy-agendaview-day">
           <h3 className="react-agenfy-agendaview-day-header">
-            {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang) })}
+            {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang ?? 'en') })}
           </h3>
           {eventsByDay[dayKey].map(event => (
             <div key={event.id} className="react-agenfy-agendaview-event" style={{ borderLeftColor: event.color }} onClick={() => onEventClick && onEventClick(event)}>

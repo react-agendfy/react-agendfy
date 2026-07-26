@@ -9,10 +9,19 @@ export interface ConfigLike extends Config {
   [k: string]: any;
 }
 
+export type PluginLocation =
+  | 'header' | 'left' | 'right' | 'view' | 'event' | 'slot'
+  | 'data-source' | 'theme' | 'export' | 'filter' | 'interaction';
+
+export type PluginType =
+  | 'filter' | 'search' | 'data-source' | 'view' | 'event-rendering'
+  | 'interaction' | 'theme' | 'export' | 'custom-filter' | 'ui';
+
 export interface BaseCalendarPlugin {
   key: string;
-  location?: 'header' | 'view' | 'event' | 'slot' | 'data-source' | 'theme' | 'export' | 'filter' | 'interaction';
-  type: 'filter' | 'search' | 'data-source' | 'view' | 'event-rendering' | 'interaction' | 'theme' | 'export' | 'custom-filter' | 'ui';
+  location?: PluginLocation;
+  type: PluginType;
+  component?: FC<any>;
   props?: Record<string, any>;
 }
 

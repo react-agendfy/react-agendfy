@@ -1,8 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
-import { EventProps } from "../types/types";
+import { EventProps, Config } from "../types/types";
+import { DataSourcePlugin, ConfigLike } from "../types/plugins";
 import { getNewDate } from "../Utils/calendarNavigation";
 
-const useDataSourceEvents = (dataSourcePlugins: any, localeConfig: any, currentDate: Date) => {
+const useDataSourceEvents = (
+  dataSourcePlugins: DataSourcePlugin[],
+  localeConfig: Partial<Config>,
+  currentDate: Date
+) => {
   const [dataSourceEvents, setDataSourceEvents] = useState<EventProps[]>([]);
   const [isDataSourceLoading, setIsDataSourceLoading] = useState(false);
   const [dataSourceError, setDataSourceError] = useState<string | null>(null);
@@ -14,11 +19,11 @@ const useDataSourceEvents = (dataSourcePlugins: any, localeConfig: any, currentD
       const fetchedEvents: EventProps[] = [];
       for (const plugin of dataSourcePlugins) {
         try {
-          const eventsFromSource = await plugin.fetchEvents(startDate, endDate, localeConfig);
+          const eventsFromSource = await plugin.fetchEvents(startDate, endDate, localeConfig as ConfigLike);
           fetchedEvents.push(...eventsFromSource);
         } catch (error: any) {
-          console.error(`Error fetching events from ${plugin.name}:`, error);
-          setDataSourceError(`Error fetching events from ${plugin.name}: ${error.message}`);
+          console.error(`Error fetching events from ${plugin.key}:`, error);
+          setDataSourceError(`Error fetching events from ${plugin.key}: ${error.message}`);
         }
       }
       setDataSourceEvents(fetchedEvents);
@@ -27,11 +32,12 @@ const useDataSourceEvents = (dataSourcePlugins: any, localeConfig: any, currentD
     [dataSourcePlugins, localeConfig]
   );
 
+  const activeView = localeConfig.defaultView || "week";
   useEffect(() => {
-    const startDate = getNewDate(currentDate, localeConfig.defaultView, -1);
-    const endDate = getNewDate(currentDate, localeConfig.defaultView, 1);
+    const startDate = getNewDate(currentDate, activeView, -1);
+    const endDate = getNewDate(currentDate, activeView, 1);
     fetchEventsFromDataSources(startDate, endDate);
-  }, [currentDate, localeConfig.defaultView, fetchEventsFromDataSources]);
+  }, [currentDate, activeView, fetchEventsFromDataSources]);
 
   return { dataSourceEvents, isDataSourceLoading, dataSourceError };
 };

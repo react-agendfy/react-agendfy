@@ -1,7 +1,7 @@
-// src/Utils/calendarNavigation.js
+// src/Utils/calendarNavigation.ts
 import { addDays, addWeeks, addMonths } from "date-fns";
 
-export function getNewDate(currentDate, view, direction) {
+export function getNewDate(currentDate: Date, view: string, direction: number): Date {
   switch (view) {
     case "day":
       return addDays(currentDate, direction);
