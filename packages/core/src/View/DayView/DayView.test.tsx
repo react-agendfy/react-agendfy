@@ -15,6 +15,10 @@ jest.mock('@dnd-kit/core', () => ({
     </div>
   ),
   useDroppable: jest.fn(() => ({ setNodeRef: jest.fn(), isOver: false })),
+  useSensor: jest.fn(),
+  useSensors: jest.fn(() => []),
+  PointerSensor: jest.fn(),
+  KeyboardSensor: jest.fn(),
 }));
 
 

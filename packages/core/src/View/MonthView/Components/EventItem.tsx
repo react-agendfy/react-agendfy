@@ -65,6 +65,11 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
     return format(date, 'HH:mm');
   }, [event.start, config?.timeZone]);
 
+  const endTime = useMemo(() => {
+    const date = ensureDate(event.end, config?.timeZone);
+    return format(date, 'HH:mm');
+  }, [event.end, config?.timeZone]);
+
   const showContent = isStart || !event.isMultiDay;
  
   const className = [
@@ -125,6 +130,26 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         }}
         {...(canDrag ? listeners : {})}
         {...(canDrag ? attributes : {})}
+        role="button"
+        tabIndex={0}
+        aria-label={`${event.title}, ${startTime} - ${endTime}`}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === 'Enter') {
+            // Enter activates the event (click); Space is left to dnd-kit's
+            // KeyboardSensor so keyboard drags stay available on draggables.
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isResizing) onEventClick?.(event);
+            return;
+          }
+          if (e.key === ' ' && !canDrag) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isResizing) onEventClick?.(event);
+            return;
+          }
+          if (canDrag) (listeners as any)?.onKeyDown?.(e);
+        }}
       >
         {showContent && (
           <>

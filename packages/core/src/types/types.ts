@@ -99,6 +99,8 @@ export interface CalendarDayProps {
   isDroppable?: boolean;
   isDropTarget?: boolean;
   config: Config;
+  /** Roving-tabindex navigation props supplied by useGridNavigation. */
+  navProps?: import("../hooks/useGridNavigation").GridCellNavProps;
 }
 export interface BaseEventProps {
   event: EventProps;

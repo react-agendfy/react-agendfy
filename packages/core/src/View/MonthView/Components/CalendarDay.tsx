@@ -24,10 +24,11 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   onEventClick, 
   onEventResize,
   config,
-  onMouseDown, 
+  onMouseDown,
   onMouseMove,
   isSelected,
   monthDate,
+  navProps,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -41,7 +42,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   }, [day]);
 
   if (!day) {
-    return <div className="react-agendfy-calendar-day-empty" />;
+    return <div className="react-agendfy-calendar-day-empty" role="gridcell" aria-disabled="true" />;
   }
 
   const dayEvents = events.filter((e) => {
@@ -93,6 +94,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
       ref={(el) => {
         ref.current = el;
         setNodeRef(el);
+        navProps?.setRef(el);
       }}
       className={classes}
       onClick={handleDayClick}
@@ -104,10 +106,17 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
         }
       }}
       onMouseMove={() => onMouseMove?.(day)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDayClick?.(day); } }}
-      role="button"
-      tabIndex={0}
+      onKeyDown={
+        navProps
+          ? navProps.onKeyDown
+          : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDayClick?.(day); } }
+      }
+      onFocus={navProps?.onFocus}
+      role="gridcell"
+      tabIndex={navProps ? navProps.tabIndex : 0}
       aria-label={format(day, "d MMMM yyyy")}
+      aria-selected={isSelected ? true : undefined}
+      aria-current={isToday ? "date" : undefined}
     >
       <div className="react-agendfy-calendar-day-header">
         <span className={`react-agendfy-day-number ${isToday ? "react-agendfy-day-number-today" : ""} ${isOtherMonth ? "react-agendfy-day-number-other-month" : ""}`}>
@@ -124,6 +133,14 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
               alert(`+${hidden} eventos:\n${list}`);
             }}
             role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                (e.currentTarget as HTMLElement).click();
+              }
+            }}
             aria-label={`+${hidden} eventos ocultos`}
           >
             +{hidden}

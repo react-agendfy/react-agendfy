@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { DndContext } from "@dnd-kit/core";
+import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
@@ -34,6 +34,11 @@ const DayView: React.FC<DayViewProps> = ({
   const parsedSlotMax = parseTime(config?.slotMax);
   const numberOfSlots =
     Math.floor(((parsedSlotMax - parsedSlotMin) * 60) / (config?.slotDuration || 30));
+
+  // Explicit sensors: PointerSensor preserves pointer click/drag behavior,
+  // KeyboardSensor enables keyboard-initiated drags. Declared before any
+  // early return so the hook order stays stable.
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
   if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
     return (
@@ -92,7 +97,16 @@ const DayView: React.FC<DayViewProps> = ({
   );
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext
+      onDragEnd={handleDragEnd}
+      sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
+        },
+      }}
+    >
       <div 
         className="react-agendfy-dayview-container"
         style={{ position: 'relative', zIndex: 0 }}

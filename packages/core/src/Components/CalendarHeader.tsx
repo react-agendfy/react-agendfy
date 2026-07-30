@@ -92,6 +92,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
               type="button"
               className={`react-agendfy-${view.name}-button react-agendfy-button react-agendfy-button-primary ${currentView === view.name ? "react-agendfy-button-active" : ""}`}
               onClick={() => onViewChange(view.name)}
+              aria-pressed={currentView === view.name}
             >
               {view.label}
             </button>
@@ -104,17 +105,18 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
               type="button"
               className="react-agendfy-export-button react-agendfy-button react-agendfy-button-primary"
               onClick={() => setIsExportOpen(!isExportOpen)}
-              aria-haspopup="true"
+              aria-haspopup="menu"
               aria-expanded={isExportOpen}
             >
               <Download className="react-agendfy-icon" size={16} />
               <span>{localeConfig?.calendar_export || "Export"}</span>
             </button>
             {isExportOpen && (
-              <div className="react-agendfy-export-menu">
+              <div className="react-agendfy-export-menu" role="menu">
                 {exportOptions.map((opt) => (
                   <button
                     key={opt.formatName}
+                    role="menuitem"
                     className="react-agendfy-export-option"
                     onClick={() => {
                       onExport(opt.formatName);

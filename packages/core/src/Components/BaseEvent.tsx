@@ -87,6 +87,9 @@ const BaseEvent = ({
   const displayTitle = event.title;
   const tooltipContent = generateTooltipContent(event, isMultiDay, isStart, isEnd);
 
+  const startLabel = format(new TZDate(parseISO(event.start.toString()), config?.timeZone), "HH:mm");
+  const endLabel = format(new TZDate(parseISO(event.end.toString()), config?.timeZone), "HH:mm");
+
   return (
     <div
       ref={setNodeRef}
@@ -95,6 +98,26 @@ const BaseEvent = ({
       style={eventStyle}
       className={`react-agendfy-baseevent ${isPreview ? "react-agendfy-baseevent--preview" : ""} ${customClassName}`}
       title={tooltipContent}
+      role="button"
+      tabIndex={0}
+      aria-label={`${displayTitle}, ${startLabel} - ${endLabel}`}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+          // Enter activates the event (click); Space is left to dnd-kit's
+          // KeyboardSensor so keyboard drags stay available on draggables.
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isDragging && onEventClick) onEventClick(event);
+          return;
+        }
+        if (e.key === " " && !isDraggable) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isDragging && onEventClick) onEventClick(event);
+          return;
+        }
+        if (isDraggable) (listeners as any)?.onKeyDown?.(e);
+      }}
       onClick={(e) => {
         if (!isDragging && onEventClick) onEventClick(event);
         e.stopPropagation();

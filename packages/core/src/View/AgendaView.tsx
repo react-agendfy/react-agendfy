@@ -52,12 +52,30 @@ const AgendaView: React.FC<ListViewProps> = ({
           <h3 className="react-agendfy-agendaview-day-header">
             {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang ?? 'en') })}
           </h3>
-          {eventsByDay[dayKey].map(event => (
-            <div key={event.id} className="react-agendfy-agendaview-event" style={{ borderLeftColor: event.color }} onClick={() => onEventClick && onEventClick(event)}>
-              <div className="react-agendfy-agendaview-event-time">{format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm')}</div>
-              <div className="react-agendfy-agendaview-event-title">{event.title}</div>
-            </div>
-          ))}
+          {eventsByDay[dayKey].map(event => {
+            const startLabel = format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm');
+            const endLabel = format(new TZDate(parseISO(event.end.toString()), config?.timeZone), 'HH:mm');
+            return (
+              <div
+                key={event.id}
+                className="react-agendfy-agendaview-event"
+                style={{ borderLeftColor: event.color }}
+                onClick={() => onEventClick && onEventClick(event)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onEventClick && onEventClick(event);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`${event.title}, ${startLabel} - ${endLabel}`}
+              >
+                <div className="react-agendfy-agendaview-event-time">{startLabel}</div>
+                <div className="react-agendfy-agendaview-event-title">{event.title}</div>
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>

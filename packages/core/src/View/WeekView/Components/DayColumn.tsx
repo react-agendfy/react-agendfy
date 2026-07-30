@@ -92,6 +92,16 @@ export const DayColumn = memo(
           onClick={() => {
             if (typeof onSlotClick === "function") onSlotClick(dayDate);
           }}
+          role="columnheader"
+          tabIndex={typeof onSlotClick === "function" ? 0 : undefined}
+          aria-label={format(dayDate, "EEEE dd/MM", { locale: getLocale(config?.lang) })}
+          aria-current={isToday ? "date" : undefined}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && typeof onSlotClick === "function") {
+              e.preventDefault();
+              onSlotClick(dayDate);
+            }
+          }}
         >
           <div className="react-agendfy-daycolumn-header-text">
             <div className="react-agendfy-daycolumn-weekday">

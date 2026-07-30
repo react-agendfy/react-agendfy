@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { DndContext, pointerWithin } from "@dnd-kit/core";
+import { DndContext, KeyboardSensor, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
 import {
   format,
   addMinutes,
@@ -228,13 +228,28 @@ const WeekView = ({
 
   const isDraggable = useMemo(() => typeof onEventUpdate === "function", [onEventUpdate]);
 
+  // Explicit sensors: PointerSensor keeps the existing click-vs-drag delta
+  // detection intact, KeyboardSensor enables keyboard-initiated drags.
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
   return (
     <DndContext
       onDragEnd={handleDragEnd}
       onDragStart={handleDragStart}
       collisionDetection={pointerWithin}
+      sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
+        },
+      }}
     >
-      <div className="react-agendfy-weekview-container">
+      <div
+        className="react-agendfy-weekview-container"
+        role="grid"
+        aria-label={`${format(currentWeekStart, "d MMM yyyy")} - ${format(addDays(currentWeekStart, 6), "d MMM yyyy")}`}
+      >
         <div className="react-agendfy-weekview-all-day">
           <div className="react-agendfy-weekview-all-day-label">
             <div className="react-agendfy-weekview-all-day-text">{config?.all_day}</div>
@@ -257,10 +272,11 @@ const WeekView = ({
             );
           })}
         </div>
-        <div 
+        <div
           className="react-agendfy-weekview-timeslot-grid"
           onMouseUp={handleSelectionMouseUp}
           onMouseLeave={handleSelectionMouseUp}
+          role="row"
         >
           <div className="react-agendfy-weekview-timeslot-label">
             <div className="react-agendfy-weekview-timeslot-label-top" />
@@ -276,6 +292,9 @@ const WeekView = ({
               <div
                 key={dayIndex}
                 className={`react-agendfy-weekview-day-column ${dayIndex < daysOfWeek.length - 1 ? "react-agendfy-border-right" : ""}`}
+                role="gridcell"
+                aria-label={format(dayDate, "EEEE, d MMMM yyyy")}
+                aria-current={isSameDay(dayDate, new TZDate(new Date(), config?.timeZone)) ? "date" : undefined}
               >
                 <DayColumn
                   dayDate={dayDate}
