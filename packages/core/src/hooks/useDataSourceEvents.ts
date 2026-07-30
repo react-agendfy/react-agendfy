@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { EventProps, Config } from "../types/types";
 import { DataSourcePlugin, ConfigLike } from "../types/plugins";
 import { getNewDate } from "../Utils/calendarNavigation";
+import { formatMessage } from "../i18n";
 
 const useDataSourceEvents = (
   dataSourcePlugins: DataSourcePlugin[],
@@ -23,7 +24,13 @@ const useDataSourceEvents = (
           fetchedEvents.push(...eventsFromSource);
         } catch (error: any) {
           console.error(`Error fetching events from ${plugin.key}:`, error);
-          setDataSourceError(`Error fetching events from ${plugin.key}: ${error.message}`);
+          setDataSourceError(
+            formatMessage(
+              localeConfig.data_source_error,
+              { source: plugin.key, message: error.message },
+              "Error fetching events from {source}: {message}"
+            )
+          );
         }
       }
       setDataSourceEvents(fetchedEvents);

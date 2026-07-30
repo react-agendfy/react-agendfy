@@ -15,6 +15,7 @@ import {
 } from "date-fns";
 import { RRule, rrulestr } from "rrule";
 import { ensureDate } from "../../Utils/DateTrannforms";
+import { formatMessage } from "../../i18n";
 import { EventProps, WeekProps } from "../../types/types";
 import { TZDate } from "@date-fns/tz";
 import { DayColumn } from "./Components/DayColumn";
@@ -50,7 +51,11 @@ const WeekView = ({
   if (isNaN  (numberOfSlots) || numberOfSlots <= 0) {
     return (
       <div className="react-agendfy-weekview-error">
-        {config?.slotDuration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas.
+        {formatMessage(
+          config?.invalid_slot_duration,
+          { duration: config?.slotDuration ?? "" },
+          "{duration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas."
+        )}
       </div>
     );
   }
@@ -250,7 +255,7 @@ const WeekView = ({
                     style={{ backgroundColor: event.color }}
                     className="react-agendfy-weekview-all-day-event"
                   >
-                    {event.title || "Event"}
+                    {event.title || config?.untitled_event || "Event"}
                   </div>
                 ))}
               </div>

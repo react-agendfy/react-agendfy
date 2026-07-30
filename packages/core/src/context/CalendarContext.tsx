@@ -25,6 +25,7 @@ import {
   ViewPlugin,
 } from "../types/plugins";
 import { getLocale } from "../Utils/locate";
+import { getMessages, getTextDirection } from "../i18n";
 import { normalizeEvents } from "../Utils/calendarHelpers";
 import { getFilteredEventsList, updateEventsList } from "../Utils/CalendarUtils";
 import { downloadBlob } from "../Utils/pluginUtils";
@@ -143,6 +144,8 @@ export interface CalendarContextValue {
   // configuration / meta
   config: Partial<Config>;
   localeConfig: Config;
+  /** Resolved text direction for the calendar root ("auto" already applied). */
+  direction: "ltr" | "rtl";
   theme: string;
   resources: Resource[];
 
@@ -190,6 +193,7 @@ type CalendarProviderProps = CalendarProps & { children: ReactNode };
 export const CalendarProvider: FC<CalendarProviderProps> = ({
   events: initialEvents = [],
   config = defaultConfig,
+  direction: directionProp = "auto",
   resources = [],
   theme = "default",
   filteredResources = [],
@@ -218,17 +222,37 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
 
   const addToast = useToast();
 
-  // localeConfig is derived: base config + defaults + locale, with the active
-  // view reflected in `defaultView` (keeps parity with the previous behavior
-  // where switching views also updated the config passed down to views).
+  // resolvedConfig merges, in override order: built-in defaults → bundled
+  // message catalog for config.lang → explicit user config keys (user
+  // overrides always win). Stable across view changes.
+  const resolvedConfig = useMemo(
+    () => ({
+      ...defaultConfig,
+      ...getMessages(config.lang ?? defaultConfig.lang),
+      ...config,
+    }),
+    [config]
+  );
+
+  // localeConfig is derived: resolved config + date-fns locale, with the
+  // active view reflected in `defaultView` (keeps parity with the previous
+  // behavior where switching views also updated the config passed to views).
   const localeConfig = useMemo(() => {
-    const finalConfig = { ...defaultConfig, ...config };
     return {
-      ...finalConfig,
-      ...getLocale(finalConfig.lang),
+      ...resolvedConfig,
+      ...getLocale(resolvedConfig.lang),
       defaultView: state.currentView as CalendarView,
     } as Config;
-  }, [config, state.currentView]);
+  }, [resolvedConfig, state.currentView]);
+
+  // Text direction: explicit prop wins; "auto" derives from the language.
+  const direction = useMemo<"ltr" | "rtl">(
+    () =>
+      directionProp === "ltr" || directionProp === "rtl"
+        ? directionProp
+        : getTextDirection(resolvedConfig.lang),
+    [directionProp, resolvedConfig.lang]
+  );
 
   const {
     filterPlugins,
@@ -282,7 +306,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     [JSON.stringify(dataSourcePlugins)]
   );
   const { dataSourceEvents, isDataSourceLoading, dataSourceError } =
-    useDataSourceEvents(stableDataSourcePlugins, config, state.currentDate);
+    useDataSourceEvents(stableDataSourcePlugins, resolvedConfig, state.currentDate);
 
   // Merge events fetched by data-source plugins with the user-provided events,
   // without clobbering user events (user events win on id collisions).
@@ -399,7 +423,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       if (!customExportPlugin) {
         console.warn(`No export plugin registered for format "${format}".`);
         addToast({
-          title: "Export",
+          title: localeConfig.calendar_export || "Export",
           message: `${localeConfig.export_error || "No export plugin for format"}: ${format}`,
         });
         return;
@@ -420,7 +444,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
         .catch((error) => {
           console.error(`Error exporting with plugin ${format}:`, error);
           addToast({
-            title: "Export",
+            title: localeConfig.calendar_export || "Export",
             message: `${localeConfig.export_error || "Failed to export"}: ${format}`,
           });
         });
@@ -542,6 +566,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     dispatch,
     config,
     localeConfig,
+    direction,
     theme,
     resources,
     normalizedEvents,

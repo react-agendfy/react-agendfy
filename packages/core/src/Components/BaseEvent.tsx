@@ -85,7 +85,7 @@ const BaseEvent = ({
   // Auto-contrast foreground (was hardcoded white). Removed the trailing
   // "\b" backspace char that was a pure display artifact.
   const displayTitle = event.title;
-  const tooltipContent = generateTooltipContent(event, isMultiDay, isStart, isEnd);
+  const tooltipContent = generateTooltipContent(event, isMultiDay, isStart, isEnd, config);
 
   return (
     <div

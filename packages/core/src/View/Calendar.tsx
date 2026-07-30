@@ -20,6 +20,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
   const {
     state,
     localeConfig,
+    direction,
     theme,
     resources,
     filteredEvents,
@@ -170,12 +171,12 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
           />
         );
       default:
-        return <div>Unsupported view: {currentView}</div>;
+        return <div>{`${localeConfig.unsupported_view || "Unsupported view"}: ${currentView}`}</div>;
     }
   };
 
   return (
-    <div ref={setRootRef} className={`agendfy react-agendfy-layout theme-${theme}`}>
+    <div ref={setRootRef} dir={direction} className={`agendfy react-agendfy-layout theme-${theme}`}>
       <div className="visually-hidden" aria-live="polite" aria-atomic="true">
         {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(
           localeConfig.lang
