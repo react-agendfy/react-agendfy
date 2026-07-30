@@ -121,7 +121,7 @@ defaultRowHeight: 10
     return (
       <div className="react-agendfy-listview-empty">
         <p className="react-agendfy-listview-empty-text">
-          There are no events for this period.
+          {config?.no_events || "There are no events for this period."}
         </p>
       </div>
     );

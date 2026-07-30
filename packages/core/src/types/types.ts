@@ -6,12 +6,62 @@ import type { EmailAdapter, NotificationServiceConfig } from "./notification";
 /** All view identifiers the calendar can render. */
 export type CalendarView = "month" | "week" | "day" | "list" | "agenda";
 
+/** Text direction accepted by the calendar root. "auto" derives from the language. */
+export type CalendarDirection = "ltr" | "rtl" | "auto";
+
 /**
  * Narrow escape hatch for locale dictionaries: translation bundles may carry
  * additional string entries keyed dynamically. Values are always strings.
+ *
+ * Known user-facing message keys are enumerated below (all optional — the
+ * built-in catalog in `src/i18n/` supplies defaults per `config.lang`, and
+ * explicit config keys always override the catalog).
  */
 export interface LocaleStrings {
   [key: string]: string | undefined;
+  today?: string;
+  monthView?: string;
+  weekView?: string;
+  dayView?: string;
+  listView?: string;
+  agenda?: string;
+  all_day?: string;
+  clear_filter?: string;
+  filter_resources?: string;
+  calendar_export?: string;
+  loading?: string;
+  export_error?: string;
+  back?: string;
+  next?: string;
+  go_to_today?: string;
+  /** Shown when the requested view has no registered component. */
+  unsupported_view?: string;
+  /** Empty state for the list view. */
+  no_events?: string;
+  /** Empty state for the agenda view. Template vars: {days}. */
+  agenda_no_events?: string;
+  /** Fallback label for events without a title. */
+  untitled_event?: string;
+  /** Tooltip label for a multi-day event's start time. */
+  tooltip_start?: string;
+  /** Tooltip label for a multi-day event's end time. */
+  tooltip_end?: string;
+  /** Week view error for invalid slot configuration. Template vars: {duration}. */
+  invalid_slot_duration?: string;
+  /** Month-view overflow badge label. Template vars: {count}. */
+  hidden_events?: string;
+  /** Browser notification title for an upcoming event. */
+  notification_title?: string;
+  /** Toast title for event reminders. */
+  alert_title?: string;
+  /** Reminder body. Template vars: {title}, {time}. */
+  event_starts_at?: string;
+  /** Reminder email subject. Template vars: {title}. */
+  email_alert_subject?: string;
+  /** Reminder email body. Template vars: {title}, {time}. */
+  email_alert_body?: string;
+  /** Announced when a data-source plugin fails. Template vars: {source}, {message}. */
+  data_source_error?: string;
 }
 
 export interface Config {
@@ -57,6 +107,34 @@ export interface Config {
   next?: string;
   /** Accessible label for the "today" navigation button. */
   go_to_today?: string;
+  /** Shown when the requested view has no registered component. */
+  unsupported_view?: string;
+  /** Empty state for the list view. */
+  no_events?: string;
+  /** Empty state for the agenda view. Template vars: {days}. */
+  agenda_no_events?: string;
+  /** Fallback label for events without a title. */
+  untitled_event?: string;
+  /** Tooltip label for a multi-day event's start time. */
+  tooltip_start?: string;
+  /** Tooltip label for a multi-day event's end time. */
+  tooltip_end?: string;
+  /** Week view error for invalid slot configuration. Template vars: {duration}. */
+  invalid_slot_duration?: string;
+  /** Month-view overflow badge label. Template vars: {count}. */
+  hidden_events?: string;
+  /** Browser notification title for an upcoming event. */
+  notification_title?: string;
+  /** Toast title for event reminders. */
+  alert_title?: string;
+  /** Reminder body. Template vars: {title}, {time}. */
+  event_starts_at?: string;
+  /** Reminder email subject. Template vars: {title}. */
+  email_alert_subject?: string;
+  /** Reminder email body. Template vars: {title}, {time}. */
+  email_alert_body?: string;
+  /** Announced when a data-source plugin fails. Template vars: {source}, {message}. */
+  data_source_error?: string;
 }
 
 /** Alias kept for helpers that reference the config under an older name. */
@@ -183,6 +261,11 @@ export interface CalendarProps {
   plugins?: CalendarPlugin[];
   /** Partial config; unspecified keys fall back to the built-in defaults. */
   config?: Partial<Config>;
+  /**
+   * Text direction of the calendar root. Defaults to "auto": derived from the
+   * resolved language (ar/he/fa/ur → "rtl", anything else → "ltr").
+   */
+  direction?: CalendarDirection;
   theme?: string;
   filteredResources?: string[];
   emailAdapter?: EmailAdapter;

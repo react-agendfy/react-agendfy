@@ -8,7 +8,7 @@ import { getContrastText } from "../../../Utils/colorContrast";
 
 
 export const ListEvent = ({ event, onEventClick, currentDate, config }: ListEventProps) => {
-  const tooltipContent = generateTooltipContent(event, false, true, true);
+  const tooltipContent = generateTooltipContent(event, false, true, true, config);
 
   return (
     <div

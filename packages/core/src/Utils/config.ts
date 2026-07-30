@@ -1,21 +1,15 @@
 import { Config, LocaleConfig } from "../types/types";
+import { getMessages } from "../i18n";
 
+  /** Locale-only subset, resolved from the bundled message catalog. */
   export const getLocaleConfig = (lang: string): LocaleConfig => {
-    if (lang === 'pt') {
-      return {
-        today: 'Hoje',
-        monthView: 'Mês',
-        weekView: 'Semana',
-        dayView: 'Dia',
-      };
-    } else {
-      return {
-        today: 'Today',
-        monthView: 'Month',
-        weekView: 'Week',
-        dayView: 'Day',
-      };
-    }
+    const messages = getMessages(lang);
+    return {
+      today: messages.today,
+      monthView: messages.monthView,
+      weekView: messages.weekView,
+      dayView: messages.dayView,
+    };
   };
 
  export  const config: Config = {

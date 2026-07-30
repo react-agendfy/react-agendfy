@@ -12,6 +12,7 @@ import {
 } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 import { ensureDate } from "../../../Utils/DateTrannforms";
+import { formatMessage } from "../../../i18n";
 import { CalendarDayProps } from "../../../types/types";
 import { EventItem } from "./EventItem";
 
@@ -130,7 +131,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
               const list = sorted.slice(MAX_VISIBLE).map((ev) =>
                 `${ev.title} (${format(ensureDate(ev.start, config?.timeZone), "HH:mm")} - ${format(ensureDate(ev.end, config?.timeZone), "HH:mm")})`
               ).join("\n");
-              alert(`+${hidden} eventos:\n${list}`);
+              alert(`${formatMessage(config?.hidden_events, { count: hidden }, "+{count} eventos ocultos")}:\n${list}`);
             }}
             role="button"
             tabIndex={0}
@@ -141,7 +142,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
                 (e.currentTarget as HTMLElement).click();
               }
             }}
-            aria-label={`+${hidden} eventos ocultos`}
+            aria-label={formatMessage(config?.hidden_events, { count: hidden }, "+{count} eventos ocultos")}
           >
             +{hidden}
           </span>

@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { EventProps } from '../types/types';
+import { Config, EventProps, LocaleStrings } from '../types/types';
 
 /**
  * Generates the tooltip content for a calendar event.
@@ -8,6 +8,7 @@ import { EventProps } from '../types/types';
  * @param {boolean} isMultiDay - Indicates if the event spans multiple days.
  * @param {boolean} isStart - Indicates if the event is the start of a multi-day event.
  * @param {boolean} isEnd - Indicates if the event is the end of a multi-day event.
+ * @param {Object} [strings] - Locale strings used for the tooltip labels.
  * @returns {string} - tooltip content
  */
 
@@ -15,20 +16,21 @@ function generateTooltipContent(
   event: EventProps,
   isMultiDay: boolean,
   isStart: boolean,
-  isEnd: boolean
+  isEnd: boolean,
+  strings?: LocaleStrings | Partial<Config>
 ): string {
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
-  
+
 
   const timeDisplay = isMultiDay
     ? isStart
-      ? `Start: ${format(eventStart, 'HH:mm')}`
+      ? `${strings?.tooltip_start || 'Start'}: ${format(eventStart, 'HH:mm')}`
       : isEnd
-        ? `Fim: ${format(eventEnd, 'HH:mm')}`
-        : 'All day'
+        ? `${strings?.tooltip_end || 'End'}: ${format(eventEnd, 'HH:mm')}`
+        : strings?.all_day || 'All day'
     : `${format(eventStart, 'HH:mm')} - ${format(eventEnd, 'HH:mm')}`;
-  
+
   const displayTitle = event.title;
 
   const resourcesInfo = event.resources && event.resources.length > 0

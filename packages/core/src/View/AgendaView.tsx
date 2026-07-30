@@ -3,6 +3,7 @@ import { format, addDays, isWithinInterval, startOfDay, endOfDay, parseISO } fro
 import { EventProps, ListViewProps } from '../types/types';
 import { TZDate } from '@date-fns/tz';
 import { getLocale } from '../Utils/locate';
+import { formatMessage } from '../i18n';
 
 const AgendaView: React.FC<ListViewProps> = ({
   events,
@@ -29,7 +30,13 @@ const AgendaView: React.FC<ListViewProps> = ({
   if (relevantEvents.length === 0) {
     return (
       <div className="react-agendfy-listview-empty">
-        <p>There are no events for the next {agendaDays} days.</p>
+        <p>
+          {formatMessage(
+            config?.agenda_no_events,
+            { days: agendaDays },
+            "There are no events for the next {days} days."
+          )}
+        </p>
       </div>
     );
   }
