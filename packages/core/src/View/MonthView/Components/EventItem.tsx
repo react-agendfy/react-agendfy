@@ -125,11 +125,13 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
   const color = event.color || '#3490dc';
 
   return (
+    // The stretch lives on OUR wrapper, not on re-resizable: its `size` prop
+    // overrides `style` width, and it appends "px" to any string it does not
+    // recognize as unit-suffixed — turning `calc(...)` into invalid CSS that
+    // browsers silently drop (the bar then collapses to one cell).
+    <div className="react-agendfy-month-bar" style={{ width: barWidth }}>
     <Resizable
-      // IMPORTANT: the stretch width MUST go through `size` — re-resizable
-      // merges size AFTER style, so a width in `style` is silently
-      // overridden and the bar collapses back to one cell.
-      size={{ width: barWidth, height: CHIP_HEIGHT }}
+      size={{ width: '100%', height: CHIP_HEIGHT }}
       onResizeStart={(e) => {
         e.stopPropagation();
         setIsResizing(true);
@@ -234,6 +236,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         )}
       </div>
     </Resizable>
+    </div>
   );
 };
 
