@@ -42,22 +42,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
     disabled: !draggableEnabled || isResizing,
   });
 
-  const handleResize = (direction: any, delta: any) => {
-    if (!onEventResize) return;
-
-    const eventStart = ensureDate(event.start);
-    const eventEnd = ensureDate(event.end);
-
-    if (direction === "right") {
-      const daysAdded = Math.max(0, Math.round(delta.width / dayWidth));
-      if (daysAdded > 0) {
-        const newEnd = addDays(eventStart, differenceInDays(eventEnd, eventStart) + daysAdded);
-        onEventResize('stop', { ...event, end: newEnd.toISOString(), isMultiDay: !isSameDay(eventStart, newEnd) });
-      }
-    }
-  };
-
-  const enableResizing = onEventResize && !isOtherMonth && (isEnd || !event.isMultiDay);
+  const enableResizing = Boolean(onEventResize) && !isOtherMonth && (isEnd || !event.isMultiDay);
 
 
   const startTime = useMemo(() => {
@@ -98,13 +83,34 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         onEventResize?.('start');
       }}
       onResizeStop={(e, dir, ref, d) => {
-        const daysAdded = Math.round(d.width / dayWidth);
-        const originalEnd = ensureDate(event.end);
-        const newEnd = addDays(originalEnd, daysAdded);
         setIsResizing(false);
-        onEventResize?.('stop', { ...event, end: newEnd.toISOString() });
+        // Day step from the measured cell width; fall back to the DOM when
+        // the measured width hasn't landed yet. Never divide by zero.
+        const cellWidth =
+          dayWidth > 0 ? dayWidth : (ref?.parentElement as HTMLElement | null)?.offsetWidth || 0;
+        const daysDelta = cellWidth > 0 ? Math.round(d.width / cellWidth) : 0;
+        if (daysDelta === 0) {
+          // Always complete the start/stop handshake so MonthView clears
+          // its isResizing gate, but emit no update.
+          onEventResize?.('stop');
+          return;
+        }
+        const eventStart = ensureDate(event.start, config?.timeZone);
+        const originalEnd = ensureDate(event.end, config?.timeZone);
+        const newEnd = addDays(originalEnd, daysDelta); // negative delta shrinks
+        if (newEnd.getTime() <= eventStart.getTime()) {
+          onEventResize?.('stop');
+          return;
+        }
+        onEventResize?.('stop', {
+          ...event,
+          end: new Date(newEnd.getTime()).toISOString(),
+          isMultiDay: !isSameDay(eventStart, newEnd),
+        });
       }}
       enable={{ right: enableResizing }}
+      handleClasses={{ right: 'react-agendfy-month-resize-handle' }}
+      handleStyles={{ right: { cursor: 'ew-resize', width: '8px', right: '-2px' } }}
       style={{
         width: width,
         zIndex: isDragging || isResizing ? 1000 : 'auto',

@@ -30,3 +30,16 @@
 .react-agendfy-event-item-multiday-end:hover::after {
   background: rgba(0, 0, 0, 0.3);
 }
+
+/* Explicit re-resizable right handle for ALL resizable chips (single-day
+   included — they previously had NO visual affordance at all). Subtle grip
+   that appears on chip hover. */
+.react-agendfy-month-resize-handle {
+  border-radius: var(--agendfy-radius-sm);
+  transition: background var(--agendfy-transition-duration)
+    var(--agendfy-transition-timing);
+}
+.react-agendfy-event-item:hover ~ .react-agendfy-month-resize-handle,
+.react-agendfy-month-resize-handle:hover {
+  background: rgba(0, 0, 0, 0.25);
+}

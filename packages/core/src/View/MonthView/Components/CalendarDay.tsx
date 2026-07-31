@@ -100,7 +100,15 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
       className={classes}
       onClick={handleDayClick}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.react-agendfy-event-item') === null) {
+        const target = e.target as HTMLElement;
+        // Never start day-range selection from an event chip OR a resize
+        // handle (re-resizable renders handles as SIBLINGS of the chip, so
+        // the chip-only check missed them and a resize gesture could also
+        // trigger range selection).
+        const isInteractive =
+          target.closest('.react-agendfy-event-item') !== null ||
+          target.closest('.react-agendfy-month-resize-handle') !== null;
+        if (e.target === e.currentTarget || !isInteractive) {
           onMouseDown?.(day);
         } else {
           e.stopPropagation();

@@ -93,7 +93,10 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     if (status === 'stop' && event) onEventResize?.(event);
   };
 
-  const handleMouseDown = (d: Date) => { setSelecting(true); setSelStart(d); setSelEnd(d); };
+  const handleMouseDown = (d: Date) => {
+    if (isResizing) return; // a resize gesture must never start a range selection
+    setSelecting(true); setSelStart(d); setSelEnd(d);
+  };
   const handleMouseMove = (d: Date) => { if (selecting) setSelEnd(d); };
   const handleMouseUp = () => {
     if (selecting && selStart && selEnd && onDateRangeSelect) {
