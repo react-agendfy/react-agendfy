@@ -196,25 +196,10 @@
   opacity: 0.8;
 }
 
-/* multiday chip joins (handles live in EventItem.css) */
-.react-agendfy-event-item-multiday-start {
-  border-start-end-radius: 0;
-  border-end-end-radius: 0;
-  margin-inline-end: calc(-1 * var(--agendfy-space-2) - 1px);
-  padding-inline-end: calc(var(--agendfy-space-2) + 1px);
-}
-
-.react-agendfy-event-item-multiday-end {
-  border-start-start-radius: 0;
-  border-end-start-radius: 0;
-}
-
-.react-agendfy-event-item-multiday-middle {
-  border-radius: 0;
-  margin-inline: calc(-1 * var(--agendfy-space-2) - 1px);
-  padding-inline: calc(var(--agendfy-space-2) + 1px);
-  z-index: 1;
-}
+/* Multiday joins: OBSOLETE negative-margin bridges from the per-cell model
+   were removed — under the row-bar model (see EventItem.tsx) they made the
+   visible chip 9px wider than its wrapper, bleeding past the bar's rounded
+   end. Corner rounding is now set inline per piece (cornerStyle). */
 
 @media (max-width: 640px) {
   .react-agendfy-event-item {

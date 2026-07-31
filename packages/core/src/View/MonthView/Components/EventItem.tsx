@@ -179,6 +179,9 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         style={{
           backgroundColor: isVisiblePiece ? color : 'transparent',
           color: isVisiblePiece ? getContrastText(color) : 'transparent',
+          // Shadows paint around transparent boxes too — an invisible piece
+          // must not cast a ghost bar over the stretched row bar beneath it.
+          boxShadow: isVisiblePiece ? undefined : 'none',
           cursor: canDrag ? 'grab' : 'pointer',
           opacity: isDragging ? 0.7 : 1,
           width: '100%',
