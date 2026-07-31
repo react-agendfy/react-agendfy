@@ -25,8 +25,8 @@ jest.mock('@dnd-kit/core', () => {
 // Resizable stub exposing buttons that fire the resize lifecycle with
 // controlled deltas/refs.
 jest.mock('re-resizable', () => ({
-  Resizable: ({ children, onResizeStart, onResizeStop, enable }: any) => (
-    <div data-testid="resizable" data-enable={JSON.stringify(enable)}>
+  Resizable: ({ children, onResizeStart, onResizeStop, enable, className }: any) => (
+    <div data-testid="resizable" data-enable={JSON.stringify(enable)} data-classname={className || ''}>
       <button
         data-testid="resize-plus-2"
         onClick={() => {
@@ -122,5 +122,15 @@ describe('month-view horizontal resize', () => {
     renderItem(singleDay, jest.fn());
     const enable = JSON.parse(screen.getByTestId('resizable').getAttribute('data-enable')!);
     expect(enable.right).toBe(true);
+  });
+
+  test('resizable wrapper carries the reveal class (grip appears on chip hover)', () => {
+    renderItem(singleDay, jest.fn());
+    // re-resizable nests handles in their own wrapper, so the hover-reveal
+    // CSS must descend from this wrapper class — a sibling selector cannot
+    // reach the handle and the grip would silently never appear.
+    expect(screen.getByTestId('resizable').getAttribute('data-classname')).toBe(
+      'react-agendfy-month-event-resizable'
+    );
   });
 });

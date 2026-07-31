@@ -109,6 +109,11 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         });
       }}
       enable={{ right: enableResizing }}
+      // Wrapper class so CSS can reveal the grip on chip hover — re-resizable
+      // nests handles inside their own wrapper (NOT siblings of the chip), so
+      // a sibling combinator can never reach them; a descendant selector from
+      // this wrapper can.
+      className="react-agendfy-month-event-resizable"
       handleClasses={{ right: 'react-agendfy-month-resize-handle' }}
       handleStyles={{ right: { cursor: 'ew-resize', width: '8px', right: '-2px' } }}
       style={{
