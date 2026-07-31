@@ -1,0 +1,80 @@
+/* Quick Add plugin — styled exclusively with the .agendfy token system.
+   No inline hex: every color/space/radius comes from --agendfy-* variables. */
+
+.react-agendfy-ai-quickadd {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.react-agendfy-ai-quickadd-input {
+  min-width: 14rem;
+  padding: var(--agendfy-space-1, 0.25rem) var(--agendfy-space-2, 0.5rem);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md, var(--agendfy-radius-lg));
+  background-color: var(--agendfy-color-surface);
+  color: var(--agendfy-color-text);
+  font: inherit;
+}
+
+.react-agendfy-ai-quickadd-input:focus {
+  outline: 2px solid var(--agendfy-color-accent, var(--agendfy-color-accent-soft));
+  outline-offset: 1px;
+}
+
+.react-agendfy-ai-quickadd-preview {
+  position: absolute;
+  top: calc(100% + var(--agendfy-space-1, 0.25rem));
+  inset-inline-end: 0;
+  z-index: 30;
+  min-width: 16rem;
+  padding: var(--agendfy-space-2, 0.5rem);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-lg);
+  background-color: var(--agendfy-color-surface);
+  color: var(--agendfy-color-text);
+  box-shadow: var(--agendfy-shadow-sm);
+}
+
+.react-agendfy-ai-quickadd-preview-title {
+  font-weight: 600;
+}
+
+.react-agendfy-ai-quickadd-preview-time,
+.react-agendfy-ai-quickadd-preview-confidence {
+  color: var(--agendfy-color-text-muted);
+  font-size: 0.85em;
+}
+
+.react-agendfy-ai-quickadd-preview-missing {
+  color: var(--agendfy-color-text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+.react-agendfy-ai-quickadd-actions {
+  display: flex;
+  gap: var(--agendfy-space-2, 0.5rem);
+  margin-top: var(--agendfy-space-2, 0.5rem);
+}
+
+.react-agendfy-ai-quickadd-confirm,
+.react-agendfy-ai-quickadd-cancel {
+  padding: var(--agendfy-space-1, 0.25rem) var(--agendfy-space-2, 0.5rem);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md, var(--agendfy-radius-lg));
+  background-color: var(--agendfy-color-surface-2);
+  color: var(--agendfy-color-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.react-agendfy-ai-quickadd-confirm {
+  background-color: var(--agendfy-color-accent, var(--agendfy-color-accent-soft));
+  color: var(--agendfy-color-surface);
+}
+
+.react-agendfy-ai-quickadd-error {
+  color: var(--agendfy-color-now);
+  font-size: 0.85em;
+}

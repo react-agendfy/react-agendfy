@@ -7,7 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       // garante resolução local do core durante desenvolvimento
-      '@react-agendfy/core': resolve(__dirname, '../../packages/core/src')
+      '@react-agendfy/core': resolve(__dirname, '../../packages/core/src'),
+      '@react-agendfy/ai': resolve(__dirname, '../../packages/ai/src')
     }
   },
   server: { port: 5173 }

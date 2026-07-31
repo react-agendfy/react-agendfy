@@ -2454,6 +2454,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-agendfy/ai@workspace:*, @react-agendfy/ai@workspace:packages/ai":
+  version: 0.0.0-use.local
+  resolution: "@react-agendfy/ai@workspace:packages/ai"
+  dependencies:
+    typescript: "npm:^5.7.3"
+    vite: "npm:^6.1.0"
+    vite-plugin-dts: "npm:^4.5.0"
+  peerDependencies:
+    "@anthropic-ai/sdk": ">=0.30.0"
+    react: ^18 || ^19
+    react-dom: ^18 || ^19
+  peerDependenciesMeta:
+    "@anthropic-ai/sdk":
+      optional: true
+  languageName: unknown
+  linkType: soft
+
 "@react-agendfy/core@workspace:*, @react-agendfy/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@react-agendfy/core@workspace:packages/core"
@@ -2491,6 +2508,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@react-agendfy/example-basic@workspace:examples/basic"
   dependencies:
+    "@react-agendfy/ai": "workspace:*"
     "@react-agendfy/core": "workspace:*"
     "@vitejs/plugin-react": "npm:^4.3.4"
     react: "npm:^18 || ^19"
@@ -2508,8 +2526,9 @@ __metadata:
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^4.5.0"
   peerDependencies:
-    "@react-agendfy/core": ^1.1.10
+    "@react-agendfy/core": ^1.1.0
     react: ^18 || ^19
+    react-dom: ^18 || ^19
   languageName: unknown
   linkType: soft
 
@@ -2521,8 +2540,9 @@ __metadata:
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^4.5.0"
   peerDependencies:
-    "@react-agendfy/core": ^1.1.10
+    "@react-agendfy/core": ^1.1.0
     react: ^18 || ^19
+    react-dom: ^18 || ^19
   languageName: unknown
   linkType: soft
 
@@ -2535,7 +2555,7 @@ __metadata:
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^3.0.0"
   peerDependencies:
-    "@react-agendfy/core": "workspace:*"
+    "@react-agendfy/core": ^1.1.0
     react: ^18 || ^19
     react-dom: ^18 || ^19
   languageName: unknown
@@ -2549,8 +2569,9 @@ __metadata:
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^4.5.0"
   peerDependencies:
-    "@react-agendfy/core": "workspace:*"
+    "@react-agendfy/core": ^1.1.0
     react: ^18 || ^19
+    react-dom: ^18 || ^19
   languageName: unknown
   linkType: soft
 
@@ -2563,7 +2584,9 @@ __metadata:
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^3.0.0"
   peerDependencies:
-    "@react-agendfy/core": "workspace:*"
+    "@react-agendfy/core": ^1.1.0
+    react: ^18 || ^19
+    react-dom: ^18 || ^19
   languageName: unknown
   linkType: soft
 
@@ -2576,7 +2599,7 @@ __metadata:
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^3.0.0"
   peerDependencies:
-    "@react-agendfy/core": "workspace:*"
+    "@react-agendfy/core": ^1.1.0
     react: ^18 || ^19
     react-dom: ^18 || ^19
   languageName: unknown
