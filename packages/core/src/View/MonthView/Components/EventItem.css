@@ -1,35 +1,10 @@
-/* EventItem.css — multiday resize handles only.
-   Base chip styling lives in css/MonthView.css (single source of truth). */
-
-.react-agendfy-event-item-multiday-start::before,
-.react-agendfy-event-item-multiday-end::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  width: 6px;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.15);
-  cursor: ew-resize;
-  transition: background var(--agendfy-transition-duration)
-    var(--agendfy-transition-timing);
-}
-
-.react-agendfy-event-item-multiday-start::before {
-  inset-inline-start: 0;
-  border-start-start-radius: var(--agendfy-radius-sm);
-  border-end-start-radius: var(--agendfy-radius-sm);
-}
-
-.react-agendfy-event-item-multiday-end::after {
-  inset-inline-end: 0;
-  border-start-end-radius: var(--agendfy-radius-sm);
-  border-end-end-radius: var(--agendfy-radius-sm);
-}
-
-.react-agendfy-event-item-multiday-start:hover::before,
-.react-agendfy-event-item-multiday-end:hover::after {
-  background: rgba(0, 0, 0, 0.3);
-}
+/* EventItem.css — the month-view resize grip.
+   Base chip styling lives in css/MonthView.css (single source of truth).
+   NOTE: the old decorative ::before/::after "handle" strips on multiday
+   chips were removed — they looked like resize affordances but pointer
+   events landed on the draggable chip (starting a drag), and the left one
+   implied a start-resize that does not exist. The re-resizable handle below
+   is the single, real affordance. */
 
 /* Explicit re-resizable right handle for ALL resizable chips (single-day
    included — they previously had NO visual affordance at all). The grip is
