@@ -179,7 +179,7 @@ describe('MonthView Component', () => {
       id: '2023-01-20T00:00:00.000Z',
     };
 
-    mockDndContextOnDragEnd({ active, over });
+    mockDndContextOnDragEnd({ active, over, delta: { x: 200, y: 0 } });
 
     await waitFor(() => {
       expect(onEventUpdateMock).toHaveBeenCalled();
@@ -188,5 +188,78 @@ describe('MonthView Component', () => {
     const updatedEvent = onEventUpdateMock.mock.calls[0][0];
     expect(format(new Date(updatedEvent.start), 'yyyy-MM-dd')).toBe('2023-01-20');
     expect(format(new Date(updatedEvent.start), 'HH:mm:ss')).toBe('09:00:00');
+  });
+});
+
+describe('MonthView accessibility', () => {
+  it('exposes grid semantics: grid, columnheaders, rows and gridcells', () => {
+    render(
+      <MonthView events={[]} currentDate={currentDate} config={localeTest} />
+    );
+    expect(screen.getByRole('grid')).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
+    // 1 header row + at least 5 week rows
+    expect(screen.getAllByRole('row').length).toBeGreaterThanOrEqual(6);
+    expect(screen.getAllByRole('gridcell').length).toBeGreaterThanOrEqual(35);
+  });
+
+  it('implements roving tabindex: only one day cell is tabbable and arrows move focus', () => {
+    render(
+      <MonthView events={[]} currentDate={currentDate} config={localeTest} />
+    );
+    const cells = screen.getAllByRole('gridcell');
+    const tabbable = cells.filter((c) => c.getAttribute('tabindex') === '0');
+    expect(tabbable).toHaveLength(1);
+
+    const currentCell = screen.getByRole('gridcell', { name: '15 January 2023' });
+    expect(currentCell).toHaveAttribute('tabindex', '0');
+
+    currentCell.focus();
+    fireEvent.keyDown(currentCell, { key: 'ArrowRight' });
+
+    const nextCell = screen.getByRole('gridcell', { name: '16 January 2023' });
+    expect(nextCell).toHaveAttribute('tabindex', '0');
+    expect(currentCell).toHaveAttribute('tabindex', '-1');
+    expect(nextCell).toHaveFocus();
+  });
+
+  it('moves focus a full week with ArrowDown and activates a day with Enter', () => {
+    const onDayClickMock = jest.fn();
+    render(
+      <MonthView
+        events={[]}
+        currentDate={currentDate}
+        config={localeTest}
+        onDayClick={onDayClickMock}
+      />
+    );
+    const currentCell = screen.getByRole('gridcell', { name: '15 January 2023' });
+    currentCell.focus();
+    fireEvent.keyDown(currentCell, { key: 'ArrowDown' });
+
+    const weekLater = screen.getByRole('gridcell', { name: '22 January 2023' });
+    expect(weekLater).toHaveFocus();
+
+    fireEvent.keyDown(weekLater, { key: 'Enter' });
+    expect(onDayClickMock).toHaveBeenCalled();
+    expect(format(onDayClickMock.mock.calls[0][0], 'yyyy-MM-dd')).toBe('2023-01-22');
+  });
+
+  it('fires onEventClick when pressing Enter on a focused event', () => {
+    const onEventClickMock = jest.fn();
+    render(
+      <MonthView
+        events={testEvents}
+        currentDate={currentDate}
+        config={localeTest}
+        onEventClick={onEventClickMock}
+      />
+    );
+    const eventEl = screen.getByRole('button', { name: 'Event 1, 09:00 - 10:00' });
+    expect(eventEl).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(eventEl, { key: 'Enter' });
+    expect(onEventClickMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '1', title: 'Event 1' })
+    );
   });
 });

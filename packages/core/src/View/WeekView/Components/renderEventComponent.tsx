@@ -14,10 +14,10 @@ export const renderEventComponent = (
   event: EventProps,
   config: any,
   dayDate: Date,
-  onEventClick: (event: EventProps) => void,
-  onEventResize: (event: EventProps) => void,
+  onEventClick: ((event: EventProps) => void) | undefined,
+  onEventResize: ((event: EventProps) => void) | undefined,
   parsedSlotMax: number,
-  isDraggable: boolean,
+  isDraggable?: boolean,
   eventRenderingPlugins?: CalendarPlugin[]
 ): ReactElement | null => {
   if (eventRenderingPlugins && eventRenderingPlugins.length > 0) {

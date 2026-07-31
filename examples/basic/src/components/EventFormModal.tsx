@@ -72,8 +72,8 @@ function EventFormModal({ isOpen, onClose, onSubmit, eventData, config, resource
       return;
     }
 
-    let finalStart = new TZDate(formData.start, config.timeZone);
-    let finalEnd = new TZDate(formData.end, config.timeZone);
+    const finalStart = new TZDate(formData.start, config.timeZone);
+    const finalEnd = new TZDate(formData.end, config.timeZone);
 
     if (formData.isAllDay) {
       finalStart.setUTCHours(0, 0, 0, 0);

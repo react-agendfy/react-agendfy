@@ -7,11 +7,14 @@ import { Settings } from "lucide-react";
 import MyRightHeaderPlugin from "./components/RightHeaderPlugin";
 import  exportsPlugin from '@react-agendfy/plugin-export-reports'
 import resourceFilterPlugin from "@react-agendfy/plugin-filter";
+import { createQuickAddPlugin } from "@react-agendfy/ai";
 import { v6 } from "uuid";
 
 class ExampleEmailAdapter {
-  send(emailConfig: any) {
-    console.log("Enviando email com config:", emailConfig);
+  // Matches the EmailAdapter interface from @react-agendfy/core
+  // (src/types/notification.ts): sendEmail(subject, body, recipient?).
+  sendEmail(subject: string, body: string, recipient?: string) {
+    console.log("Sending email:", { subject, body, recipient });
   }
 }
 
@@ -279,6 +282,16 @@ const App: FC = () => {
     { key: 'search', location: "right", type: "search", component: MyRightHeaderPlugin, label: 'Search' },
     { key: 'customView', type: "view", viewName: "custom view", component: MyCustomView, label: 'Custom View' },
     { key: 'darkTheme',...darkThemePlugin, label: 'Dark Theme' },
+    {
+      // AI natural-language quick add. With no adapter it uses the built-in
+      // deterministic parser (works offline, no API key). For LLM-quality
+      // parsing point httpAdapter at your own backend proxy, e.g.:
+      //   adapter: httpAdapter({ endpoint: '/api/ai' })
+      ...createQuickAddPlugin({
+        onEventCreate: (event) => setEvents(prev => [...prev, event]),
+      }),
+      label: 'AI Quick Add',
+    },
     ...exportsPlugin,
   ], []);
 
@@ -289,7 +302,7 @@ const App: FC = () => {
     }
     const defaultActive: { [key: string]: boolean } = {};
     allPlugins.forEach(p => {
-      defaultActive[p.key] = p.key === 'settings';
+      defaultActive[p.key] = p.key === 'settings' || p.key === 'ai-quick-add';
     });
     return defaultActive;
   });
@@ -327,7 +340,6 @@ const App: FC = () => {
           resources={resources}
           onDateRangeSelect={handleOpenModal}
           filteredResources={filteredResources}
-          onResourceFilterChange={handleResourceFilterChange}
           emailAdapter={new ExampleEmailAdapter()}
           emailConfig={{ defaultRecipient: "user@example.com" }}
           theme={theme}

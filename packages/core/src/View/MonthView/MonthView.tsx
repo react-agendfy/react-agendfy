@@ -1,6 +1,6 @@
 // MonthView.tsx
 import React, { useMemo, useCallback, useState } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { endOfWeek, isSameMonth, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDays, getDay, isSameDay } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
 import { ensureDate, expandRecurringEvents } from '../../Utils/DateTrannforms';
@@ -10,6 +10,7 @@ import { MonthViewProps, EventProps } from '../../types/types';
 import { EventItem } from './Components/EventItem';
 import { CalendarDay } from './Components/CalendarDay';
 import { normalizeEvents } from '../../Utils/calendarHelpers';
+import { useGridNavigation } from '../../hooks/useGridNavigation';
 
 const MonthView: React.FC<MonthViewProps> = ({
   events = [],
@@ -29,7 +30,10 @@ const MonthView: React.FC<MonthViewProps> = ({
   const [selStart, setSelStart] = useState<Date | null>(null);
   const [selEnd, setSelEnd] = useState<Date | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
 const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.timeZone)), [currentDate, config?.timeZone]);
   const tz = config?.timeZone;
   const locale = getLocale(config?.lang);
@@ -99,29 +103,70 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     setSelecting(false); setSelStart(null); setSelEnd(null);
   };
 
-  const isSelected = (d: Date) => selecting && selStart && selEnd && d >= (selStart < selEnd ? selStart : selEnd) && d <= (selStart > selEnd ? selStart : selEnd);
+  const isSelected = (d: Date): boolean => Boolean(selecting && selStart && selEnd && d >= (selStart < selEnd ? selStart : selEnd) && d <= (selStart > selEnd ? selStart : selEnd));
+
+  // Roving tabindex over the flattened day grid (WAI-ARIA grid pattern).
+  const allDays = useMemo(() => weeks.flat(), [weeks]);
+  const defaultFocusIndex = useMemo(() => {
+    const idx = allDays.findIndex((d) => isSameDay(d, new TZDate(currentDate, tz)));
+    return idx >= 0 ? idx : 0;
+  }, [allDays, currentDate, tz]);
+  const handleActivateCell = useCallback(
+    (index: number) => {
+      const day = allDays[index];
+      if (day && !isResizing) onDayClick?.(day);
+    },
+    [allDays, onDayClick, isResizing]
+  );
+  const { getCellProps } = useGridNavigation({
+    cellCount: allDays.length,
+    columns: 7,
+    defaultIndex: defaultFocusIndex,
+    onActivateCell: handleActivateCell,
+  });
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            'To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new day, then press space or enter again to drop, or press escape to cancel.',
+        },
+      }}
+    >
       {showResourceView && resources.length > 0 && (
         <ResourceView resources={resources} events={expandedEvents} currentDate={currentDate} />
       )}
 
-      <div className="react-agenfy-monthview-container" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-        <div className="react-agenfy-monthview-header">
+      <div
+        className="react-agendfy-monthview-container"
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        role="grid"
+        aria-label={format(monthStart, 'MMMM yyyy', { locale })}
+      >
+        <div className="react-agendfy-monthview-header" role="row">
           {eachDayOfInterval({
             start: startOfWeek(new TZDate(currentDate, tz)),
             end: addDays(startOfWeek(new TZDate(currentDate, tz)), 6),
           }).map(d => (
-            <div key={d.toISOString()} className="react-agenfy-monthview-day-label">
+            <div
+              key={d.toISOString()}
+              className="react-agendfy-monthview-day-label"
+              role="columnheader"
+              aria-label={format(d, 'EEEE', { locale })}
+            >
               {format(d, 'EEEEEE', { locale })}
             </div>
           ))}
         </div>
 
-        <div className="react-agenfy-monthview-grid-container">
+        <div className="react-agendfy-monthview-grid-container" role="rowgroup">
           {weeks.map((week, i) => (
-            <div key={i} className="react-agenfy-monthview-week-row">
+            <div key={i} className="react-agendfy-monthview-week-row" role="row">
               {week.map((day, j) => (
                 <CalendarDay
                   key={day ? format(day, 'yyyy-MM-dd') : `empty-${i}-${j}`}
@@ -135,6 +180,7 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
                   isSelected={isSelected(day)}
                   monthDate={monthStart}
                   onEventResize={handleEventResize}
+                  navProps={getCellProps(i * 7 + j)}
                 />
               ))}
             </div>

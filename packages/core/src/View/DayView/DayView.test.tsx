@@ -15,6 +15,10 @@ jest.mock('@dnd-kit/core', () => ({
     </div>
   ),
   useDroppable: jest.fn(() => ({ setNodeRef: jest.fn(), isOver: false })),
+  useSensor: jest.fn(),
+  useSensors: jest.fn(() => []),
+  PointerSensor: jest.fn(),
+  KeyboardSensor: jest.fn(),
 }));
 
 
@@ -88,7 +92,7 @@ describe('DayView Component', () => {
     const props = { ...baseProps, currentDate: today };
     render(<DayView {...props} />);
     const redLine = screen.getByText((content, element) => {
-      return element?.style.borderTop === "2px dashed red";
+      return element?.classList.contains("react-agendfy-now-line") ?? false;
     });
     expect(redLine).toBeInTheDocument();
   });

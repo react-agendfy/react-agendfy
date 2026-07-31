@@ -10,6 +10,7 @@ export const useEventReminder = ({
   notificationService,
   addToast,
   alertConfig,
+  config: localeConfig,
 }: UseEventReminderProps) => {
   const [alertedEvents, setAlertedEvents] = useState<Set<string>>(new Set());
 
@@ -33,12 +34,12 @@ export const useEventReminder = ({
         const isNowAlertTime = now.getTime() === alertTime.getTime();
 
         if (isAfter(now, alertTime) || isNowAlertTime) {
-          notificationService.notifyEvent(event, addToast);
+          notificationService.notifyEvent(event, addToast, localeConfig);
           setAlertedEvents((prev) => new Set(prev).add(event.id));
         }
       });
     }, 60000);
 
     return () => clearInterval(intervalId);
-  }, [events, alertedEvents, alertConfig, addToast, notificationService]);
+  }, [events, alertedEvents, alertConfig, addToast, notificationService, localeConfig]);
 };

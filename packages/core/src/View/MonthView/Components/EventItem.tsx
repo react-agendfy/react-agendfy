@@ -7,15 +7,15 @@ import { TZDate } from '@date-fns/tz';
 import { ensureDate } from '../../../Utils/DateTrannforms';
 import ResourceDisplay from '../../../Components/Resource/ResourceDisplay';
 import { BaseEventProps } from '../../../types/types';
+import { getContrastText } from '../../../Utils/colorContrast';
 import './EventItem.css';
 
-interface EventItemProps extends BaseEventProps {
+interface EventItemProps extends Omit<BaseEventProps, 'onEventResize'> {
   dayWidth: number;
   isPreview?: boolean;
   isStart: boolean;
   onEventResize?: (status: 'start' | 'stop', event?: BaseEventProps['event']) => void;
   isEnd: boolean;
-  config?: any;
 }
 
 const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?: boolean }> = ({
@@ -52,7 +52,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
       const daysAdded = Math.max(0, Math.round(delta.width / dayWidth));
       if (daysAdded > 0) {
         const newEnd = addDays(eventStart, differenceInDays(eventEnd, eventStart) + daysAdded);
-        onEventResize({ ...event, end: newEnd.toISOString(), isMultiDay: !isSameDay(eventStart, newEnd) });
+        onEventResize('stop', { ...event, end: newEnd.toISOString(), isMultiDay: !isSameDay(eventStart, newEnd) });
       }
     }
   };
@@ -65,15 +65,20 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
     return format(date, 'HH:mm');
   }, [event.start, config?.timeZone]);
 
+  const endTime = useMemo(() => {
+    const date = ensureDate(event.end, config?.timeZone);
+    return format(date, 'HH:mm');
+  }, [event.end, config?.timeZone]);
+
   const showContent = isStart || !event.isMultiDay;
  
   const className = [
-    'react-agenfy-event-item',
-    isDragging && 'react-agenfy-event-item-dragging',
-    isPreview && 'react-agenfy-event-item-preview',
-    event.isMultiDay && isStart && 'react-agenfy-event-item-multiday-start',
-    event.isMultiDay && isEnd && 'react-agenfy-event-item-multiday-end',
-    event.isMultiDay && !isStart && !isEnd && 'react-agenfy-event-item-multiday-middle',
+    'react-agendfy-event-item',
+    isDragging && 'react-agendfy-event-item-dragging',
+    isPreview && 'react-agendfy-event-item-preview',
+    event.isMultiDay && isStart && 'react-agendfy-event-item-multiday-start',
+    event.isMultiDay && isEnd && 'react-agendfy-event-item-multiday-end',
+    event.isMultiDay && !isStart && !isEnd && 'react-agendfy-event-item-multiday-middle',
   ].filter(Boolean).join(' ');
 
   const eventDurationDays = useMemo(() => {
@@ -110,6 +115,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         className={className}
         style={{
           backgroundColor: event.color || '#3490dc',
+          color: getContrastText(event.color || '#3490dc'),
           cursor: canDrag ? 'grab' : 'pointer',
           opacity: isDragging ? 0.7 : 1,
           width: '100%',
@@ -124,15 +130,35 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         }}
         {...(canDrag ? listeners : {})}
         {...(canDrag ? attributes : {})}
+        role="button"
+        tabIndex={0}
+        aria-label={`${event.title}, ${startTime} - ${endTime}`}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === 'Enter') {
+            // Enter activates the event (click); Space is left to dnd-kit's
+            // KeyboardSensor so keyboard drags stay available on draggables.
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isResizing) onEventClick?.(event);
+            return;
+          }
+          if (e.key === ' ' && !canDrag) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isResizing) onEventClick?.(event);
+            return;
+          }
+          if (canDrag) (listeners as any)?.onKeyDown?.(e);
+        }}
       >
         {showContent && (
           <>
-            <div className="react-agenfy-event-item-content">
+            <div className="react-agendfy-event-item-content">
               <span>{event.title}</span>
               <span>{startTime}</span>
             </div>
             {event.resources?.length > 0 && (
-              <div className="react-agenfy-event-item-resources">
+              <div className="react-agendfy-event-item-resources">
                 <ResourceDisplay resources={event.resources} maxVisible={2} />
               </div>
             )}

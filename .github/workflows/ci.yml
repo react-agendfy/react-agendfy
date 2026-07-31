@@ -1,4 +1,4 @@
-name: npm run CI
+name: CI
 
 on:
   push:
@@ -6,30 +6,50 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [20.x, 22.x] # remove o 18, já que alguns pacotes não suportam
+        node-version: [20.x, 22.x] # 18 removed: some packages no longer support it
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'yarn'
 
-      # 🧩 ATIVA Yarn Berry ANTES de instalar as dependências
-      - name: Enable Yarn Berry
-        run: yarn set version berry
-
       - name: Install dependencies
         run: yarn install --immutable
+
+      - name: Lint
+        run: yarn lint
+
+      # Plugin packages use project references to @react-agendfy/core, so they
+      # are checked with `tsc -b` (build mode), which emits core's declaration
+      # files first and then typechecks each plugin against them.
+      - name: Typecheck
+        run: |
+          npx tsc --noEmit -p packages/core/tsconfig.json
+          npx tsc -b packages/plugins/filters packages/plugins/timeline packages/plugins/theme
+
+      - name: Test core
+        run: yarn workspace @react-agendfy/core test
+
+      - name: Test AI package
+        run: yarn workspace @react-agendfy/ai test
 
       - name: Build all workspaces
         run: yarn workspaces foreach --all --topological --no-private -v run build

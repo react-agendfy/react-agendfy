@@ -1,195 +1,208 @@
-.fc-header-toolbar {
+.react-agendfy-header-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: var(--agendfy-space-4);
   flex-wrap: wrap;
-  gap: 1rem;
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-white);
+  gap: var(--agendfy-space-4);
+  border-bottom: 1px solid var(--agendfy-color-border);
+  background-color: var(--agendfy-color-surface);
 }
 
-.fc-toolbar-chunk {
+.react-agendfy-toolbar-chunk {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--agendfy-space-3);
   flex-wrap: wrap;
 }
 
-.fc-toolbar-chunk:first-child {
+.react-agendfy-toolbar-chunk:first-child {
   flex-grow: 1;
   justify-content: flex-start;
 }
 
-.fc-toolbar-title {
-  font-size: 1.25rem;
-  font-weight: 500;
+.react-agendfy-toolbar-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
   margin: 0;
   white-space: nowrap;
   flex-shrink: 0;
-  color: var(--color-text-gray-800);
+  color: var(--agendfy-color-text);
 }
 
-.fc-toolbar-chunk:last-child {
+.react-agendfy-toolbar-chunk:last-child {
   justify-content: flex-end;
 }
 
-.fc-button-group {
-  display: flex;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+/* segmented control (nav + view switcher) */
+.react-agendfy-button-group {
+  display: inline-flex;
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md);
   overflow: hidden;
+  background-color: var(--agendfy-color-surface-2);
+  box-shadow: var(--agendfy-shadow-sm);
 }
 
-.fc-button-group .fc-button {
+.react-agendfy-button-group .react-agendfy-button {
   border: none;
   border-radius: 0;
-  padding: 0.5rem 0.75rem;
-  background-color: var(--btn-bg);
-  color: var(--color-text-gray-800);
+  padding: var(--agendfy-space-2) var(--agendfy-space-3);
+  background-color: transparent;
+  color: var(--agendfy-color-text-muted);
+  font: inherit;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--agendfy-space-1);
+  transition: background-color var(--agendfy-transition-duration)
+      var(--agendfy-transition-timing),
+    color var(--agendfy-transition-duration) var(--agendfy-transition-timing);
 }
 
-.fc-button-group .fc-button:hover {
-  background-color: var(--btn-hover-bg);
+.react-agendfy-button-group .react-agendfy-button:hover {
+  background-color: var(--agendfy-color-surface-hover);
+  color: var(--agendfy-color-text);
 }
 
-.fc-button-group .fc-button + .fc-button {
-  border-left: 1px solid var(--color-border); /* Adiciona separador entre botões agrupados */
+.react-agendfy-button-group .react-agendfy-button + .react-agendfy-button {
+  border-inline-start: 1px solid var(--agendfy-color-border);
 }
 
-.fc-button.fc-button-primary.fc-button-active {
-  background-color: var(--color-bg-view-btn-active);
-  color: var(--color-text-white);
+.react-agendfy-button.react-agendfy-button-primary.react-agendfy-button-active {
+  background-color: var(--agendfy-color-accent);
+  color: var(--agendfy-color-event-fg);
 }
 
-/* Contêineres de Filtro e Exportação */
-.fc-filter-container,
-.fc-export-container {
+/* Filter & export containers */
+.react-agendfy-filter-container,
+.react-agendfy-export-container {
   position: relative;
 }
 
-.fc-filter-dropdown,
-.fc-export-menu {
+.react-agendfy-filter-dropdown,
+.react-agendfy-export-menu {
   position: absolute;
-  top: 100%; /* Posiciona abaixo do botão */
-  right: 0; /* Alinha à direita do botão */
-  background-color: var(--color-bg-white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-  z-index: 1000; /* Garante que fique acima de outros conteúdos */
+  top: 100%;
+  inset-inline-end: 0;
+  background-color: var(--agendfy-color-surface);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md);
+  box-shadow: var(--agendfy-shadow-lg);
+  z-index: 1000;
   min-width: 12rem;
-  padding: 0.5rem 0;
-  margin-top: 0.5rem;
+  padding: var(--agendfy-space-2) 0;
+  margin-top: var(--agendfy-space-2);
 }
 
-.fc-filter-option {
+.react-agendfy-filter-option {
   display: flex;
   align-items: center;
-  padding: 0.5rem 1rem;
+  padding: var(--agendfy-space-2) var(--agendfy-space-4);
   cursor: pointer;
-  color: var(--color-text-gray-800);
-
+  color: var(--agendfy-color-text);
 }
 
-.fc-filter-option:hover {
-  background-color: var(--color-bg-hover);
+.react-agendfy-filter-option:hover {
+  background-color: var(--agendfy-color-surface-hover);
 }
 
-.fc-filter-option input[type="checkbox"] {
-  margin-right: 0.5rem;
-  accent-color: var(--color-accent-checkbox);
+.react-agendfy-filter-option input[type="checkbox"] {
+  margin-inline-end: var(--agendfy-space-2);
+  accent-color: var(--agendfy-color-accent);
 }
 
-.fc-clear-filter {
+.react-agendfy-clear-filter {
   width: 100%;
-  padding: 0.5rem 1rem;
-  text-align: left;
+  padding: var(--agendfy-space-2) var(--agendfy-space-4);
+  text-align: start;
   background: none;
   border: none;
-  color: var(--color-clear-btn);
+  color: var(--agendfy-color-now);
   cursor: pointer;
   font-size: var(--font-size-sm);
 }
- 
-.fc-export-option {
+
+.react-agendfy-export-option {
   display: block;
   width: 100%;
-  padding: 0.5rem 1rem;
-  text-align: left;
+  padding: var(--agendfy-space-2) var(--agendfy-space-4);
+  text-align: start;
   background: none;
   border: none;
-  color: var(--color-text-gray-800);
+  color: var(--agendfy-color-text);
   cursor: pointer;
   font-size: var(--font-size-sm);
 }
 
-.fc-export-option:hover {
-  background-color: var(--color-bg-hover);
+.react-agendfy-export-option:hover {
+  background-color: var(--agendfy-color-surface-hover);
 }
 
-.fc-icon {
+.react-agendfy-icon {
   width: 1rem;
   height: 1rem;
-  margin-right: 0.25rem;
+  margin-inline-end: var(--agendfy-space-1);
 }
 
-.fc-plugin-left, .fc-plugin-right {
+.react-agendfy-plugin-left,
+.react-agendfy-plugin-right {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--agendfy-space-2);
 }
 
 @media (max-width: 768px) {
-  .fc-header-toolbar { 
+  .react-agendfy-header-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .fc-toolbar-chunk {
+  .react-agendfy-toolbar-chunk {
     justify-content: center;
     width: 100%;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--agendfy-space-2);
   }
 
-  .fc-toolbar-chunk:first-child {
+  .react-agendfy-toolbar-chunk:first-child {
     order: 2;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--agendfy-space-2);
   }
-  .fc-toolbar-chunk:first-child .fc-button-group {
+  .react-agendfy-toolbar-chunk:first-child .react-agendfy-button-group {
     justify-content: center;
   }
-  .fc-toolbar-chunk:first-child .fc-toolbar-title {
+  .react-agendfy-toolbar-chunk:first-child .react-agendfy-toolbar-title {
     width: 100%;
     text-align: center;
   }
 
-  .fc-toolbar-chunk:nth-child(2) {
+  .react-agendfy-toolbar-chunk:nth-child(2) {
     order: 3;
     justify-content: center;
   }
 
-  .fc-toolbar-chunk:last-child {
+  .react-agendfy-toolbar-chunk:last-child {
     order: 1;
     justify-content: center;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--agendfy-space-2);
   }
-  .fc-toolbar-chunk:last-child .fc-button-group {
+  .react-agendfy-toolbar-chunk:last-child .react-agendfy-button-group {
     justify-content: center;
     width: 100%;
   }
-  .fc-filter-container, .fc-export-container {
+  .react-agendfy-filter-container,
+  .react-agendfy-export-container {
     width: 100%;
     display: flex;
     justify-content: center;
   }
-  .fc-filter-dropdown, .fc-export-menu {
-    right: auto;
-    left: 50%;
+  .react-agendfy-filter-dropdown,
+  .react-agendfy-export-menu {
+    inset-inline-end: auto;
+    inset-inline-start: 50%;
     transform: translateX(-50%);
     min-width: 90%;
   }

@@ -3,11 +3,12 @@ import { format, addDays, isWithinInterval, startOfDay, endOfDay, parseISO } fro
 import { EventProps, ListViewProps } from '../types/types';
 import { TZDate } from '@date-fns/tz';
 import { getLocale } from '../Utils/locate';
+import { formatMessage } from '../i18n';
 
 const AgendaView: React.FC<ListViewProps> = ({
   events,
-  currentDate = new TZDate(new Date(), config?.timeZone),
   config,
+  currentDate = new TZDate(new Date(), config?.timeZone),
   onEventClick,
 }) => {
   const agendaDays = 7;
@@ -28,8 +29,14 @@ const AgendaView: React.FC<ListViewProps> = ({
 
   if (relevantEvents.length === 0) {
     return (
-      <div className="react-agenfy-listview-empty">
-        <p>There are no events for the next {agendaDays} days.</p>
+      <div className="react-agendfy-listview-empty">
+        <p>
+          {formatMessage(
+            config?.agenda_no_events,
+            { days: agendaDays },
+            "There are no events for the next {days} days."
+          )}
+        </p>
       </div>
     );
   }
@@ -46,18 +53,36 @@ const AgendaView: React.FC<ListViewProps> = ({
   const daysWithEvents = Object.keys(eventsByDay).sort();
 
   return (
-    <div className="react-agenfy-agendaview-container">
+    <div className="react-agendfy-agendaview-container">
       {daysWithEvents.map(dayKey => (
-        <div key={dayKey} className="react-agenfy-agendaview-day">
-          <h3 className="react-agenfy-agendaview-day-header">
-            {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang) })}
+        <div key={dayKey} className="react-agendfy-agendaview-day">
+          <h3 className="react-agendfy-agendaview-day-header">
+            {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang ?? 'en') })}
           </h3>
-          {eventsByDay[dayKey].map(event => (
-            <div key={event.id} className="react-agenfy-agendaview-event" style={{ borderLeftColor: event.color }} onClick={() => onEventClick && onEventClick(event)}>
-              <div className="react-agenfy-agendaview-event-time">{format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm')}</div>
-              <div className="react-agenfy-agendaview-event-title">{event.title}</div>
-            </div>
-          ))}
+          {eventsByDay[dayKey].map(event => {
+            const startLabel = format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm');
+            const endLabel = format(new TZDate(parseISO(event.end.toString()), config?.timeZone), 'HH:mm');
+            return (
+              <div
+                key={event.id}
+                className="react-agendfy-agendaview-event"
+                style={{ borderLeftColor: event.color }}
+                onClick={() => onEventClick?.(event)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onEventClick?.(event);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`${event.title}, ${startLabel} - ${endLabel}`}
+              >
+                <div className="react-agendfy-agendaview-event-time">{startLabel}</div>
+                <div className="react-agendfy-agendaview-event-title">{event.title}</div>
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>

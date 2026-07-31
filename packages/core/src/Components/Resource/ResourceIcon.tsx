@@ -2,7 +2,7 @@ import React from 'react';
 import { Resource } from '../../types/types';
 
 export const ResourceIcon = ({ resource }: {resource: Resource} ) => {
-  const getIcon = (type: string) => {
+  const getIcon = (type?: string) => {
     switch (type) {
       case 'person':
         return '👤';
@@ -18,7 +18,7 @@ export const ResourceIcon = ({ resource }: {resource: Resource} ) => {
   return (
     <span
       title={`${resource.name} (${resource.type})`}
-      className="react-agenfy-resourceicon"
+      className="react-agendfy-resourceicon"
     >
       {getIcon(resource.type)}
     </span>

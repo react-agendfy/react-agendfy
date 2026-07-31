@@ -43,7 +43,7 @@ export const DayColumn = memo(
         const minute = minutes % 60;
         const slotDate = setMinutes(setHours(dayStart, hour), minute);
         const slotKey = slotDate.toISOString();
-        let slotEvents = getEventsForDay(slotKey) || [];
+        const slotEvents = getEventsForDay(slotKey) || [];
         mapping[slotKey] = slotEvents;
       });
       return mapping;
@@ -81,29 +81,39 @@ export const DayColumn = memo(
 
     return (
       <div
-        className={`react-agenfy-daycolumn-container react-agenfy-today ${
-          isToday ? "react-agenfy-daycolumn-today" : ""
+        className={`react-agendfy-daycolumn-container react-agendfy-today ${
+          isToday ? "react-agendfy-daycolumn-today" : ""
         }`}
       >
         <div
-          className={`react-agenfy-daycolumn-header  react-agenfy-header-today ${
-            isToday ? "react-agenfy-daycolumn-header-today" : ""
+          className={`react-agendfy-daycolumn-header  react-agendfy-header-today ${
+            isToday ? "react-agendfy-daycolumn-header-today" : ""
           }`}
           onClick={() => {
             if (typeof onSlotClick === "function") onSlotClick(dayDate);
           }}
+          role="columnheader"
+          tabIndex={typeof onSlotClick === "function" ? 0 : undefined}
+          aria-label={format(dayDate, "EEEE dd/MM", { locale: getLocale(config?.lang) })}
+          aria-current={isToday ? "date" : undefined}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && typeof onSlotClick === "function") {
+              e.preventDefault();
+              onSlotClick(dayDate);
+            }
+          }}
         >
-          <div className="react-agenfy-daycolumn-header-text">
-            <div className="react-agenfy-daycolumn-weekday">
+          <div className="react-agendfy-daycolumn-header-text">
+            <div className="react-agendfy-daycolumn-weekday">
               {format(dayDate, "EEE", { locale: getLocale(config?.lang) })}
             </div>
-            <div className="react-agenfy-daycolumn-date">
+            <div className="react-agendfy-daycolumn-date">
               {format(dayDate, "dd/MM", { locale: getLocale(config?.lang) })}
             </div>
           </div>
         </div>
         <div
-          className="react-agenfy-daycolumn-slot-container"
+          className="react-agendfy-daycolumn-slot-container"
           style={{ minHeight: timeSlots.length * 40 }}
         >
           {businessIntervals.map((interval, idx) => {
@@ -116,15 +126,10 @@ export const DayColumn = memo(
             return (
               <div
                 key={idx}
+                className="react-agendfy-business-hours"
                 style={{
-                  position: "absolute",
                   top: `${top}px`,
                   height: `${height}px`,
-                  left: 0,
-                  right: 0,
-                  backgroundColor: "rgba(0, 128, 0, 0.1)",
-                  pointerEvents: "none",
-                  zIndex: 0,
                 }}
               />
             );
@@ -186,12 +191,9 @@ export const DayColumn = memo(
             );
           })}
           <div
+            className="react-agendfy-now-line"
             style={{
-              position: "absolute",
               top: `${redLineOffset}px`,
-              left: 0,
-              right: 0,
-              borderTop: "2px dashed red",
               zIndex: 1,
             }}
           />

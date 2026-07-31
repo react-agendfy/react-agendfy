@@ -1,55 +1,59 @@
-
-.react-agenfy-baseevent {
+.react-agendfy-baseevent {
   position: absolute;
-  color: #ffffff;
+  color: var(--agendfy-color-event-fg);
   border-radius: var(--baseevent-border-radius-medium);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 200;
+  box-shadow: var(--agendfy-shadow-sm);
+  transition: box-shadow var(--agendfy-transition-duration)
+    var(--agendfy-transition-timing);
 }
 
-.react-agenfy-baseevent--preview {
+.react-agendfy-baseevent:hover {
+  box-shadow: var(--agendfy-shadow-md);
+}
+
+.react-agendfy-baseevent--preview {
   opacity: 0.5;
 }
 
-.react-agenfy-baseevent__time {
+.react-agendfy-baseevent__time {
   font-size: var(--baseevent-time-font-size-medium);
   padding: var(--baseevent-padding-large);
-
-  opacity: 0.9;
+  color: inherit;
+  opacity: 0.95;
 }
 
 @media (max-width: 640px) {
-  .react-agenfy-baseevent {
+  .react-agendfy-baseevent {
     padding: var(--baseevent-padding-small);
     border-radius: var(--baseevent-border-radius-small);
   }
-  .react-agenfy-baseevent__time {
+  .react-agendfy-baseevent__time {
     font-size: var(--baseevent-time-font-size-small);
     padding: var(--baseevent-padding-medium);
-
   }
 }
 
 @media (min-width: 768px) {
-  .react-agenfy-baseevent {
+  .react-agendfy-baseevent {
     padding: var(--baseevent-padding-medium);
     border-radius: var(--baseevent-border-radius-medium);
   }
-  .react-agenfy-baseevent__time {
+  .react-agendfy-baseevent__time {
     font-size: var(--baseevent-time-font-size-medium);
-    
   }
 }
 
 @media (min-width: 1024px) {
-  .react-agenfy-baseevent {
+  .react-agendfy-baseevent {
     padding: var(--baseevent-padding-min);
     border-radius: var(--baseevent-border-radius-large);
   }
-  .react-agenfy-baseevent__time {
+  .react-agendfy-baseevent__time {
     font-size: var(--baseevent-time-font-size-large);
   }
 }

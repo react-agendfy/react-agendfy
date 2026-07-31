@@ -48,20 +48,20 @@ const ResourceFilterComponent: FC<ResourceFilterPluginProps> = ({
   if (resources.length === 0) return null;
 
   return (
-    <div className="fc-filter-container" ref={filterRef}>
-      <button type="button" className="fc-filter-button fc-button fc-button-primary" onClick={() => setIsFilterOpen(!isFilterOpen)}>
-        <Filter className="fc-icon" size={16} />
+    <div className="react-agendfy-filter-container" ref={filterRef}>
+      <button type="button" className="react-agendfy-filter-button react-agendfy-btn" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+        <Filter className="react-agendfy-icon" size={16} />
         <span>{config?.filter_resources || "Filter"}{filteredResources.length > 0 && ` (${filteredResources.length})`}</span>
       </button>
       {isFilterOpen && (
-        <div className="fc-filter-dropdown">
+        <div className="react-agendfy-filter-dropdown">
           {resources.map((resource: Resource) => (
-            <label key={resource.id} className="fc-filter-option">
-              <input type="checkbox" value={resource.id} checked={filteredResources.includes(resource.id)} onChange={(e) => handleResourceChange(resource.id, e.target.checked)} />
+            <label key={resource.id} className="react-agendfy-filter-option">
+              <input type="checkbox" value={resource.id} checked={filteredResources.includes(String(resource.id))} onChange={(e) => handleResourceChange(String(resource.id), e.target.checked)} />
               <span>{resource.name}</span>
             </label>
           ))}
-          <button className="fc-clear-filter" onClick={handleClearFilters}>
+          <button className="react-agendfy-clear-filter" onClick={handleClearFilters}>
             {config?.clear_filter || "Clear"}
           </button>
         </div>

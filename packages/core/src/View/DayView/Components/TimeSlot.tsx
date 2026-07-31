@@ -19,7 +19,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   config,
 }: TimeSlotProps) => {
   const slotTime = getSlotTime(dayDate, slotMin, config?.slotDuration!, index, config?.timeZone!);
-  const { setNodeRef } = useDroppable({ id: slotTime });
+  const { setNodeRef } = useDroppable({ id: slotTime.toISOString() });
 
   const handleClickSlot = useCallback(() => {
     if (onSlotClick) {
@@ -32,11 +32,11 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   }, [slotEvents, config]);
 
   return (
-    <div ref={setNodeRef} className="react-agenfy-timeslot-container" onClick={handleClickSlot}>
-      <span className="react-agenfy-timeslot-label">
+    <div ref={setNodeRef} className="react-agendfy-timeslot-container" onClick={handleClickSlot}>
+      <span className="react-agendfy-timeslot-label">
         {format(new TZDate(slotTime, config?.timeZone), "HH:mm")}
       </span>
-      <div className="react-agenfy-timeslot-events">
+      <div className="react-agendfy-timeslot-events">
         {positionedEvents.map((event: EventProps) => {
           const eventStart = ensureDate(event.start, config?.timeZone);
           const eventEnd = ensureDate(event.end, config?.timeZone);

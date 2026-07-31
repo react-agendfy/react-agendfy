@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { DndContext, pointerWithin } from "@dnd-kit/core";
+import { DndContext, KeyboardSensor, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
 import {
   format,
   addMinutes,
@@ -15,6 +15,7 @@ import {
 } from "date-fns";
 import { RRule, rrulestr } from "rrule";
 import { ensureDate } from "../../Utils/DateTrannforms";
+import { formatMessage } from "../../i18n";
 import { EventProps, WeekProps } from "../../types/types";
 import { TZDate } from "@date-fns/tz";
 import { DayColumn } from "./Components/DayColumn";
@@ -47,13 +48,10 @@ const WeekView = ({
     () => ((endHour - startHour) * 60) / slotDuration,
     [startHour, endHour, slotDuration]
   );
-  if (isNaN  (numberOfSlots) || numberOfSlots <= 0) {
-    return (
-      <div className="react-agenfy-weekview-error">
-        {config?.slotDuration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas.
-      </div>
-    );
-  }
+  // Invalid-slot detection: the early return happens AFTER all hooks (below)
+  // so hook order stays stable across renders (rules-of-hooks). The hooks
+  // tolerate NaN/negative lengths (Array.from({length: NaN}) === []).
+  const hasInvalidSlots = isNaN(numberOfSlots) || numberOfSlots <= 0;
 
   const currentWeekStart = useMemo(
     () => startOfWeek(new TZDate(currentDate, config?.timeZone), { weekStartsOn: 0 }),
@@ -123,7 +121,9 @@ const WeekView = ({
       ensureDate(draggedEvent.start, config?.timeZone)
     );
 
-    if (Math.abs(delta.y) < 1) {
+    // Consider both axes so a horizontal drag (moving to another day column)
+    // is not misclassified as a click and discarded.
+    if (!delta || (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5)) {
       onEventClick?.(draggedEvent);
       return;
     }
@@ -226,44 +226,72 @@ const WeekView = ({
 
   const isDraggable = useMemo(() => typeof onEventUpdate === "function", [onEventUpdate]);
 
+  // Explicit sensors: PointerSensor keeps the existing click-vs-drag delta
+  // detection intact, KeyboardSensor enables keyboard-initiated drags.
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  if (hasInvalidSlots) {
+    return (
+      <div className="react-agendfy-weekview-error">
+        {formatMessage(
+          config?.invalid_slot_duration,
+          { duration: config?.slotDuration ?? "" },
+          "{duration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas."
+        )}
+      </div>
+    );
+  }
+
   return (
     <DndContext
       onDragEnd={handleDragEnd}
       onDragStart={handleDragStart}
       collisionDetection={pointerWithin}
+      sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
+        },
+      }}
     >
-      <div className="react-agenfy-weekview-container">
-        <div className="react-agenfy-weekview-all-day">
-          <div className="react-agenfy-weekview-all-day-label">
-            <div className="react-agenfy-weekview-all-day-text">{config?.all_day}</div>
+      <div
+        className="react-agendfy-weekview-container"
+        role="grid"
+        aria-label={`${format(currentWeekStart, "d MMM yyyy")} - ${format(addDays(currentWeekStart, 6), "d MMM yyyy")}`}
+      >
+        <div className="react-agendfy-weekview-all-day">
+          <div className="react-agendfy-weekview-all-day-label">
+            <div className="react-agendfy-weekview-all-day-text">{config?.all_day}</div>
           </div>
           {daysOfWeek.map((dayIndex) => {
             const dayDate = addDays(currentWeekStart, dayIndex);
             const dayAllDayEvents = allDayEventsByDay[dayIndex] || [];
             return (
-              <div key={dayIndex} className="react-agenfy-weekview-all-day-column">
+              <div key={dayIndex} className="react-agendfy-weekview-all-day-column">
                 {dayAllDayEvents.map((event) => (
                   <div
                     key={event.id}
                     style={{ backgroundColor: event.color }}
-                    className="react-agenfy-weekview-all-day-event"
+                    className="react-agendfy-weekview-all-day-event"
                   >
-                    {event.title || "Event"}
+                    {event.title || config?.untitled_event || "Event"}
                   </div>
                 ))}
               </div>
             );
           })}
         </div>
-        <div 
-          className="react-agenfy-weekview-timeslot-grid"
+        <div
+          className="react-agendfy-weekview-timeslot-grid"
           onMouseUp={handleSelectionMouseUp}
           onMouseLeave={handleSelectionMouseUp}
+          role="row"
         >
-          <div className="react-agenfy-weekview-timeslot-label">
-            <div className="react-agenfy-weekview-timeslot-label-top" />
+          <div className="react-agendfy-weekview-timeslot-label">
+            <div className="react-agendfy-weekview-timeslot-label-top" />
             {timeslotLabels.map((label, index) => (
-              <div key={`hour-${index}`} className="react-agenfy-weekview-timeslot">
+              <div key={`hour-${index}`} className="react-agendfy-weekview-timeslot">
                 {label}
               </div>
             ))}
@@ -273,7 +301,10 @@ const WeekView = ({
             return (
               <div
                 key={dayIndex}
-                className={`react-agenfy-weekview-day-column ${dayIndex < daysOfWeek.length - 1 ? "react-agenfy-border-right" : ""}`}
+                className={`react-agendfy-weekview-day-column ${dayIndex < daysOfWeek.length - 1 ? "react-agendfy-border-right" : ""}`}
+                role="gridcell"
+                aria-label={format(dayDate, "EEEE, d MMMM yyyy")}
+                aria-current={isSameDay(dayDate, new TZDate(new Date(), config?.timeZone)) ? "date" : undefined}
               >
                 <DayColumn
                   dayDate={dayDate}

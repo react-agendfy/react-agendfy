@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { DndContext } from "@dnd-kit/core";
+import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
@@ -35,13 +35,10 @@ const DayView: React.FC<DayViewProps> = ({
   const numberOfSlots =
     Math.floor(((parsedSlotMax - parsedSlotMin) * 60) / (config?.slotDuration || 30));
 
-  if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
-    return (
-      <div>
-        {config?.slotDuration} invalid time slot. Make sure the end time is greater than the start time and that they are valid hours.
-      </div>
-    );
-  }
+  // Explicit sensors: PointerSensor preserves pointer click/drag behavior,
+  // KeyboardSensor enables keyboard-initiated drags. Declared before any
+  // early return so the hook order stays stable.
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
   const handleDragEnd = useCallback(
     (event: any) => {
@@ -82,6 +79,15 @@ const DayView: React.FC<DayViewProps> = ({
     [events, config]
   );
 
+  // Early return AFTER all hooks so hook order stays stable (rules-of-hooks).
+  if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
+    return (
+      <div>
+        {config?.slotDuration} invalid time slot. Make sure the end time is greater than the start time and that they are valid hours.
+      </div>
+    );
+  }
+
   const today = new TZDate(new Date(), config?.timeZone || 'UTC');
   const isToday = isSameDay(currentDate, today);
   const redLineOffset = calculateRedLineOffset(
@@ -92,9 +98,18 @@ const DayView: React.FC<DayViewProps> = ({
   );
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext
+      onDragEnd={handleDragEnd}
+      sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
+        },
+      }}
+    >
       <div 
-        className="react-agenfy-dayview-container"
+        className="react-agendfy-dayview-container"
         style={{ position: 'relative', zIndex: 0 }}
       >
         {[...Array(numberOfSlots)].map((_, index) => {
@@ -123,12 +138,9 @@ const DayView: React.FC<DayViewProps> = ({
         })}
         {isToday && (
           <div
+            className="react-agendfy-now-line"
             style={{
-              position: "absolute",
               top: `${redLineOffset}px`,
-              left: 0,
-              right: 0,
-              borderTop: "2px dashed red",
               zIndex: 15,
             }}
           />

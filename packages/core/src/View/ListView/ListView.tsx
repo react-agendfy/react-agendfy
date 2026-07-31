@@ -14,21 +14,21 @@ import { ListEvent } from "./Components/ListEvent";
 import { EventProps, ListViewProps } from "../../types/types";
 import { getLocale } from "../../Utils/locate";
 
-interface RowProps extends RowComponentProps<{
+interface ListRowData {
   daysWithEvents: Date[];
   eventsByDay: Record<string, EventProps[]>;
   onEventClick?: (event: EventProps) => void;
   config?: any;
-}> {}
+}
 
-const RowComponent: React.FC<RowProps> = ({ 
-  index, 
+const RowComponent = ({
+  index,
   style,
   daysWithEvents,
   eventsByDay,
   onEventClick,
   config,
-}) => {
+}: RowComponentProps<ListRowData>): React.ReactElement => {
   const day = daysWithEvents[index];
   const dayKey = format(day, "yyyy-MM-dd");
   const dayEvents = eventsByDay[dayKey] || [];
@@ -44,16 +44,16 @@ const RowComponent: React.FC<RowProps> = ({
         display: 'flex',
         flexDirection: 'column',
       }} 
-      className="react-agenfy-listview-day-container"
+      className="react-agendfy-listview-day-container"
     >
-      <div className="react-agenfy-listview-day-header-wrapper">
-        <h2 className="react-agenfy-listview-day-header">
+      <div className="react-agendfy-listview-day-header-wrapper">
+        <h2 className="react-agendfy-listview-day-header">
           {format(new TZDate(day, config?.timeZone), "EEEE, dd MMMM", {
             locale: getLocale(config?.timeZone),
           })}
         </h2>
       </div>
-      <div className="react-agenfy-listview-day-events">
+      <div className="react-agendfy-listview-day-events">
         {dayEvents.map((event: EventProps, idx: number) => (
           <ListEvent
             key={`${event.id}-${idx}`}
@@ -71,8 +71,8 @@ const RowComponent: React.FC<RowProps> = ({
 const ListView: React.FC<ListViewProps> = ({
   events,
   onEventClick,
-  currentDate = new TZDate(new Date(), config?.timeZone),
   config,
+  currentDate = new TZDate(new Date(), config?.timeZone),
 }) => {
   const monthStart = startOfMonth(new TZDate(currentDate, config?.timeZone || 'UTC'));
   const monthEnd = endOfMonth(new TZDate(currentDate, config?.timeZone || 'UTC'));
@@ -119,16 +119,16 @@ defaultRowHeight: 10
 
   if (daysWithEvents.length === 0) {
     return (
-      <div className="react-agenfy-listview-empty">
-        <p className="react-agenfy-listview-empty-text">
-          There are no events for this period.
+      <div className="react-agendfy-listview-empty">
+        <p className="react-agendfy-listview-empty-text">
+          {config?.no_events || "There are no events for this period."}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="react-agenfy-listview-container">
+    <div className="react-agendfy-listview-container">
       <List
         rowComponent={RowComponent}
         rowCount={daysWithEvents.length}

@@ -1,28 +1,9 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-  FC,
-  SetStateAction,
-  lazy,
-} from "react";
+import { forwardRef, lazy, useCallback, useEffect, useRef } from "react";
 import CalendarHeader from "../Components/CalendarHeader";
-import { getLocale } from "../Utils/locate";
-import { CalendarProps, EventProps } from "../types/types";
-import { normalizeEvents } from "../Utils/calendarHelpers";
-import { useToast } from "../Components/Toast/Toast";
-import { useEventReminder } from "../hooks/useEventReminder";
-import { NotificationService } from "../Notify/NotificationService";
-import { updateEventsList, getFilteredEventsList } from "./../Utils/CalendarUtils";
-    // No longer need to import downloadFile or exportCalendarEvents from CalendarUtils
-    // as export logic is now handled by plugins and downloadBlob is from core index
-import useCalendarNavigation from "../hooks/useCalendarNavigation";
-import usePluginManagement from "../hooks/usePluginManagement";
-import { CalendarPlugin, ViewPlugin, ExportPlugin, CustomFilterPlugin, ThemePlugin } from "../types/plugins";
-import useDataSourceEvents from "../hooks/useDataSourceEvents";
-import { TZDate } from "@date-fns/tz";
+import { CalendarProps } from "../types/types";
+import { ThemePlugin } from "../types/plugins";
+import { CalendarProvider } from "../context/CalendarContext";
+import useCalendarState from "../hooks/useCalendarState";
 
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
@@ -30,340 +11,101 @@ const DayView = lazy(() => import("./DayView/DayView"));
 const AgendaView = lazy(() => import("./AgendaView"));
 const ListView = lazy(() => import("./ListView/ListView"));
 
-const defaultConfig = {
-  timeZone: "America/Sao_Paulo",
-  defaultView: "week",
-  slotDuration: 15,
-  slotLabelFormat: "HH:mm",
-  slotMin: "00:00",
-  slotMax: "23:59",
-  lang: "en",
-  today: "Today",
-  monthView: "Month",
-  weekView: "Week",
-  dayView: "Day",
-  listView: "List",
-  agenda: "Agenda",
-  all_day: "All Day",
-  clear_filter: "Clear Filters",
-  filter_resources: "Filter Resources",
-  businessHours: {
-    enabled: true,
-    intervals: [
-      { daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "17:00" },
-    ],
-  },
-  alerts: {
-    enabled: false,
-    thresholdMinutes: 15,
-  },
-  export: true,
-  calendar_export: "Export",
-};
+/**
+ * Presentational layer. All state, derived data and handlers come from the
+ * CalendarContext (see CalendarProvider), so this component only wires the
+ * header and the active view.
+ */
+const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
+  const {
+    state,
+    localeConfig,
+    direction,
+    theme,
+    resources,
+    filteredEvents,
+    availableViews,
+    customViews,
+    exportOptions,
+    headerLeftPlugins,
+    headerRightPlugins,
+    interactionPlugins,
+    eventRenderingPlugins,
+    themePlugins,
+    isDataSourceLoading,
+    dataSourceError,
+    onEventClick,
+    onDayClick,
+    onSlotClick,
+    handleEventUpdate,
+    handleEventResize,
+    handleDateRangeSelect,
+    handleViewChange,
+    handleExport,
+    navigate,
+  } = useCalendarState();
 
-const Calendar: FC<CalendarProps> = ({
-  events: initialEvents = [],
-  onEventUpdate,
-  onEventResize,
-  onEventClick,
-  onDayClick,
-  onSlotClick,
-  onDateRangeSelect,
-  config = defaultConfig,
-  resources = [],
-  theme = 'default',
-  filteredResources = [],
-  emailAdapter,
-  emailConfig,
-  plugins = [],
-}) => {
-  const [currentDate, setCurrentDate] = useState(() => new TZDate(new Date(), config.timeZone || defaultConfig.timeZone));
-  const [events, setEvents] = useState<EventProps[]>(initialEvents);
-  const [localFilteredResources, setLocalFilteredResources] = useState<string[] | SetStateAction<string[]>>(filteredResources as any);
-  const [pluginFilteredEvents, setPluginFilteredEvents] = useState<EventProps[]>(initialEvents);
-  const [pluginSearchResults, setPluginSearchResults] = useState<EventProps[]>(initialEvents);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [currentView, setCurrentView] = useState<string>(config.defaultView);
+  const { currentDate, currentView } = state;
 
-  const addToast = useToast();
-
-  const [localeConfig, setLocaleConfig] = useState(() => {
-    const finalConfig = { ...defaultConfig, ...config };
-    return { ...finalConfig, ...getLocale(finalConfig.lang) };
-  });
+  // Scoped root element ref: theme + any theme-plugin css vars are applied
+  // here (never on document.documentElement) so the library is multi-instance
+  // safe and never leaks styles onto the host document. Merged with the
+  // public forwarded ref below.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const setRootRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      rootRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref]
+  );
 
   useEffect(() => {
-    if (config && typeof config === "object") {
-      setLocaleConfig((prevConfig) => ({
-        ...prevConfig,
-        ...config,
-        ...getLocale(config.lang || prevConfig.lang),
-      }));
+    const root = rootRef.current;
+    if (!root) return;
+
+    // Force built-in light/dark via a scoped attribute (OS is the default).
+    if (theme === "dark" || theme === "light") {
+      root.setAttribute("data-theme", theme);
+    } else {
+      root.removeAttribute("data-theme");
     }
-  }, [config]);
 
-  const { filterPlugins, searchPlugins, dataSourcePlugins, customViewPlugins, eventRenderingPlugins, interactionPlugins, themePlugins, exportPlugins, customFilterPlugins } =
-    usePluginManagement(plugins);
-
-  useEffect(() => {
-    const activeThemePlugin = themePlugins.find((p: ThemePlugin) => p.themeName === theme);
-
+    // Apply any matching theme-plugin css vars to THIS root only (scoped),
+    // not to document.documentElement.
+    const activeThemePlugin = themePlugins.find(
+      (p: ThemePlugin) => p.themeName === theme
+    );
     if (activeThemePlugin && activeThemePlugin.cssVariables) {
-      const root = document.documentElement;
       Object.entries(activeThemePlugin.cssVariables).forEach(([key, value]) => {
         root.style.setProperty(key, value);
       });
-
       return () => {
-        Object.keys(activeThemePlugin.cssVariables!).forEach(key => {
+        Object.keys(activeThemePlugin.cssVariables!).forEach((key) => {
           root.style.removeProperty(key);
         });
       };
     }
   }, [theme, themePlugins]);
 
-  useEffect(() => {
-    setEvents(initialEvents);
-    setPluginFilteredEvents(initialEvents);
-    setPluginSearchResults(initialEvents);
-    setIsSearchActive(false);
-  }, [initialEvents]);
-
-  useEffect(() => {
-    if (
-      localeConfig.alerts.enabled &&
-      "Notification" in window &&
-      Notification.permission !== "granted"
-    ) {
-      Notification.requestPermission();
-    }
-  }, [localeConfig.alerts.enabled]);
-
-  const notificationService = useMemo(
-    () =>
-      new NotificationService({
-        emailAdapter,
-        emailConfig,
-      }),
-    [emailAdapter, emailConfig]
-  );
-
-  useEventReminder({
-    events,
-    notificationService,
-    addToast,
-    alertConfig: localeConfig.alerts,
-    config: localeConfig,
-  });
-
-  const normalizedEvents = useMemo(() => normalizeEvents(events), [events]);
-
-  const filteredEvents = useMemo(
-    () =>
-      getFilteredEventsList(
-        normalizedEvents,
-        localFilteredResources as any,
-        pluginFilteredEvents,
-        pluginSearchResults,
-        isSearchActive
-      ),
-    [normalizedEvents, localFilteredResources, pluginFilteredEvents, pluginSearchResults, isSearchActive]
-  );
-
-  const handleExport = useCallback((format: string) => {
-    const customExportPlugin = exportPlugins.find((p: ExportPlugin) => p.formatName === format);
-
-    if (customExportPlugin) {
-      const contentPromise = Promise.resolve(customExportPlugin.exportFunction(filteredEvents, localeConfig));
-      contentPromise.then(content => {
-        const dateStr = new Date().toISOString().split('T')[0];
-        const fileName = `calendar-events-${dateStr}.${customExportPlugin.fileExtension}`;
-        const mimeType = customExportPlugin.mimeType;
-        downloadFile(content, fileName, mimeType);
-      }).catch(error => {
-        console.error(`Error exporting with plugin ${format}:`, error);
-        addToast({ message: `Erro ao exportar para ${format}`, type: 'error' });
-      });
-    } else {
-      exportCalendarEvents(filteredEvents, localeConfig, format as any);
-    }
-  }, [filteredEvents, localeConfig, exportPlugins, addToast]);
-
-  const handleViewChange = useCallback((newView: string) => {
-    setCurrentView(newView);
-    setLocaleConfig((prev) => ({ ...prev, defaultView: newView }));
-  }, []);
-
-  const { navigateToday, navigateBack, navigateForward } = useCalendarNavigation({
-    currentDate,
-    defaultView: currentView,
-    timeZone: config.timeZone,
-    setCurrentDate,
-  });
-
-  const handleEventUpdateInternal = useCallback(
-    (updatedEvent: EventProps) => {
-      setEvents((currentEvents) => updateEventsList(currentEvents, updatedEvent));
-      onEventUpdate && onEventUpdate(updatedEvent);
-    },
-    [onEventUpdate]
-  );
-
-  const handleEventResizeInternal = useCallback(
-    (resizeEvent: EventProps) => {
-      setEvents((currentEvents) => updateEventsList(currentEvents, resizeEvent));
-      onEventResize && onEventResize(resizeEvent);
-    },
-    [onEventResize]
-  );
-
-  const handleFilterChangeFromPlugin = useCallback((filtered: EventProps[]) => {
-    setPluginFilteredEvents(filtered);
-  }, []);
-
-  const handleSearchFromPlugin = useCallback((searchTerm: string, results: EventProps[]) => {
-    setPluginSearchResults(results);
-    setIsSearchActive(searchTerm.length > 0);
-  }, []);
-
-  const stableDataSourcePlugins = useMemo(
-    () => dataSourcePlugins,
-    [JSON.stringify(dataSourcePlugins)]
-  );
-  const stableLocaleConfig = useMemo(() => config, [config]);
-
-  useDataSourceEvents(stableDataSourcePlugins, stableLocaleConfig, currentDate);
-
-  const handleResourceFilterChange = useCallback((selected: SetStateAction<string[]>) => {
-    setLocalFilteredResources(selected);
-  }, []);
-
-  const handleDateRangeSelect = useCallback(
-     (resizeEvent: EventProps) => {
-      setEvents((currentEvents) => updateEventsList(currentEvents, resizeEvent));
-      onDateRangeSelect && onDateRangeSelect(resizeEvent);
-    },
-    [onDateRangeSelect]
-  );
-
-  const availableViews = useMemo(() => {
-    const defaultViews = [
-      { name: "month", label: localeConfig.monthView },
-      { name: "week", label: localeConfig.weekView },
-      { name: "day", label: localeConfig.dayView },
-      { name: "list", label: localeConfig.listView },
-      { name: "agenda", label: localeConfig.agenda }
-    ];
-    const customViews = customViewPlugins.map((plugin: ViewPlugin) => ({
-      name: plugin.viewName,
-      label: plugin.props?.label || plugin.viewName,
-    }));
-    return [...defaultViews, ...customViews];
-  }, [localeConfig, customViewPlugins]);
-
-  const allCustomViews = useMemo(() => {
-    const views: Record<string, FC<any>> = {};
-    customViewPlugins.forEach((plugin: CalendarPlugin) => {
-      const p = plugin as ViewPlugin;
-      if (p.viewName && p.component) {
-        views[p.viewName] = p.component;
-      }
-    });
-    return views;
-  }, [customViewPlugins]);
-
-  const combinedExclusivePlugins = useMemo(() => {
-    type Entry = { plugin: CalendarPlugin; sources: Set<'filter' | 'search'> };
-    const map = new Map<string, Entry>();
-
-    const makeKey = (p: CalendarPlugin, idx: number) =>
-      p.key || (p as any).props?.name || (p as any).viewName || `${(p.type||'plugin')}-${idx}`;
-
-    filterPlugins.forEach((p: CalendarPlugin, idx: number) => {
-      const k = makeKey(p, idx);
-      const existing = map.get(k);
-      if (existing) existing.sources.add('filter');
-      else map.set(k, { plugin: p, sources: new Set(['filter']) });
-    });
-
-    searchPlugins.forEach((p: CalendarPlugin, idx: number) => {
-      const k = makeKey(p, idx);
-      const existing = map.get(k);
-      if (existing) existing.sources.add('search');
-      else map.set(k, { plugin: p, sources: new Set(['search']) });
-    });
-
-    const leftList: CalendarPlugin[] = [];
-    const rightList: CalendarPlugin[] = [];
-
-    Array.from(map.values()).forEach(({ plugin, sources }) => {
-      if (plugin.location === 'left') {
-        leftList.push(plugin);
-      } else if (plugin.location === 'right') {
-        rightList.push(plugin);
-      } else {
-        if (sources.has('search') && !sources.has('filter')) {
-          rightList.push(plugin);
-        } else {
-          leftList.push(plugin);
-        }
-      }
-    });
-
-    return { leftList, rightList };
-  }, [filterPlugins, searchPlugins]);
-
-  const headerLeftPlugins = useMemo(() => {
-    return combinedExclusivePlugins.leftList.map((plugin, idx) =>
-      plugin.component ? (
-        <plugin.component
-          key={plugin.key ?? `left-${idx}`}
-          events={normalizedEvents}
-          onFilterChange={handleFilterChangeFromPlugin}
-          onSearch={handleSearchFromPlugin}
-          config={localeConfig}
-          resources={resources}
-          filteredResources={localFilteredResources}
-          onResourceFilterChange={handleResourceFilterChange}
-          {...plugin.props}
-        />
-      ) : null
-    );
-  }, [combinedExclusivePlugins, normalizedEvents, handleFilterChangeFromPlugin, handleSearchFromPlugin, localeConfig, resources, localFilteredResources, handleResourceFilterChange]);
-
-  const headerRightPlugins = useMemo(() => {
-    return combinedExclusivePlugins.rightList.map((plugin, idx) =>
-      plugin.component ? (
-        <plugin.component
-          key={plugin.key ?? `right-${idx}`}
-          events={normalizedEvents}
-          onFilterChange={handleFilterChangeFromPlugin}
-          onSearch={handleSearchFromPlugin}
-          config={localeConfig}
-          resources={resources}
-          filteredResources={localFilteredResources}
-          onResourceFilterChange={handleResourceFilterChange}
-          {...plugin.props}
-        />
-      ) : null
-    );
-  }, [combinedExclusivePlugins, normalizedEvents, handleFilterChangeFromPlugin, handleSearchFromPlugin, localeConfig, resources, localFilteredResources, handleResourceFilterChange]);
-
   const renderViewComponent = () => {
-    const CustomViewComponent = allCustomViews[currentView];
+    const CustomViewComponent = customViews[currentView];
     if (CustomViewComponent) {
-        return <CustomViewComponent
+      return (
+        <CustomViewComponent
           events={filteredEvents}
           currentDate={currentDate}
           config={localeConfig}
-          onEventUpdate={handleEventUpdateInternal}
-          onEventResize={handleEventResizeInternal}
+          onEventUpdate={handleEventUpdate}
+          onEventResize={handleEventResize}
           onEventClick={onEventClick}
           onDayClick={onDayClick}
           onSlotClick={onSlotClick}
           resources={resources}
-          filteredResources={localFilteredResources as any}
+          filteredResources={state.localFilteredResources}
         />
+      );
     }
     switch (currentView) {
       case "week":
@@ -372,8 +114,8 @@ const Calendar: FC<CalendarProps> = ({
             events={filteredEvents}
             slotMin={localeConfig.slotMin}
             slotMax={localeConfig.slotMax}
-            onEventUpdate={handleEventUpdateInternal}
-            onEventResize={handleEventResizeInternal}
+            onEventUpdate={handleEventUpdate}
+            onEventResize={handleEventResize}
             onEventClick={onEventClick}
             onDayClick={onDayClick}
             onSlotClick={onSlotClick}
@@ -390,8 +132,8 @@ const Calendar: FC<CalendarProps> = ({
             events={filteredEvents}
             onDayClick={onDayClick}
             currentDate={currentDate}
-            onEventUpdate={handleEventUpdateInternal}
-            onEventResize={handleEventResizeInternal}
+            onEventUpdate={handleEventUpdate}
+            onEventResize={handleEventResize}
             showResourceView={true}
             config={localeConfig}
             onEventClick={onEventClick}
@@ -403,7 +145,7 @@ const Calendar: FC<CalendarProps> = ({
           <DayView
             events={filteredEvents}
             currentDate={currentDate}
-            onEventUpdate={handleEventUpdateInternal}
+            onEventUpdate={handleEventUpdate}
             onSlotClick={onSlotClick}
             config={localeConfig}
             onEventClick={onEventClick}
@@ -413,7 +155,7 @@ const Calendar: FC<CalendarProps> = ({
         return (
           <ListView
             events={filteredEvents}
-            onEventUpdate={handleEventUpdateInternal}
+            onEventUpdate={handleEventUpdate}
             onEventClick={onEventClick}
             currentDate={currentDate}
             config={localeConfig}
@@ -429,48 +171,42 @@ const Calendar: FC<CalendarProps> = ({
           />
         );
       default:
-        return <div>Unsupported view: {localeConfig.defaultView}</div>;
+        return <div>{`${localeConfig.unsupported_view || "Unsupported view"}: ${currentView}`}</div>;
     }
   };
 
-  const exportOptions = useMemo(() => {
-   
-    const pluginOptions = exportPlugins.map((plugin: ExportPlugin) => ({
-      formatName: plugin.formatName,
-      label: plugin.label,
-    }));
-    return [...pluginOptions];
-  }, [exportPlugins]);
- 
   return (
-    <div className={`react-agenfy-layout theme-${theme}`}>
-     
-      <div
-        className="visually-hidden"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(config.lang)}`}
+    <div ref={setRootRef} dir={direction} className={`agendfy react-agendfy-layout theme-${theme}`}>
+      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(
+          localeConfig.lang
+        )}`}
+        {isDataSourceLoading ? ` ${localeConfig.loading || "Loading events"}` : ""}
+        {dataSourceError ? ` ${dataSourceError}` : ""}
       </div>
-            <CalendarHeader
-  currentDate={currentDate}
-  currentView={currentView}
-  availableViews={availableViews}
-  localeConfig={localeConfig}
-  onViewChange={handleViewChange}
-  onNavigate={(dir) => {
-    if (dir === "today") navigateToday();
-    else if (dir === "prev") navigateBack();
-    else if (dir === "next") navigateForward();
-  }}
-  headerLeftPlugins={headerLeftPlugins}
-  headerRightPlugins={headerRightPlugins}
-  exportOptions={localeConfig.export ? exportOptions : []}
-  onExport={handleExport}
-/>
-      <div className="react-agenfy-layout-content">{renderViewComponent()}</div>
+      <CalendarHeader
+        currentDate={currentDate}
+        currentView={currentView}
+        availableViews={availableViews}
+        localeConfig={localeConfig}
+        onViewChange={handleViewChange}
+        onNavigate={navigate}
+        headerLeftPlugins={headerLeftPlugins}
+        headerRightPlugins={headerRightPlugins}
+        exportOptions={localeConfig.export ? exportOptions : []}
+        onExport={handleExport}
+      />
+      <div className="react-agendfy-layout-content">{renderViewComponent()}</div>
     </div>
   );
-};
+});
+CalendarView.displayName = "CalendarView";
+
+const Calendar = forwardRef<HTMLDivElement, CalendarProps>((props, ref) => (
+  <CalendarProvider {...props}>
+    <CalendarView ref={ref} />
+  </CalendarProvider>
+));
+Calendar.displayName = "Calendar";
 
 export default Calendar;

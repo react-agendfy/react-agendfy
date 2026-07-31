@@ -11,15 +11,15 @@ export const DayColumnHeader: React.FC<DayColumnHeaderProps> = ({ dayDate, confi
   const locale = getLocale(config?.lang || 'en');
   const isCurrentDay = isToday(dayDate);
 
-  const headerClass = `react-agenfy-daycolumn-header ${isCurrentDay ? 'react-agenfy-daycolumn-header-today' : ''}`;
+  const headerClass = `react-agendfy-daycolumn-header ${isCurrentDay ? 'react-agendfy-daycolumn-header-today' : ''}`;
   
   return (
     <div className={headerClass}>
-      <div className="react-agenfy-daycolumn-header-text">
-        <div className="react-agenfy-daycolumn-weekday">
+      <div className="react-agendfy-daycolumn-header-text">
+        <div className="react-agendfy-daycolumn-weekday">
           {format(dayDate, 'EEE', { locale })}
         </div>
-        <div className="react-agenfy-daycolumn-date">
+        <div className="react-agendfy-daycolumn-date">
           {format(dayDate, 'd', { locale })}
         </div>
       </div>

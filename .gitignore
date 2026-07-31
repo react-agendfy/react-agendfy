@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
 *.local
 src/example
 src/plugins
@@ -28,3 +29,6 @@ src/plugins
 !.yarn/sdks
 .yarn/cache/
 .pnp.*
+# TypeScript incremental build metadata
+*.tsbuildinfo
+.claude/
