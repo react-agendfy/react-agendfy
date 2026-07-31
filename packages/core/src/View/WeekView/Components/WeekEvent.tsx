@@ -151,7 +151,10 @@ export const WeekEvent = ({
         width: positionStyle?.width || "0",
         position: "absolute",
         zIndex: 20,
-        maxWidth: "100%",
+        // No maxWidth clamp: like the old maxHeight, it silently blocked the
+        // RIGHT resize handle — delta.width could never reach a full column,
+        // so extending an event by N days horizontally was impossible even
+        // though handleResize supports it (e.g. one gesture: +5 days).
         ...style,
       }}
       /* No maxHeight clamp: it used to stop the bottom handle exactly at the

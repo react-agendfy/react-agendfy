@@ -33,6 +33,18 @@ jest.mock('re-resizable', () => ({
         data-testid="resize-bottom-60"
         onClick={() => onResizeStop({}, 'bottom', {}, { height: 80, width: 0 })}
       />
+      <button
+        data-testid="resize-right-5cols"
+        onClick={() =>
+          onResizeStop(
+            {},
+            'right',
+            // Real column width measured from the DOM (5 columns of 120px).
+            { parentElement: { offsetWidth: 120 } },
+            { height: 0, width: 600 }
+          )
+        }
+      />
       {children}
     </div>
   ),
@@ -109,6 +121,33 @@ describe('continuation segment', () => {
     expect(emitted.end).toBe('2026-08-11T02:00:00.000Z');
     expect(emitted.isMultiDay).toBe(true);
     expect(emitted.__segment).toBeUndefined(); // metadata stripped
+  });
+});
+
+describe('horizontal multi-day resize (one gesture)', () => {
+  const plainEvent = {
+    id: 'ev-p',
+    title: 'Workshop',
+    start: '2026-08-10T14:00:00.000Z',
+    end: '2026-08-10T15:00:00.000Z',
+  };
+
+  test('right handle dragged 5 columns extends the end by exactly 5 days', () => {
+    const onEventResize = jest.fn();
+    renderSegment(plainEvent, onEventResize);
+    fireEvent.click(screen.getByTestId('resize-right-5cols'));
+
+    expect(onEventResize).toHaveBeenCalledTimes(1);
+    const emitted = onEventResize.mock.calls[0][0];
+    expect(emitted.start).toBe('2026-08-10T14:00:00.000Z');
+    expect(emitted.end).toBe('2026-08-15T15:00:00.000Z'); // +5 days, time kept
+    expect(emitted.isMultiDay).toBe(true);
+  });
+
+  test('no maxWidth clamp on the resizable (it silently blocked horizontal resize)', () => {
+    renderSegment(plainEvent);
+    const resizable = screen.getByTestId('resizable');
+    expect(resizable.style.maxWidth).toBe('');
   });
 });
 
