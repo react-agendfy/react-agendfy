@@ -7,7 +7,7 @@ import { Settings } from "lucide-react";
 import MyRightHeaderPlugin from "./components/RightHeaderPlugin";
 import  exportsPlugin from '@react-agendfy/plugin-export-reports'
 import resourceFilterPlugin from "@react-agendfy/plugin-filter";
-import { createQuickAddPlugin } from "@react-agendfy/ai";
+import { createQuickAddPlugin, httpAdapter } from "@react-agendfy/ai";
 import { v6 } from "uuid";
 
 class ExampleEmailAdapter {
@@ -284,10 +284,18 @@ const App: FC = () => {
     { key: 'darkTheme',...darkThemePlugin, label: 'Dark Theme' },
     {
       // AI natural-language quick add. With no adapter it uses the built-in
-      // deterministic parser (works offline, no API key). For LLM-quality
-      // parsing point httpAdapter at your own backend proxy, e.g.:
-      //   adapter: httpAdapter({ endpoint: '/api/ai' })
+      // deterministic parser (works offline, no API key).
+      //
+      // To test with a REAL LLM, start the local proxy (holds the key
+      // server-side — the production security model) and enable the flag:
+      //   1. ANTHROPIC_API_KEY=sk-ant-... node server/ai-proxy.mjs
+      //   2. VITE_AI_PROXY=http://localhost:8787/ai yarn dev
+      // If the proxy is down/unauthenticated, parsing silently falls back
+      // to the local parser.
       ...createQuickAddPlugin({
+        adapter: import.meta.env.VITE_AI_PROXY
+          ? httpAdapter({ endpoint: import.meta.env.VITE_AI_PROXY })
+          : undefined,
         onEventCreate: (event) => setEvents(prev => [...prev, event]),
       }),
       label: 'AI Quick Add',
