@@ -148,7 +148,12 @@ export const WeekEvent = ({
             isStart={isStart}
             isEnd={isEnd}
             dayDate={dayDate}
-            isDraggable={isDraggable}
+            // WeekEvent owns the drag (setNodeRef/listeners/transform above).
+            // The inner BaseEvent must NOT register a second draggable with
+            // the same id — dnd-kit activates transforms by id, so both
+            // layers would translate and the event would drift away from the
+            // pointer at 2x speed while dragging.
+            isDraggable={false}
             customClassName=""
             parsedSlotMax={endHour}
           />

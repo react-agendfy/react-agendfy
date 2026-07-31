@@ -72,12 +72,19 @@ const BaseEvent = ({
   const eventStyle: React.CSSProperties = {
     ...positionStyle,
     width: "100%",
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    // Only translate when THIS instance owns the drag. dnd-kit activates
+    // `transform` by draggable id, so a wrapped/disabled instance sharing the
+    // id of an active drag would otherwise apply a second translate3d and the
+    // event would drift away from the pointer (2x movement).
+    transform:
+      isDraggable && transform
+        ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+        : undefined,
     position: "absolute",
     top: computedTop,
     height: computedHeight,
-    opacity: isDragging ? 0.8 : 1,
-    boxShadow: isDragging ? "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" : "none",
+    opacity: isDraggable && isDragging ? 0.8 : 1,
+    boxShadow: isDraggable && isDragging ? "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" : "none",
     backgroundColor: event.color,
     color: getContrastText(event.color),
   };
