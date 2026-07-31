@@ -40,14 +40,6 @@ const DayView: React.FC<DayViewProps> = ({
   // early return so the hook order stays stable.
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
-  if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
-    return (
-      <div>
-        {config?.slotDuration} invalid time slot. Make sure the end time is greater than the start time and that they are valid hours.
-      </div>
-    );
-  }
-
   const handleDragEnd = useCallback(
     (event: any) => {
       const { active, over, delta } = event;
@@ -86,6 +78,15 @@ const DayView: React.FC<DayViewProps> = ({
     (slotTime: string) => getEventsForSlot(slotTime, events, config),
     [events, config]
   );
+
+  // Early return AFTER all hooks so hook order stays stable (rules-of-hooks).
+  if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
+    return (
+      <div>
+        {config?.slotDuration} invalid time slot. Make sure the end time is greater than the start time and that they are valid hours.
+      </div>
+    );
+  }
 
   const today = new TZDate(new Date(), config?.timeZone || 'UTC');
   const isToday = isSameDay(currentDate, today);

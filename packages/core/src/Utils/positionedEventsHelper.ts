@@ -18,7 +18,7 @@ export function computePositionedEvents(
       return acc;
     }, {});
 
-    let positioned: EventProps[] = [];
+    const positioned: EventProps[] = [];
     Object.values(eventsByStart).forEach((group) => {
       const total = group.length;
       group.forEach((event, idx) => {

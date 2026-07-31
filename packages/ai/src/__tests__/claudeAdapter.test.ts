@@ -35,7 +35,7 @@ jest.mock(
   { virtual: true }
 );
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+ 
 const {
   claudeAdapter,
   DEFAULT_CLAUDE_MODEL,

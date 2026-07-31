@@ -272,7 +272,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   /* --- keep events in sync with the `events` prop ------------------------ */
   useEffect(() => {
     dispatch({ type: "SYNC_EVENTS", payload: initialEvents });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [initialEvents]);
 
   /* --- notification permission ------------------------------------------- */

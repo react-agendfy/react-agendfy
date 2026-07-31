@@ -48,5 +48,8 @@ jobs:
       - name: Test core
         run: yarn workspace @react-agendfy/core test
 
+      - name: Test AI package
+        run: yarn workspace @react-agendfy/ai test
+
       - name: Build all workspaces
         run: yarn workspaces foreach --all --topological --no-private -v run build

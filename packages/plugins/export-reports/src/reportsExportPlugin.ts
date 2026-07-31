@@ -64,7 +64,7 @@ const exportCalendarEvents = async (
 
     const date = new Date().toISOString().split("T")[0];
     let fileContent = "";
-    let fileName = `calendar-export-${date}.${format}`;
+    const fileName = `calendar-export-${date}.${format}`;
     let mimeType = "text/plain;charset=utf-8;";
 
     switch (format) {

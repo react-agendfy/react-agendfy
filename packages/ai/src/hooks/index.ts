@@ -27,6 +27,19 @@ interface AsyncState<T> {
   result: T | null;
 }
 
+/**
+ * "Latest value" ref updated in an effect (never during render, per
+ * rules-of-hooks). The value is only read inside user-triggered async
+ * callbacks, so effect-time freshness is sufficient.
+ */
+function useLatest<T>(value: T) {
+  const ref = useRef(value);
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref;
+}
+
 function useAIOperation<TArgs extends unknown[], TResult>(
   fn: (signal: AbortSignal, ...args: TArgs) => Promise<TResult>
 ): AsyncState<TResult> & {
@@ -40,8 +53,7 @@ function useAIOperation<TArgs extends unknown[], TResult>(
   });
   const controllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const fnRef = useRef(fn);
-  fnRef.current = fn;
+  const fnRef = useLatest(fn);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -92,10 +104,8 @@ export function useAIEventParser(
   adapter?: AIAdapter,
   options: UseAIEventParserOptions = {}
 ) {
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
-  const adapterRef = useRef(adapter);
-  adapterRef.current = adapter;
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
 
   const { run, loading, error, result, reset } = useAIOperation(
     (signal: AbortSignal, input: string): Promise<ParsedEventResult> =>
@@ -119,10 +129,8 @@ export function useSmartScheduling(
   adapter?: AIAdapter,
   options: UseSmartSchedulingOptions = {}
 ) {
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
-  const adapterRef = useRef(adapter);
-  adapterRef.current = adapter;
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
 
   const { run, loading, error, result, reset } = useAIOperation(
     (
@@ -151,10 +159,8 @@ export function useCalendarInsights(
   adapter?: AIAdapter,
   options: UseCalendarInsightsOptions = {}
 ) {
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
-  const adapterRef = useRef(adapter);
-  adapterRef.current = adapter;
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
 
   const { run, loading, error, result, reset } = useAIOperation(
     (signal: AbortSignal, events: AgendfyEvent[]): Promise<CalendarInsights> =>

@@ -43,7 +43,7 @@ export const DayColumn = memo(
         const minute = minutes % 60;
         const slotDate = setMinutes(setHours(dayStart, hour), minute);
         const slotKey = slotDate.toISOString();
-        let slotEvents = getEventsForDay(slotKey) || [];
+        const slotEvents = getEventsForDay(slotKey) || [];
         mapping[slotKey] = slotEvents;
       });
       return mapping;

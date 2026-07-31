@@ -16,8 +16,8 @@ export const ListEvent = ({ event, onEventClick, currentDate, config }: ListEven
       className="react-agendfy-listevent-container"
       style={{ backgroundColor: event.color, color: getContrastText(event.color) }}
       title={tooltipContent}
-      onClick={() => onEventClick && onEventClick(event)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onEventClick && onEventClick(event); } }}
+      onClick={() => onEventClick?.(event)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onEventClick?.(event); } }}
       role="button"
       tabIndex={0}
       aria-label={`Event: ${event.title}, from ${format(new TZDate(parseISO(event.start.toString()), config?.timeZone!), "HH:mm")} to ${format(new TZDate(parseISO(event.end.toString()), config?.timeZone!), "HH:mm")}`}

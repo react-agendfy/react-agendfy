@@ -48,17 +48,10 @@ const WeekView = ({
     () => ((endHour - startHour) * 60) / slotDuration,
     [startHour, endHour, slotDuration]
   );
-  if (isNaN  (numberOfSlots) || numberOfSlots <= 0) {
-    return (
-      <div className="react-agendfy-weekview-error">
-        {formatMessage(
-          config?.invalid_slot_duration,
-          { duration: config?.slotDuration ?? "" },
-          "{duration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas."
-        )}
-      </div>
-    );
-  }
+  // Invalid-slot detection: the early return happens AFTER all hooks (below)
+  // so hook order stays stable across renders (rules-of-hooks). The hooks
+  // tolerate NaN/negative lengths (Array.from({length: NaN}) === []).
+  const hasInvalidSlots = isNaN(numberOfSlots) || numberOfSlots <= 0;
 
   const currentWeekStart = useMemo(
     () => startOfWeek(new TZDate(currentDate, config?.timeZone), { weekStartsOn: 0 }),
@@ -236,6 +229,18 @@ const WeekView = ({
   // Explicit sensors: PointerSensor keeps the existing click-vs-drag delta
   // detection intact, KeyboardSensor enables keyboard-initiated drags.
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  if (hasInvalidSlots) {
+    return (
+      <div className="react-agendfy-weekview-error">
+        {formatMessage(
+          config?.invalid_slot_duration,
+          { duration: config?.slotDuration ?? "" },
+          "{duration} de tempo inválido. Certifique-se de que a hora final seja maior que a hora inicial e que sejam horas válidas."
+        )}
+      </div>
+    );
+  }
 
   return (
     <DndContext

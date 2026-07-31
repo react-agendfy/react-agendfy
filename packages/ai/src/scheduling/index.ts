@@ -175,7 +175,7 @@ export function findFreeSlots(
   } else {
     const open = parseHHmm(opts.businessHours.start);
     const close = parseHHmm(opts.businessHours.end);
-    let { y, m, d } = zonedDateParts(rangeStart, timeZone);
+    const { y, m, d } = zonedDateParts(rangeStart, timeZone);
     for (let i = 0; i < 366; i++) {
       const winStart = zonedTimeToUtcMs(y, m, d + i, open.h, open.min, timeZone);
       const winEnd = zonedTimeToUtcMs(y, m, d + i, close.h, close.min, timeZone);

@@ -67,11 +67,11 @@ const AgendaView: React.FC<ListViewProps> = ({
                 key={event.id}
                 className="react-agendfy-agendaview-event"
                 style={{ borderLeftColor: event.color }}
-                onClick={() => onEventClick && onEventClick(event)}
+                onClick={() => onEventClick?.(event)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    onEventClick && onEventClick(event);
+                    onEventClick?.(event);
                   }
                 }}
                 role="button"

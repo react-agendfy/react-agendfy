@@ -11,8 +11,10 @@ import { createQuickAddPlugin } from "@react-agendfy/ai";
 import { v6 } from "uuid";
 
 class ExampleEmailAdapter {
-  send(emailConfig: any) {
-    console.log("Enviando email com config:", emailConfig);
+  // Matches the EmailAdapter interface from @react-agendfy/core
+  // (src/types/notification.ts): sendEmail(subject, body, recipient?).
+  sendEmail(subject: string, body: string, recipient?: string) {
+    console.log("Sending email:", { subject, body, recipient });
   }
 }
 
@@ -338,7 +340,6 @@ const App: FC = () => {
           resources={resources}
           onDateRangeSelect={handleOpenModal}
           filteredResources={filteredResources}
-          onResourceFilterChange={handleResourceFilterChange}
           emailAdapter={new ExampleEmailAdapter()}
           emailConfig={{ defaultRecipient: "user@example.com" }}
           theme={theme}

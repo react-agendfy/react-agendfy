@@ -48,7 +48,7 @@ export const WeekEvent = ({
 
     if (direction === "bottom") {
       const additionalMinutes = Math.round((delta.height / 40) * config?.slotDuration!);
-      let newEndTime = addMinutes(eventEnd, additionalMinutes);
+      const newEndTime = addMinutes(eventEnd, additionalMinutes);
 
       if (isAfter(newEndTime, maxEndTime)) {
         const overflowMinutes = differenceInMinutes(newEndTime, maxEndTime);
