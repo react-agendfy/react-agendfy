@@ -148,7 +148,11 @@ describe("WeekEvent Component", () => {
     const expectedNewEnd = addMinutes(new Date(dummyEvent.end), 15).toISOString();
     expect(dummyProps.onEventResize).toHaveBeenCalledWith({
       ...dummyEvent,
+      // resize now always emits canonical UTC ISO for both bounds and the
+      // recomputed multiday flag
+      start: new Date(dummyEvent.start).toISOString(),
       end: expectedNewEnd,
+      isMultiDay: false,
     });
   });
 
@@ -157,23 +161,14 @@ describe("WeekEvent Component", () => {
     const simulateBottomMultiDayButton = screen.getByTestId("simulate-bottom-multiday");
     fireEvent.click(simulateBottomMultiDayButton);
 
+    // Crossing real midnight keeps the computed end verbatim and flags the
+    // event as multiday — no more re-anchoring on an overflow offset.
     const additionalMinutes = Math.round((2133 / 40) * dummyConfig.slotDuration);
-    const originalEventEnd = new Date(dummyEvent.end);
-    let newEndTime = addMinutes(originalEventEnd, additionalMinutes);
-  
-    const dayDate = dummyProps.dayDate;
-    const dayEndTime = new Date(dayDate);
-    dayEndTime.setUTCHours(24, 0, 0, 0);
-    if (newEndTime > dayEndTime) {
-      const overflowMinutes = (newEndTime.getTime() - dayEndTime.getTime()) / (1000 * 60);
-      const nextDayStartTime = new Date(dayDate);
-      nextDayStartTime.setUTCHours(0, 0, 0, 0);
-      nextDayStartTime.setUTCDate(nextDayStartTime.getUTCDate() + 1);
-      newEndTime = addMinutes(nextDayStartTime, overflowMinutes);
-    }
+    const newEndTime = addMinutes(new Date(dummyEvent.end), additionalMinutes);
 
     expect(dummyProps.onEventResize).toHaveBeenCalledWith({
       ...dummyEvent,
+      start: new Date(dummyEvent.start).toISOString(),
       end: newEndTime.toISOString(),
       isMultiDay: true,
     });
@@ -187,7 +182,10 @@ describe("WeekEvent Component", () => {
     const expectedNewEnd = addDays(new Date(dummyEvent.end), 2).toISOString();
     expect(dummyProps.onEventResize).toHaveBeenCalledWith({
       ...dummyEvent,
+      start: new Date(dummyEvent.start).toISOString(),
       end: expectedNewEnd,
+      // spans multiple days after the extension — flag now reflects reality
+      isMultiDay: true,
     });
   });
 
@@ -196,10 +194,12 @@ describe("WeekEvent Component", () => {
     const simulateLeftButton = screen.getByTestId("simulate-left");
     fireEvent.click(simulateLeftButton);
 
-    const expectedNewStart = subDays(new Date(dummyEvent.start), 2).toISOString();;
+    const expectedNewStart = subDays(new Date(dummyEvent.start), 2).toISOString();
     expect(dummyProps.onEventResize).toHaveBeenCalledWith({
       ...dummyEvent,
       start: expectedNewStart,
+      end: new Date(dummyEvent.end).toISOString(),
+      isMultiDay: true,
     });
   });
 });

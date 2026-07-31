@@ -1,6 +1,6 @@
 import React from 'react';
 import { Resizable } from "re-resizable";
-import { addDays, addMinutes, differenceInMinutes, endOfDay, isAfter, setHours, startOfDay, subDays } from "date-fns";
+import { addDays, addMinutes, isAfter, isSameDay, subDays } from "date-fns";
 import { useDraggable } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import {  TZDate } from '@date-fns/tz';
@@ -23,11 +23,6 @@ export const WeekEvent = ({
 }: BaseEventProps & { endHour: number }) => {
   const dayWidth = 100;
 
-  const maxEndTime = useMemo(() => {
-    const dayEndTime = setHours(startOfDay(dayDate), endHour);
-    return isMultiDay ? endOfDay(dayDate) : dayEndTime;
-  }, [dayDate, endHour, isMultiDay]);
-
   const [size, setSize] = useState({
     height: positionStyle?.height,
     width: positionStyle?.width,
@@ -46,39 +41,56 @@ export const WeekEvent = ({
     const eventStart = ensureDate(event.start, config?.timeZone);
     const eventEnd = ensureDate(event.end, config?.timeZone);
 
+    // Emit canonical UTC ISO + recompute the multiday flag from the actual
+    // span, so extending across midnight sets it and shrinking back clears it.
+    const emit = (start: Date, end: Date) => {
+      const spansDays = !isSameDay(
+        new TZDate(start, config?.timeZone),
+        new TZDate(end, config?.timeZone)
+      );
+      onEventResize({
+        ...event,
+        start: new Date(start.getTime()).toISOString(),
+        end: new Date(end.getTime()).toISOString(),
+        isMultiDay: spansDays,
+      });
+    };
+
     if (direction === "bottom") {
       const additionalMinutes = Math.round((delta.height / 40) * config?.slotDuration!);
       const newEndTime = addMinutes(eventEnd, additionalMinutes);
-
-      if (isAfter(newEndTime, maxEndTime)) {
-        const overflowMinutes = differenceInMinutes(newEndTime, maxEndTime);
-        const nextDayStartTime = startOfDay(addDays(dayDate, 1));
-        const finalEndTime = addMinutes(nextDayStartTime, overflowMinutes);
-        onEventResize({ ...event, end: finalEndTime.toISOString(), isMultiDay: true });
-        return;
+      // The day boundary is the REAL midnight in the configured timezone —
+      // crossing it simply keeps the computed end and flags the event as
+      // multiday (no clamp: extending into the next day is a supported
+      // interaction, e.g. 22:00 → 01:00).
+      if (isAfter(newEndTime, eventStart)) {
+        emit(eventStart, newEndTime);
       }
-
-      if (!isAfter(eventStart, newEndTime)) {
-        onEventResize({ ...event, end: new Date(newEndTime.getTime()).toISOString() });
-      }
+      return;
     }
 
+    // Horizontal handles step in whole days. Measure the real column width
+    // from the DOM (the resizable sits inside a day column) instead of
+    // assuming 100px — otherwise the day count is wrong for any other
+    // column width. Negative deltas shrink the span back.
+    const columnWidth = ref?.parentElement?.offsetWidth || dayWidth;
+
     if (direction === "right") {
-      const daysAdded = Math.round(delta.width / dayWidth);
-      if (daysAdded > 0) {
-        const newEnd = addDays(eventEnd, daysAdded);
-        onEventResize({ ...event, end: new Date(newEnd.getTime()).toISOString() });
+      const daysDelta = Math.round(delta.width / columnWidth);
+      if (daysDelta !== 0) {
+        const newEnd = addDays(eventEnd, daysDelta);
+        if (isAfter(newEnd, eventStart)) emit(eventStart, newEnd);
       }
+      return;
     }
 
     if (direction === "left") {
-      const daysRemoved = Math.round(delta.width / dayWidth);
-      if (daysRemoved > 0) {
-        const newStart = subDays(eventStart, daysRemoved);
-        onEventResize({ ...event, start: new Date(newStart.getTime()).toISOString() });
+      const daysDelta = Math.round(delta.width / columnWidth);
+      if (daysDelta !== 0) {
+        const newStart = subDays(eventStart, daysDelta);
+        if (isAfter(eventEnd, newStart)) emit(newStart, eventEnd);
       }
     }
-
   };
 
   const enableResizing = isDraggable && onEventResize;
@@ -118,11 +130,9 @@ export const WeekEvent = ({
         maxWidth: "100%",
         ...style,
       }}
-      maxHeight={
-        enableResizing
-          ? `${(differenceInMinutes(maxEndTime, new TZDate(ensureDate(event.start, config?.timeZone), config?.timeZone)) / config?.slotDuration!) * 40}px`
-          : undefined
-      }
+      /* No maxHeight clamp: it used to stop the bottom handle exactly at the
+         end of the day, making extension past midnight (multiday conversion
+         in handleResize) physically unreachable. */
     >
       <div ref={setNodeRef}
                 style={{ width: "100%", height: "100%" }}
