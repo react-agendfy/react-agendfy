@@ -5,6 +5,11 @@
   background-color: var(--agendfy-color-surface);
   box-shadow: var(--agendfy-shadow-sm);
   overflow: hidden;
+  /* Horizontal distance between adjacent day-cell CONTENT areas: the
+     multiday row bars stretch with calc(N*100% + (N-1)*gap) to bridge
+     cell paddings + border seamlessly. Keep in sync with the day-cell
+     padding (space-2 each side) + border-inline-end (1px) below. */
+  --agendfy-month-day-gap: calc(2 * var(--agendfy-space-2) + 1px);
 }
 
 .react-agendfy-monthview-header {

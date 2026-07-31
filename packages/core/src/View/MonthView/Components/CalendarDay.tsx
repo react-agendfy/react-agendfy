@@ -171,6 +171,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
               isStart={isEventStart}
               isEnd={isEventEnd}
               isMultiDay={event.isMultiDay || !isSameDay(s, e)}
+              cellDate={day}
               onEventClick={onEventClick}
               onEventResize={onEventResize}
               config={config}
