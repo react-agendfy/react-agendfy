@@ -15,6 +15,7 @@ import {
 } from "date-fns";
 import { RRule, rrulestr } from "rrule";
 import { ensureDate } from "../../Utils/DateTrannforms";
+import { clipEventToDay, isBannerEvent } from "../../Utils/weekViewHelpers";
 import { formatMessage } from "../../i18n";
 import { EventProps, WeekProps } from "../../types/types";
 import { TZDate } from "@date-fns/tz";
@@ -84,7 +85,10 @@ const WeekView = ({
     daysOfWeek.forEach((dayIndex) => {
       const dayDate = addDays(currentWeekStart, dayIndex);
       mapping[dayIndex] = events.filter((event: EventProps) => {
-        if (!event.isMultiDay && !event.isAllDay) return false;
+        // Banner = explicit all-day OR timed span >= 24h. A timed event that
+        // merely crosses midnight stays in the time grid as clipped segments
+        // (professional-calendar semantics), NOT in this row.
+        if (!isBannerEvent(event, config?.timeZone)) return false;
         const eventStart = ensureDate(event.start, config?.timeZone);
         const eventEnd = ensureDate(event.end, config?.timeZone);
         return dayDate >= startOfDay(eventStart) && dayDate <= endOfDay(eventEnd);
@@ -222,9 +226,14 @@ const WeekView = ({
         }
         return acc;
       }
-      if (event.isMultiDay || event.isAllDay) return acc;
-      if (format(new TZDate(ensureDate(event.start), config?.timeZone), "yyyy-MM-dd HH:mm") === slotDateFormatted) {
-        acc.push(event);
+      if (isBannerEvent(event, config?.timeZone)) return acc;
+      // Clip timed events to this slot's day so a midnight-crossing event
+      // renders as one segment per day (continuation starts at 00:00 and
+      // therefore matches the day's first slot).
+      const segment = clipEventToDay(event, slotDate, config?.timeZone);
+      if (!segment) return acc;
+      if (format(new TZDate(ensureDate(segment.start), config?.timeZone), "yyyy-MM-dd HH:mm") === slotDateFormatted) {
+        acc.push(segment);
       }
       return acc;
     }, []);

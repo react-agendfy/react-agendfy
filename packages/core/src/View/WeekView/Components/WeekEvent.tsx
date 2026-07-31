@@ -2,7 +2,7 @@ import React from 'react';
 import { Resizable } from "re-resizable";
 import { addDays, addMinutes, isAfter, isSameDay, subDays } from "date-fns";
 import { useDraggable } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {  TZDate } from '@date-fns/tz';
 import { ensureDate } from "../../../Utils/DateTrannforms";
 import BaseEvent from "../../../Components/BaseEvent";
@@ -23,6 +23,17 @@ export const WeekEvent = ({
 }: BaseEventProps & { endHour: number }) => {
   const dayWidth = 100;
 
+  // Segment metadata (see clipEventToDay): a timed event crossing midnight
+  // renders as one clipped segment per day. The START segment owns dragging
+  // (whole-event move); only the segment containing the REAL end exposes the
+  // bottom/right resize handles.
+  const segment = (event as any).__segment as
+    | { isStart: boolean; isEnd: boolean; originalStart: string; originalEnd: string }
+    | undefined;
+  const isSegmentStart = !segment || segment.isStart;
+  const isSegmentEnd = !segment || segment.isEnd;
+  const canDrag = !!isDraggable && isSegmentStart;
+
   const [size, setSize] = useState({
     height: positionStyle?.height,
     width: positionStyle?.width,
@@ -38,8 +49,11 @@ export const WeekEvent = ({
   const handleResize = (e: any, direction: any, ref: any, delta: any) => {
     if (!isDraggable || !onEventResize) return;
 
-    const eventStart = ensureDate(event.start, config?.timeZone);
-    const eventEnd = ensureDate(event.end, config?.timeZone);
+    // Resize always operates on the event's TRUE bounds. For a clipped
+    // segment, event.start/end are the day-window bounds (e.g. 00:00 on a
+    // continuation) — emitting those would corrupt the event.
+    const eventStart = ensureDate(segment?.originalStart ?? event.start, config?.timeZone);
+    const eventEnd = ensureDate(segment?.originalEnd ?? event.end, config?.timeZone);
 
     // Emit canonical UTC ISO + recompute the multiday flag from the actual
     // span, so extending across midnight sets it and shrinking back clears it.
@@ -48,8 +62,12 @@ export const WeekEvent = ({
         new TZDate(start, config?.timeZone),
         new TZDate(end, config?.timeZone)
       );
+      // Strip segment metadata and restore the original event id — the
+      // emitted object is the REAL event, never a rendering segment.
+      const { __segment: _segmentMeta, ...cleanEvent } = event as any;
       onEventResize({
-        ...event,
+        ...cleanEvent,
+        id: String(event.id).replace(/::cont$/, ""),
         start: new Date(start.getTime()).toISOString(),
         end: new Date(end.getTime()).toISOString(),
         isMultiDay: spansDays,
@@ -93,24 +111,30 @@ export const WeekEvent = ({
     }
   };
 
-  const enableResizing = isDraggable && onEventResize;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: event.id,
     data: { event },
-    disabled: !isDraggable,
+    disabled: !canDrag,
   });
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        opacity: isDragging ? 0.5 : 1,
-      }
-    : undefined;
+  // Apply the drag translate only when THIS segment owns the drag —
+  // continuation segments have a distinct id (<id>::cont) AND are disabled,
+  // so they must never move with an active drag of the start segment.
+  const style =
+    canDrag && transform
+      ? {
+          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+          opacity: isDragging ? 0.5 : 1,
+        }
+      : undefined;
 
   return (
     <Resizable
       size={size}
-      enable={{ top: false, right: true, bottom: true, left: false }}
+      // Only the segment containing the event's REAL end exposes end-side
+      // handles; a start segment of a midnight-crossing event ends at the
+      // day boundary, which is not a resizable edge.
+      enable={{ top: false, right: isSegmentEnd, bottom: isSegmentEnd, left: false }}
       onResizeStop={handleResize}
       handleStyles={{
         top: { cursor: 'ns-resize' },
@@ -154,9 +178,9 @@ export const WeekEvent = ({
             onEventClick={onEventClick}
             positionStyle={{ width: "100%",  height: "100%", top: "0", left: "0" }}
             config={config}
-            isMultiDay={isMultiDay}
-            isStart={isStart}
-            isEnd={isEnd}
+            isMultiDay={isMultiDay || !!segment}
+            isStart={segment ? segment.isStart : isStart}
+            isEnd={segment ? segment.isEnd : isEnd}
             dayDate={dayDate}
             // WeekEvent owns the drag (setNodeRef/listeners/transform above).
             // The inner BaseEvent must NOT register a second draggable with
