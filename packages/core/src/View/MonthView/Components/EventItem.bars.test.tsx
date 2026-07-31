@@ -24,8 +24,11 @@ jest.mock('@dnd-kit/core', () => {
 });
 
 jest.mock('re-resizable', () => ({
-  Resizable: ({ children, style }: any) => (
-    <div data-testid="resizable" style={style}>
+  // Mirrors real re-resizable behavior: `size` wins over `style` for width —
+  // the stretch MUST therefore flow through `size` (regression: passing it
+  // via style collapsed every bar to one cell).
+  Resizable: ({ children, style, size }: any) => (
+    <div data-testid="resizable" style={style} data-width={size?.width ?? ''}>
       {children}
     </div>
   ),
@@ -59,7 +62,7 @@ const chip = (container: HTMLElement) =>
 describe('multiday row-bar geometry', () => {
   test('start piece stretches 3 cells with the gap-bridging calc (no pixel math)', () => {
     renderPiece({ isStart: true, cellDate: new Date('2026-08-13T00:00:00.000Z') });
-    const width = screen.getByTestId('resizable').style.width;
+    const width = screen.getByTestId('resizable').getAttribute('data-width');
     expect(width).toBe('calc(300% + 2 * var(--agendfy-month-day-gap, 17px))');
   });
 
@@ -72,7 +75,7 @@ describe('multiday row-bar geometry', () => {
 
   test('covered middle piece is invisible, non-stretched and hidden from AT', () => {
     const { container } = renderPiece({ cellDate: new Date('2026-08-14T00:00:00.000Z') });
-    expect(screen.getByTestId('resizable').style.width).toBe('100%');
+    expect(screen.getByTestId('resizable').getAttribute('data-width')).toBe('100%');
     const c = chip(container);
     expect(c.style.backgroundColor).toBe('transparent');
     expect(c.getAttribute('aria-hidden')).toBe('true');
@@ -95,7 +98,7 @@ describe('multiday row-bar geometry', () => {
         cellDate={new Date('2026-08-16T00:00:00.000Z')}
       />
     );
-    expect(screen.getByTestId('resizable').style.width).toBe(
+    expect(screen.getByTestId('resizable').getAttribute('data-width')).toBe(
       'calc(200% + 1 * var(--agendfy-month-day-gap, 17px))'
     );
     const c = chip(container);
@@ -117,7 +120,7 @@ describe('multiday row-bar geometry', () => {
       />
     );
     // Visually ends on the 14th → 2 cells, not 3.
-    expect(screen.getByTestId('resizable').style.width).toBe(
+    expect(screen.getByTestId('resizable').getAttribute('data-width')).toBe(
       'calc(200% + 1 * var(--agendfy-month-day-gap, 17px))'
     );
   });
@@ -127,7 +130,7 @@ describe('multiday row-bar geometry', () => {
     const { container } = render(
       <EventItem event={single as any} dayWidth={120} config={config} isStart={true} isEnd={true} cellDate={new Date('2026-08-13T00:00:00.000Z')} />
     );
-    expect(screen.getByTestId('resizable').style.width).toBe('100%');
+    expect(screen.getByTestId('resizable').getAttribute('data-width')).toBe('100%');
     expect(chip(container).style.borderStartStartRadius).toBe(''); // base CSS, no inline override
   });
 });

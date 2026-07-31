@@ -45,7 +45,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
   cellDate,
 }) => {
   const [isResizing, setIsResizing] = useState(false);
-  const [dimensions] = useState({ width: "100%", height: 20 });
+  const CHIP_HEIGHT = 20;
 
   const tzStart = useMemo(() => ensureDate(event.start, config?.timeZone), [event.start, config?.timeZone]);
   const tzEnd = useMemo(() => ensureDate(event.end, config?.timeZone), [event.end, config?.timeZone]);
@@ -126,7 +126,10 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
 
   return (
     <Resizable
-      size={{ width: dimensions.width, height: dimensions.height }}
+      // IMPORTANT: the stretch width MUST go through `size` — re-resizable
+      // merges size AFTER style, so a width in `style` is silently
+      // overridden and the bar collapses back to one cell.
+      size={{ width: barWidth, height: CHIP_HEIGHT }}
       onResizeStart={(e) => {
         e.stopPropagation();
         setIsResizing(true);
@@ -165,7 +168,6 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
       handleClasses={{ right: 'react-agendfy-month-resize-handle' }}
       handleStyles={{ right: { cursor: 'ew-resize', width: '8px', right: '-2px' } }}
       style={{
-        width: barWidth,
         zIndex: isDragging || isResizing ? 1000 : 'auto',
       }}
     >
