@@ -110,8 +110,12 @@ const WeekView = ({
     const baseTime = new TZDate(new Date(over.id), config?.timeZone);
     if (!isValid(baseTime)) return;
 
-    const additionalMinutes = active.transform ? (active.transform.y / 40) * slotDuration : 0;
-    const newStartTime = addMinutes(baseTime, additionalMinutes);
+    // Snap to the slot under the pointer. `over.id` (pointerWithin collision)
+    // already identifies the exact drop slot — adding any transform-based
+    // offset on top would double-count the drag distance and produce
+    // fractional-minute start times (see phase-0 audit, bug B8). This also
+    // matches DayView's behavior.
+    const newStartTime = baseTime;
 
     const draggedEvent = events.find((ev: EventProps) => ev.id === active.id);
     if (!draggedEvent) return;
@@ -128,16 +132,18 @@ const WeekView = ({
       return;
     }
 
+    // Normalize to canonical UTC ISO ("Z", not "+00:00") — same convention
+    // as the resize path, so event date strings stay uniform library-wide.
     const updatedEvent = {
       ...draggedEvent,
-      start: newStartTime.toISOString(),
-      end: addMinutes(newStartTime, duration).toISOString(),
+      start: new Date(newStartTime.getTime()).toISOString(),
+      end: new Date(addMinutes(newStartTime, duration).getTime()).toISOString(),
     };
 
     if (typeof onEventUpdate === "function") {
       onEventUpdate(updatedEvent);
     }
-  }, [events, config?.timeZone, slotDuration, onEventClick, onEventUpdate]);
+  }, [events, config?.timeZone, onEventClick, onEventUpdate]);
 
   const handleSelectionMouseDown = useCallback((slotTime: Date) => {
     if (!slotTime) return;
