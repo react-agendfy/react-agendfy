@@ -33,6 +33,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   rowDays,
   isDisabled = false,
   weekNumber,
+  canDrag = true,
 }) => {
   // "+N" popover. position: fixed (from the cell's rect) escapes the month
   // grid's overflow: hidden while staying inside the calendar root, so the
@@ -266,6 +267,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
               isMultiDay={event.isMultiDay || !isSameDay(s, e)}
               cellDate={day}
               rowDays={rowDays}
+              canDrag={canDrag}
               onEventClick={onEventClick}
               onEventResize={onEventResize}
               config={config}

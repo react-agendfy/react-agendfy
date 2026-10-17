@@ -19,6 +19,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   parsedSlotMax,
   config,
   isBusinessHour = false,
+  isDraggable = true,
   isDisabled = false,
   dayLayout,
 }: TimeSlotProps) => {
@@ -71,6 +72,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
               config={config}
               dayDate={dayDate}
               parsedSlotMax={parsedSlotMax}
+              isDraggable={isDraggable}
             />
           );
         })}

@@ -130,7 +130,8 @@ export const WeekEvent = ({
       // Only the segment containing the event's REAL end exposes end-side
       // handles; a start segment of a midnight-crossing event ends at the
       // day boundary, which is not a resizable edge.
-      enable={{ top: false, right: isSegmentEnd, bottom: isSegmentEnd, left: false }}
+      // Resize handles only when resizing is enabled (onEventResize given).
+      enable={{ top: false, right: !!onEventResize && isSegmentEnd, bottom: !!onEventResize && isSegmentEnd, left: false }}
       onResizeStop={handleResize}
       handleStyles={{
         top: { cursor: 'ns-resize' },

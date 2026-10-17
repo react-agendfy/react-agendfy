@@ -40,13 +40,16 @@ const useDataSourceEvents = (
   );
 
   const activeView = localeConfig.defaultView || "week";
+  // Bumped by refetch() (CalendarApi.refetchEvents) to re-run the fetch.
+  const [reloadToken, setReloadToken] = useState(0);
+  const refetch = useCallback(() => setReloadToken((t) => t + 1), []);
   useEffect(() => {
     const startDate = getNewDate(currentDate, activeView, -1);
     const endDate = getNewDate(currentDate, activeView, 1);
     fetchEventsFromDataSources(startDate, endDate);
-  }, [currentDate, activeView, fetchEventsFromDataSources]);
+  }, [currentDate, activeView, fetchEventsFromDataSources, reloadToken]);
 
-  return { dataSourceEvents, isDataSourceLoading, dataSourceError };
+  return { dataSourceEvents, isDataSourceLoading, dataSourceError, refetch };
 };
 
 export default useDataSourceEvents;

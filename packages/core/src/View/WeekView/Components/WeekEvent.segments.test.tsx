@@ -103,9 +103,16 @@ describe('continuation segment', () => {
   });
 
   test('exposes end-side handles (it contains the real end)', () => {
-    renderSegment(continuationSegment);
+    renderSegment(continuationSegment, jest.fn());
     const enable = JSON.parse(screen.getByTestId('resizable').getAttribute('data-enable')!);
     expect(enable.bottom).toBe(true);
+  });
+
+  test('shows no resize handles when resizing is off (no onEventResize)', () => {
+    renderSegment(continuationSegment);
+    const enable = JSON.parse(screen.getByTestId('resizable').getAttribute('data-enable')!);
+    expect(enable.bottom).toBe(false);
+    expect(enable.right).toBe(false);
   });
 
   test('bottom resize emits the TRUE bounds and original id — never the clipped midnight start', () => {

@@ -194,7 +194,8 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
                   onMouseMove={handleMouseMove}
                   isSelected={isSelected(day)}
                   monthDate={monthStart}
-                  onEventResize={handleEventResize}
+                  onEventResize={onEventResize ? handleEventResize : undefined}
+                  canDrag={!!onEventUpdate}
                   navProps={getCellProps(i * columnCount + j)}
                 />
                 );

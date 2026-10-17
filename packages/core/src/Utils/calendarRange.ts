@@ -163,3 +163,42 @@ export const getNavigationTarget = (
   }
   return stepView === "day" ? clampToValidRange(target, rules.validRange) : target;
 };
+
+/**
+ * The dates a view actually shows, as [start, end) — `end` is EXCLUSIVE
+ * (FullCalendar's convention). The month view includes the leading and
+ * trailing days of the grid (6 weeks with fixedWeekCount).
+ */
+export const getVisibleRange = (
+  view: string,
+  date: Date,
+  config?: RangeConfig & { fixedWeekCount?: boolean }
+): { start: Date; end: Date } => {
+  const weekStartsOn = resolveWeekStartsOn(config);
+  const span = view === "list" ? config?.listRange ?? "month" : view;
+  switch (span) {
+    case "day":
+      return { start: startOfDay(date), end: addDays(startOfDay(date), 1) };
+    case "week":
+      return {
+        start: startOfWeek(date, { weekStartsOn }),
+        end: addDays(startOfWeek(date, { weekStartsOn }), 7),
+      };
+    case "agenda":
+      return { start: startOfDay(date), end: addDays(startOfDay(date), 7) };
+    case "month":
+      if (view === "list") {
+        return { start: startOfMonth(date), end: addDays(endOfMonth(date), 1) };
+      }
+      {
+        const start = startOfWeek(startOfMonth(date), { weekStartsOn });
+        const end = config?.fixedWeekCount
+          ? addDays(start, 42)
+          : addDays(startOfDay(endOfWeek(endOfMonth(date), { weekStartsOn })), 1);
+        return { start, end };
+      }
+    default:
+      // Custom views: the month grid is the safest superset.
+      return getVisibleRange("month", date, config);
+  }
+};

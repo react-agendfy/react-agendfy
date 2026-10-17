@@ -5,7 +5,8 @@ import { memo } from "react";
 
 export const EventItemComponent: React.FC<BaseEventProps> = (props) => {
   return (
-    <Resizable enable={{ bottom: true }} handleStyles={{ bottom: { height: '4px', background: 'transparent' } }}>
+    // The day view has no resize handler yet: no handle that does nothing.
+    <Resizable enable={{ bottom: false }}>
       <BaseEvent {...props} />
     </Resizable>
   );

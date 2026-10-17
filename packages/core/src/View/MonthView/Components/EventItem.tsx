@@ -33,6 +33,8 @@ interface EventItemProps extends Omit<BaseEventProps, 'onEventResize'> {
   cellDate?: Date;
   /** Rendered (non-hidden) days of this cell's week row, in display order. */
   rowDays?: Date[];
+  /** Dragging allowed (the view has a move handler). Default true. */
+  canDrag?: boolean;
 }
 
 const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?: boolean }> = ({
@@ -47,6 +49,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
   isOtherMonth = false,
   cellDate,
   rowDays,
+  canDrag: canDragProp = true,
 }) => {
   const [isResizing, setIsResizing] = useState(false);
   const CHIP_HEIGHT = 20;
@@ -106,7 +109,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
       ? `calc(${stretchN * 100}% + ${stretchN - 1} * var(--agendfy-month-day-gap, 17px))`
       : '100%';
 
-  const draggableEnabled = !spansDays || (isStart || isEnd);
+  const draggableEnabled = canDragProp && (!spansDays || (isStart || isEnd));
   const canDrag = draggableEnabled;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `${event.id}-${isStart ? 'start' : isEnd ? 'end' : 'middle'}`,

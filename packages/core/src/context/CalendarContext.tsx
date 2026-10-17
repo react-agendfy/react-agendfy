@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useReducer,
   useRef,
@@ -36,7 +37,7 @@ import { NotificationService } from "../Notify/NotificationService";
 import useCalendarNavigation from "../hooks/useCalendarNavigation";
 import usePluginManagement from "../hooks/usePluginManagement";
 import useDataSourceEvents from "../hooks/useDataSourceEvents";
-import { clampToValidRange, getDayRules, getExpansionWindow } from "../Utils/calendarRange";
+import { clampToValidRange, getDayRules, getExpansionWindow, getVisibleRange } from "../Utils/calendarRange";
 import { expandRecurrences } from "../Utils/recurrence";
 
 export const defaultConfig: Config = {
@@ -218,6 +219,9 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   onSlotClick,
   onDateRangeSelect,
   onDateChange,
+  onDatesSet,
+  onViewChange,
+  apiRef,
   eventContent,
   currentDate: currentDateProp,
   children,
@@ -340,8 +344,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [JSON.stringify(dataSourcePlugins)]
   );
-  const { dataSourceEvents, isDataSourceLoading, dataSourceError } =
-    useDataSourceEvents(stableDataSourcePlugins, resolvedConfig, state.currentDate);
+  const { dataSourceEvents, isDataSourceLoading, dataSourceError, refetch: refetchDataSources } =
+    // localeConfig carries the ACTIVE view (resolvedConfig only the initial
+    // one), so fetch ranges follow view switches.
+    useDataSourceEvents(stableDataSourcePlugins, localeConfig, state.currentDate);
 
   // Merge events fetched by data-source plugins with the user-provided events,
   // without clobbering user events (user events win on id collisions).
@@ -474,6 +480,68 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     dayRules,
   });
 
+  /* --- visible range: onDatesSet / onViewChange / imperative API -------- */
+  const visibleRange = useMemo(
+    () => getVisibleRange(state.currentView, state.currentDate, localeConfig),
+    [state.currentView, state.currentDate, localeConfig]
+  );
+  const rangeStartMs = visibleRange.start.getTime();
+  const rangeEndMs = visibleRange.end.getTime();
+  useEffect(() => {
+    onDatesSet?.({
+      start: new Date(rangeStartMs),
+      end: new Date(rangeEndMs),
+      view: state.currentView,
+      date: new Date(state.currentDate.getTime()),
+    });
+    // Fires on range/view changes only (not on every date inside the range).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeStartMs, rangeEndMs, state.currentView]);
+
+  const isFirstView = useRef(true);
+  useEffect(() => {
+    if (isFirstView.current) {
+      isFirstView.current = false;
+      return;
+    }
+    onViewChange?.(state.currentView);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentView]);
+
+  const toDate = (value: Date | string) => (value instanceof Date ? value : new Date(value));
+  useImperativeHandle(
+    apiRef,
+    () => ({
+      getDate: () => new Date(state.currentDate.getTime()),
+      gotoDate: (date) => setCurrentDate(clampToValidRange(toDate(date), dayRules.validRange)),
+      next: () => navigateForward(),
+      prev: () => navigateBack(),
+      today: () => navigateToday(),
+      changeView: (view, date) => {
+        dispatch({ type: "SET_VIEW", payload: view });
+        if (date !== undefined) setCurrentDate(clampToValidRange(toDate(date), dayRules.validRange));
+      },
+      getView: () => ({
+        type: state.currentView,
+        activeStart: new Date(rangeStartMs),
+        activeEnd: new Date(rangeEndMs),
+      }),
+      refetchEvents: refetchDataSources,
+    }),
+    [
+      state.currentDate,
+      state.currentView,
+      setCurrentDate,
+      dayRules.validRange,
+      navigateForward,
+      navigateBack,
+      navigateToday,
+      rangeStartMs,
+      rangeEndMs,
+      refetchDataSources,
+    ]
+  );
+
   const navigate = useCallback(
     (direction: "prev" | "next" | "today") => {
       if (direction === "today") navigateToday();
@@ -533,7 +601,13 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       name: plugin.viewName,
       label: plugin.props?.label || plugin.viewName,
     }));
-    return [...defaultViews, ...customViews];
+    const all = [...defaultViews, ...customViews];
+    // headerViews picks and orders the buttons (unknown names are ignored).
+    const wanted = localeConfig.headerViews;
+    if (!wanted?.length) return all;
+    return wanted
+      .map((name) => all.find((v) => v.name === name))
+      .filter((v): v is { name: string; label: string } => !!v);
   }, [localeConfig, customViewPlugins]);
 
   const customViews = useMemo(() => {

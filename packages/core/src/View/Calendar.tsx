@@ -93,6 +93,13 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
     }
   }, [theme, themePlugins]);
 
+  // editable / eventStartEditable / eventDurationEditable / selectable:
+  // a view without the handler renders that interaction off.
+  const editable = localeConfig.editable !== false;
+  const onMove = (localeConfig.eventStartEditable ?? editable) ? handleEventUpdate : undefined;
+  const onResize = (localeConfig.eventDurationEditable ?? editable) ? handleEventResize : undefined;
+  const onSelect = localeConfig.selectable !== false ? handleDateRangeSelect : undefined;
+
   const renderViewComponent = () => {
     const CustomViewComponent = customViews[currentView];
     if (CustomViewComponent) {
@@ -101,8 +108,8 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
           events={visibleEvents}
           currentDate={currentDate}
           config={localeConfig}
-          onEventUpdate={handleEventUpdate}
-          onEventResize={handleEventResize}
+          onEventUpdate={onMove}
+          onEventResize={onResize}
           onEventClick={onEventClick}
           onDayClick={onDayClick}
           onSlotClick={onSlotClick}
@@ -118,15 +125,15 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
             events={visibleEvents}
             slotMin={localeConfig.slotMin}
             slotMax={localeConfig.slotMax}
-            onEventUpdate={handleEventUpdate}
-            onEventResize={handleEventResize}
+            onEventUpdate={onMove}
+            onEventResize={onResize}
             onEventClick={onEventClick}
             onDayClick={onDayClick}
             onSlotClick={onSlotClick}
             currentDate={currentDate}
             config={localeConfig}
             interactionPlugin={interactionPlugins}
-            onDateRangeSelect={handleDateRangeSelect}
+            onDateRangeSelect={onSelect}
           />
         );
       case "month":
@@ -135,12 +142,12 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
             events={visibleEvents}
             onDayClick={onDayClick}
             currentDate={currentDate}
-            onEventUpdate={handleEventUpdate}
-            onEventResize={handleEventResize}
+            onEventUpdate={onMove}
+            onEventResize={onResize}
             showResourceView={true}
             config={localeConfig}
             onEventClick={onEventClick}
-            onDateRangeSelect={handleDateRangeSelect}
+            onDateRangeSelect={onSelect}
           />
         );
       case "day":
@@ -148,7 +155,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
           <DayView
             events={visibleEvents}
             currentDate={currentDate}
-            onEventUpdate={handleEventUpdate}
+            onEventUpdate={onMove}
             onSlotClick={onSlotClick}
             config={localeConfig}
             onEventClick={onEventClick}
@@ -158,7 +165,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
         return (
           <ListView
             events={visibleEvents}
-            onEventUpdate={handleEventUpdate}
+            onEventUpdate={onMove}
             onEventClick={onEventClick}
             currentDate={currentDate}
             config={localeConfig}
@@ -187,6 +194,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
         {isDataSourceLoading ? ` ${localeConfig.loading || "Loading events"}` : ""}
         {dataSourceError ? ` ${dataSourceError}` : ""}
       </div>
+      {localeConfig.showHeader !== false && (
       <CalendarHeader
         currentDate={currentDate}
         currentView={currentView}
@@ -201,6 +209,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
         isPrevDisabled={!canNavigateBack}
         isNextDisabled={!canNavigateForward}
       />
+      )}
       <div className="react-agendfy-layout-content">
         <EventContentProvider eventContent={eventContent} plugins={eventRenderingPlugins}>
           {/* Views are lazy chunks: the boundary keeps SSR (renderToString)

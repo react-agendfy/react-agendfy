@@ -140,6 +140,23 @@ export interface Config {
   allDaySlot?: boolean;
   /** Show the current-time line. Default true. */
   nowIndicator?: boolean;
+  /**
+   * View buttons shown in the header, in order (built-in or custom view
+   * names). Default: every built-in view, then the custom views.
+   */
+  headerViews?: string[];
+  /** `false` hides the header (toolbar). Default true. */
+  showHeader?: boolean;
+  /**
+   * Events can be dragged and resized. Default true (agendfy); FullCalendar's
+   * default is false. `eventStartEditable` / `eventDurationEditable`
+   * override it for dragging / resizing.
+   */
+  editable?: boolean;
+  eventStartEditable?: boolean;
+  eventDurationEditable?: boolean;
+  /** Date ranges can be selected by dragging over the grid. Default true. */
+  selectable?: boolean;
   defaultView: CalendarView;
   slotDuration: number;
   slotLabelFormat: string;
@@ -262,6 +279,8 @@ export interface CalendarDayProps {
   isDisabled?: boolean;
   /** Week number shown in the row's first cell (`weekNumbers`). */
   weekNumber?: number;
+  /** Events can be dragged (the view has a move handler). Default true. */
+  canDrag?: boolean;
   config: Config;
   /** Roving-tabindex navigation props supplied by useGridNavigation. */
   navProps?: import("../hooks/useGridNavigation").GridCellNavProps;
@@ -360,6 +379,29 @@ export interface Resource {
   [key: string]: any;
 }
 
+/** Visible range reported by `onDatesSet` (`end` exclusive). */
+export interface DatesSetInfo {
+  start: Date;
+  end: Date;
+  view: string;
+  /** The navigated date (inside the range). */
+  date: Date;
+}
+
+/** Imperative API exposed through `apiRef`. */
+export interface CalendarApi {
+  getDate(): Date;
+  gotoDate(date: Date | string): void;
+  next(): void;
+  prev(): void;
+  today(): void;
+  changeView(view: string, date?: Date | string): void;
+  /** Active view and its visible range (`activeEnd` exclusive). */
+  getView(): { type: string; activeStart: Date; activeEnd: Date };
+  /** Re-runs the data-source plugins. */
+  refetchEvents(): void;
+}
+
 /** Selection emitted when a user drags across a date range. */
 export interface DateRangeSelection {
   start: string;
@@ -397,6 +439,15 @@ export interface CalendarProps {
   onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
   /** Called with the displayed date on mount and after every navigation. */
   onDateChange?: (date: Date) => void;
+  /**
+   * Called on mount and whenever the visible range changes (navigation or
+   * view switch) — FullCalendar's `datesSet`. `end` is exclusive.
+   */
+  onDatesSet?: (info: DatesSetInfo) => void;
+  /** Called when the active view changes (header buttons or the API). */
+  onViewChange?: (view: string) => void;
+  /** Imperative control, like FullCalendar's `getApi()`. */
+  apiRef?: React.Ref<CalendarApi>;
   /** Custom event body for every view (takes precedence over plugins). */
   eventContent?: EventContentRenderer;
 }

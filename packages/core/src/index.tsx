@@ -1,8 +1,10 @@
 import './index.css';
 import React from "react";
 import {
+  CalendarApi,
   CalendarProps,
   CalendarConfig,
+  DatesSetInfo,
   CalendarHeaderProps,
   CalendarView,
   Config,
@@ -49,8 +51,10 @@ WrappedCalendar.displayName = 'WrappedCalendar';
 
 export { WrappedCalendar as Calendar, ensureDate, downloadBlob, expandRecurrences };
 export type {
+  CalendarApi,
   CalendarProps,
   CalendarConfig,
+  DatesSetInfo,
   CalendarHeaderProps,
   CalendarView,
   Config,

@@ -10,9 +10,10 @@ for natural-language scheduling.
 
 ## Features
 
+- **Coming from FullCalendar?** [`@react-agendfy/fullcalendar-compat`](packages/fullcalendar-compat/README.md) takes `@fullcalendar/react`'s props, callbacks (`EventApi`, `info.revert()`) and `getApi()`, so migrating is mostly an import swap. See the [migration guide](packages/fullcalendar-compat/MIGRATING.md).
 - **5 built-in views** — month, week, day, list and agenda, plus custom views via plugins.
 - **Drag & drop and resize** — pointer *and* keyboard operable (dnd-kit sensors), with correct multi-day and cross-day behavior.
-- **Recurring events** — RRULE strings (via [rrule](https://github.com/jkbrzt/rrule)) on the `recurrence` event field.
+- **Recurring events** — RRULE strings or FullCalendar-style objects (`recurrence` or `rrule`), with `exdate`, expanded in every view and DST-safe.
 - **Timezones** — wall-clock-correct rendering in any IANA timezone via `@date-fns/tz`.
 - **i18n** — bundled catalogs for `en`, `pt` (European Portuguese), `pt-BR`, `es`, `fr`, `ar`; every string overridable per-key through `config`.
 - **RTL** — automatic for RTL languages (`ar`, `he`, `fa`, `ur`), or forced with the `direction` prop.
@@ -27,6 +28,7 @@ for natural-language scheduling.
 | --- | --- |
 | [`@react-agendfy/core`](packages/core/README.md) | The calendar component, hooks, types and plugin contracts. |
 | [`@react-agendfy/ai`](packages/ai/README.md) | Bring-your-own-LLM AI layer: NL event parsing, smart scheduling, insights, hooks, Quick Add plugin. |
+| [`@react-agendfy/fullcalendar-compat`](packages/fullcalendar-compat/README.md) | Drop-in `@fullcalendar/react` API (props, callbacks, `getApi()`) on top of the core. |
 | `@react-agendfy/plugin-filter` | Header resource-filter dropdown. |
 | `@react-agendfy/plugin-timeline` | Timeline custom view (`viewName: "timeline"`). |
 | `@react-agendfy/plugin-theme` | Dark theme plugin (`themeName: "dark"`, scoped CSS variables). |
