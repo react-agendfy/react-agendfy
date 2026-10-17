@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
-import type { Modifier } from "@dnd-kit/core";
 import {
   format,
   addMinutes,
@@ -23,6 +22,7 @@ import { DayColumn } from "./Components/DayColumn";
 import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import DragPreview from "../../Components/DragPreview";
+import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
 
 const WeekView = ({
@@ -111,7 +111,8 @@ const WeekView = ({
   // slot and column) that moves in whole slots/columns, while the original
   // stays in place as a ghost. The drop lands exactly where the preview is.
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const dragMetricsRef = useRef<{ slotPx: number; columnPx: number } | null>(null);
+  // One snap state per view: the preview and the drop share its result.
+  const gridSnap = useMemo(() => createGridDragSnap(), []);
   const [activeDrag, setActiveDrag] = useState<EventProps | null>(null);
 
   const handleDragStart = useCallback((event: any) => {
@@ -119,26 +120,34 @@ const WeekView = ({
     const dragged = events.find((e: EventProps) => e.id === active?.id);
     const slot = containerRef.current?.querySelector(".react-agendfy-weektimeslot");
     const column = containerRef.current?.querySelector(".react-agendfy-weekview-day-column");
-    const slotPx = slot?.getBoundingClientRect().height ?? 0;
-    const columnPx = column?.getBoundingClientRect().width ?? 0;
-    dragMetricsRef.current = slotPx > 0 && columnPx > 0 ? { slotPx, columnPx } : null;
+    // Keep the preview inside the grid: between slotMin and slotMax, and
+    // between the first and last rendered column.
+    let bounds;
+    if (dragged) {
+      const start = new TZDate(ensureDate(dragged.start, config?.timeZone), config?.timeZone);
+      const fromGridStart = start.getHours() * 60 + start.getMinutes() - startHour * 60;
+      const length = differenceInMinutes(ensureDate(dragged.end, config?.timeZone), start);
+      const fromColumn = daysOfWeek.indexOf((start.getDay() - dayRules.weekStartsOn + 7) % 7);
+      bounds = {
+        minSlots: -Math.floor(fromGridStart / slotDuration),
+        maxSlots: Math.floor(((endHour - startHour) * 60 - fromGridStart - length) / slotDuration),
+        minColumns: fromColumn < 0 ? 0 : -fromColumn,
+        maxColumns: fromColumn < 0 ? 0 : daysOfWeek.length - 1 - fromColumn,
+      };
+    }
+    gridSnap.begin(
+      containerRef.current,
+      slot?.getBoundingClientRect().height ?? 0,
+      column?.getBoundingClientRect().width ?? 0,
+      bounds
+    );
     if (dragged) setActiveDrag(dragged);
-  }, [events]);
-
-  const snapToGrid = useCallback<Modifier>(({ transform }) => {
-    const metrics = dragMetricsRef.current;
-    if (!metrics) return transform;
-    return {
-      ...transform,
-      x: Math.round(transform.x / metrics.columnPx) * metrics.columnPx,
-      y: Math.round(transform.y / metrics.slotPx) * metrics.slotPx,
-    };
-  }, []);
+  }, [events, gridSnap, config?.timeZone, startHour, endHour, slotDuration, daysOfWeek, dayRules.weekStartsOn]);
 
   const handleDragEnd = useCallback((event: any) => {
     const { active, over, delta } = event;
-    const metrics = dragMetricsRef.current;
-    dragMetricsRef.current = null;
+    const snapped = gridSnap.result();
+    gridSnap.end();
     setActiveDrag(null);
     if (!active?.id || !over?.id) return;
 
@@ -154,17 +163,19 @@ const WeekView = ({
       originalStart
     );
 
-    // With real layout metrics the new start is the original time moved by
-    // the snapped vertical distance, on the day under the pointer — exactly
-    // where the snapped preview sits. Without metrics (no layout, e.g. tests)
-    // fall back to the slot under the pointer (`over.id`, pointerWithin); a
-    // transform offset on top of it would double-count the drag (bug B8).
-    const newStartTime = metrics
-      ? addMinutes(
-          setMinutes(setHours(startOfDay(baseTime), originalStart.getHours()), originalStart.getMinutes()),
-          Math.round(delta.y / metrics.slotPx) * slotDuration
-        )
-      : baseTime;
+    // With layout, the drop is EXACTLY the snapped preview: the original
+    // time moved by the snapped slots, in the column the preview sits in
+    // (rendered columns, so hidden weekdays are skipped). Without layout
+    // (tests) fall back to the slot under the pointer (`over.id`,
+    // pointerWithin); adding a transform offset to it would double-count
+    // the drag (bug B8).
+    let newStartTime: Date = baseTime;
+    if (snapped) {
+      const fromColumn = daysOfWeek.indexOf((originalStart.getDay() - dayRules.weekStartsOn + 7) % 7);
+      const toColumn = Math.min(daysOfWeek.length - 1, Math.max(0, (fromColumn < 0 ? 0 : fromColumn) + snapped.columns));
+      const dayDiff = fromColumn < 0 ? 0 : daysOfWeek[toColumn] - daysOfWeek[fromColumn];
+      newStartTime = addMinutes(addDays(originalStart, dayDiff), snapped.slots * slotDuration);
+    }
 
     // Consider both axes so a horizontal drag (moving to another day column)
     // is not misclassified as a click and discarded.
@@ -184,7 +195,7 @@ const WeekView = ({
     if (typeof onEventUpdate === "function") {
       onEventUpdate(updatedEvent);
     }
-  }, [events, config?.timeZone, onEventClick, onEventUpdate, slotDuration]);
+  }, [events, config?.timeZone, onEventClick, onEventUpdate, slotDuration, gridSnap, daysOfWeek, dayRules.weekStartsOn]);
 
   const handleSelectionMouseDown = useCallback((slotTime: Date) => {
     if (!slotTime) return;
@@ -347,7 +358,7 @@ const WeekView = ({
           })}
         </div>
       </div>
-      <DragOverlay modifiers={[snapToGrid]} dropAnimation={null} zIndex={1000}>
+      <DragOverlay modifiers={[gridSnap.modifier]} dropAnimation={null} zIndex={1000}>
         {activeDrag && <DragPreview event={activeDrag} config={config} />}
       </DragOverlay>
     </DndContext>

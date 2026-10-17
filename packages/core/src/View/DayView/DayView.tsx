@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import type { Modifier } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
@@ -18,6 +17,7 @@ import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { getEventsForSlot } from "../../Utils/weekViewHelpers";
 import { computeDayLayout } from "../../Utils/positionedEventsHelper";
 import DragPreview from "../../Components/DragPreview";
+import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getBusinessHoursIntervalsForDate } from "../../Utils/businessHours";
 import { getDayRules } from "../../Utils/calendarRange";
 
@@ -46,23 +46,34 @@ const DayView: React.FC<DayViewProps> = ({
 
   // Same drag preview as the week view: a DragOverlay snapped to slots.
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const slotPxRef = useRef(0);
+  const gridSnap = useMemo(() => createGridDragSnap(), []);
   const [activeDrag, setActiveDrag] = useState<EventProps | null>(null);
   const handleDragStart = useCallback(
     ({ active }: any) => {
       const slot = containerRef.current?.querySelector(".react-agendfy-timeslot-container");
-      slotPxRef.current = slot?.getBoundingClientRect().height ?? 0;
-      setActiveDrag(events.find((ev: EventProps) => ev.id === active?.id) ?? null);
+      const dragged = events.find((ev: EventProps) => ev.id === active?.id) ?? null;
+      const step = config?.slotDuration || 30;
+      let bounds;
+      if (dragged) {
+        // Keep the preview between slotMin and slotMax.
+        const start = new TZDate(ensureDate(dragged.start, config?.timeZone), config?.timeZone);
+        const fromGridStart = start.getHours() * 60 + start.getMinutes() - parsedSlotMin * 60;
+        const length = differenceInMinutes(ensureDate(dragged.end, config?.timeZone), start);
+        bounds = {
+          minSlots: -Math.floor(fromGridStart / step),
+          maxSlots: Math.floor(((parsedSlotMax - parsedSlotMin) * 60 - fromGridStart - length) / step),
+        };
+      }
+      gridSnap.begin(containerRef.current, slot?.getBoundingClientRect().height ?? 0, 0, bounds);
+      setActiveDrag(dragged);
     },
-    [events]
+    [events, gridSnap, config?.timeZone, config?.slotDuration, parsedSlotMin, parsedSlotMax]
   );
-  const snapToSlots = useCallback<Modifier>(({ transform }) => {
-    const px = slotPxRef.current;
-    return px > 0 ? { ...transform, x: 0, y: Math.round(transform.y / px) * px } : transform;
-  }, []);
 
   const handleDragEnd = useCallback(
     (event: any) => {
+      const snapped = gridSnap.result();
+      gridSnap.end();
       setActiveDrag(null);
       const { active, over, delta } = event;
       if (!active?.id || !over?.id) return;
@@ -80,13 +91,11 @@ const DayView: React.FC<DayViewProps> = ({
         originalStart
       );
 
-      // With layout metrics, move by the snapped distance — where the
-      // DragOverlay preview sits. Without them (tests), the pointer's slot.
-      const slotPx = slotPxRef.current;
-      const newStart =
-        slotPx > 0
-          ? addMinutes(originalStart, Math.round(delta.y / slotPx) * (config?.slotDuration || 30))
-          : baseTime;
+      // With layout, the drop is exactly the snapped preview (scroll-aware,
+      // see gridDragSnap). Without it (tests), the pointer's slot.
+      const newStart = snapped
+        ? addMinutes(originalStart, snapped.slots * (config?.slotDuration || 30))
+        : baseTime;
 
       const updatedEvent = {
         ...draggedEvent,
@@ -103,7 +112,7 @@ const DayView: React.FC<DayViewProps> = ({
         onEventUpdate(updatedEvent);
       }
     },
-    [events, config, onEventClick, onEventUpdate]
+    [events, config, onEventClick, onEventUpdate, gridSnap]
   );
 
   const businessIntervals = useMemo(
@@ -206,7 +215,7 @@ const DayView: React.FC<DayViewProps> = ({
           />
         )}
       </div>
-      <DragOverlay modifiers={[snapToSlots]} dropAnimation={null} zIndex={1000}>
+      <DragOverlay modifiers={[gridSnap.modifier]} dropAnimation={null} zIndex={1000}>
         {activeDrag && <DragPreview event={activeDrag} config={config} />}
       </DragOverlay>
     </DndContext>
