@@ -6,6 +6,7 @@ import ResourceDisplay from "./Resource/ResourceDisplay";
 import { BaseEventProps } from "../types/types";
 import { TZDate } from "@date-fns/tz";
 import { getContrastText } from "../Utils/colorContrast";
+import { useEventContent } from "../context/EventContentContext";
 
 const BaseEvent = ({
   event,
@@ -94,6 +95,13 @@ const BaseEvent = ({
   const displayTitle = event.title;
   const tooltipContent = generateTooltipContent(event, isMultiDay, isStart, isEnd, config);
 
+  // Views pass the resolved config, whose defaultView is the active view.
+  const customContent = useEventContent(event, config?.defaultView ?? "week", {
+    timeZone: config?.timeZone,
+    isStart: !isMultiDay || isStart,
+    isEnd: !isMultiDay || isEnd,
+  });
+
   const startLabel = format(new TZDate(parseISO(event.start.toString()), config?.timeZone), "HH:mm");
   const endLabel = format(new TZDate(parseISO(event.end.toString()), config?.timeZone), "HH:mm");
 
@@ -130,15 +138,18 @@ const BaseEvent = ({
         e.stopPropagation();
       }}
     >
-      <div
-        className="react-agendfy-baseevent__time"
-        style={{ color: 'inherit' }}
-      >
-        {displayTitle}{" "}
-        {format(new TZDate(parseISO(event.start.toString()), config?.timeZone), "HH:mm")} -{" "}
-        {format(new TZDate(parseISO(event.end.toString()), config?.timeZone), "HH:mm")}
-      </div>
-      <ResourceDisplay resources={event.resources} maxVisible={2} />
+      {customContent ?? (
+        <>
+          <div
+            className="react-agendfy-baseevent__time"
+            style={{ color: 'inherit' }}
+          >
+            {displayTitle}{" "}
+            {startLabel} - {endLabel}
+          </div>
+          <ResourceDisplay resources={event.resources} maxVisible={2} />
+        </>
+      )}
     </div>
   );
 };

@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     dts({
-      outputDir: 'dist/types',
+      outDir: 'dist/types',
       insertTypesEntry: true,
       rollupTypes: true,
       copyDtsFiles: false,

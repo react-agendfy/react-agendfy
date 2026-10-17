@@ -15,5 +15,5 @@ export default defineConfig({
     },
     sourcemap: true,
   },
-  plugins: [dts({ outputDir: 'dist/types', insertTypesEntry: true, rollupTypes: true })],
+  plugins: [dts({ outDir: 'dist/types', insertTypesEntry: true, rollupTypes: true })],
 });

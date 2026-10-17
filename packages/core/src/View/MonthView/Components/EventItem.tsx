@@ -11,16 +11,16 @@
 // and the end-cell resize handle.
 import React, { memo, useMemo, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { format, differenceInCalendarDays, addDays, isSameDay, subMilliseconds } from 'date-fns';
+import { format, addDays, isSameDay, startOfDay, startOfWeek, subMilliseconds } from 'date-fns';
+import { resolveWeekStartsOn } from '../../../Utils/calendarRange';
 import { Resizable } from "re-resizable";
 import { TZDate } from '@date-fns/tz';
 import { ensureDate } from '../../../Utils/DateTrannforms';
 import ResourceDisplay from '../../../Components/Resource/ResourceDisplay';
 import { BaseEventProps } from '../../../types/types';
 import { getContrastText } from '../../../Utils/colorContrast';
+import { useEventContent } from '../../../context/EventContentContext';
 import './EventItem.css';
-
-const WEEK_STARTS_ON = 0; // month grid is built with weekStartsOn: 0
 
 interface EventItemProps extends Omit<BaseEventProps, 'onEventResize'> {
   dayWidth: number;
@@ -30,6 +30,8 @@ interface EventItemProps extends Omit<BaseEventProps, 'onEventResize'> {
   isEnd: boolean;
   /** The calendar day this cell renders (drives row-bar geometry). */
   cellDate?: Date;
+  /** Rendered (non-hidden) days of this cell's week row, in display order. */
+  rowDays?: Date[];
 }
 
 const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?: boolean }> = ({
@@ -43,6 +45,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
   onEventResize,
   isOtherMonth = false,
   cellDate,
+  rowDays,
 }) => {
   const [isResizing, setIsResizing] = useState(false);
   const CHIP_HEIGHT = 20;
@@ -66,20 +69,34 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
     if (!spansDays) {
       return { isVisiblePiece: true, stretchN: 1, roundStart: true, roundEnd: true };
     }
-    const cell = new TZDate(pieceDate, config?.timeZone);
-    const remainingDays = differenceInCalendarDays(visualEnd, cell) + 1;
-    const offset = (cell.getDay() - WEEK_STARTS_ON + 7) % 7;
-    const daysLeftInRow = 7 - offset;
-    const isRowStart = offset === 0;
-    const visible = isStart || isRowStart;
-    const n = Math.max(1, Math.min(remainingDays, daysLeftInRow));
+    const cell = startOfDay(new TZDate(pieceDate, config?.timeZone));
+    // Geometry runs over the row's RENDERED columns: hidden weekdays take no
+    // space, so the bar stretches over visible cells only.
+    // Without rowDays (standalone use) assume a full 7-day row.
+    const row =
+      rowDays && rowDays.length > 0
+        ? rowDays
+        : Array.from({ length: 7 }, (_, i) =>
+            addDays(startOfWeek(cell, { weekStartsOn: resolveWeekStartsOn(config) }), i)
+          );
+    const col = Math.max(0, row.findIndex((d) => isSameDay(d, cell)));
+    const endDay = startOfDay(visualEnd);
+    const coveredAhead = row.slice(col).filter((d) => d.getTime() <= endDay.getTime()).length;
+    // The visible piece is the first covered cell of the row — the event's
+    // start cell, or the first rendered cell it continues into (which is not
+    // necessarily column 0 when the start falls on a hidden day).
+    const startDay = startOfDay(tzStart);
+    const isFirstCovered = col === 0 || row[col - 1].getTime() < startDay.getTime();
+    const visible = isStart || isFirstCovered;
+    const n = Math.max(1, coveredAhead);
+    const lastRowDay = row[row.length - 1];
     return {
       isVisiblePiece: visible,
       stretchN: visible ? n : 1,
       roundStart: isStart,
-      roundEnd: n >= remainingDays,
+      roundEnd: endDay.getTime() <= lastRowDay.getTime(),
     };
-  }, [spansDays, pieceDate, config?.timeZone, visualEnd, isStart]);
+  }, [spansDays, pieceDate, config, visualEnd, isStart, rowDays, tzStart]);
 
   // Percentage-based stretch bridges cell paddings + borders exactly.
   // --agendfy-month-day-gap = 2 * cell padding + cell border (see MonthView.css).
@@ -102,6 +119,11 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
   const endTime = useMemo(() => format(tzEnd, 'HH:mm'), [tzEnd]);
 
   const showContent = isVisiblePiece;
+  const customContent = useEventContent(event, 'month', {
+    timeZone: config?.timeZone,
+    isStart,
+    isEnd,
+  });
 
   const className = [
     'react-agendfy-event-item',
@@ -224,7 +246,8 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
           if (canDrag) (listeners as any)?.onKeyDown?.(e);
         }}
       >
-        {showContent && (
+        {showContent && customContent}
+        {showContent && !customContent && (
           <>
             <div className="react-agendfy-event-item-content">
               <span>{event.title}</span>

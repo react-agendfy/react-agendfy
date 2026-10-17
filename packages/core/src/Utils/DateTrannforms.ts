@@ -1,88 +1,19 @@
 import { TZDate } from "@date-fns/tz";
-import { addMilliseconds, differenceInMilliseconds, parseISO, set } from "date-fns";
-import { RRule } from "rrule";
+import { parseISO } from "date-fns";
+import type { EventProps } from "../types/types";
+import { expandRecurrences } from "./recurrence";
 
-interface CalendarEvent {
-  id: string | number;
-  start: string | Date;
-  end: string | Date;
-  recurrence?: string;
-  [key: string]: any;
-}
-
-export const expandRecurringEvents = <T extends CalendarEvent>(
+/**
+ * @deprecated Kept for backwards compatibility — use `expandRecurrences`
+ * from Utils/recurrence (same behavior; adds exdate and rrule-object support).
+ * The calendar context already expands recurring events for every view.
+ */
+export const expandRecurringEvents = <T extends EventProps>(
   events: T[],
   viewStartDate: Date,
   viewEndDate: Date,
   timezone?: string
-): T[] => {
-  const start = timezone
-    ? new TZDate(viewStartDate, timezone)
-    : viewStartDate;
-  const end = timezone
-    ? new TZDate(viewEndDate, timezone)
-    : viewEndDate;
-
-  const expandedEvents: T[] = [];
-
-  events.forEach((event) => {
-    // Se o evento não possui recorrência, adicionar diretamente
-    if (!event.recurrence) {
-      expandedEvents.push(event);
-      return;
-    }
-
-    try {
-      // Parse da string rrule
-      const rule = RRule.fromString(event.recurrence);
-
-      // Obtém as datas de ocorrência dentro do intervalo (inclusivo para between)
-      const occurrences = rule.between(start, end, true);
-
-      if (occurrences.length === 0) return;
-
-      // Para cada ocorrência, cria um novo evento
-      occurrences.forEach((date) => {
-        // Prioriza o fuso horário da regra de recorrência (se existir),
-        // caso contrário, usa o fuso horário da visualização.
-        const eventTimezone = rule.options.tzid || timezone;
-
-        const originalStartDate = ensureDate(event.start, eventTimezone);
-        const originalEndDate = ensureDate(event.end, eventTimezone);
-        const duration = differenceInMilliseconds(originalEndDate, originalStartDate);
-
-        // Cria a nova data de início a partir da ocorrência, mas com a hora do evento original.
-        // Interpretamos a ocorrência no mesmo fuso horário do evento antes de aplicar a
-        // hora original, evitando que campos de wall-clock de um TZDate sejam misturados
-        // em um Date simples (o que causava desvio entre fusos).
-        const occurrenceInTz = eventTimezone ? new TZDate(date, eventTimezone) : date;
-        const newStart = set(occurrenceInTz, {
-          hours: originalStartDate.getHours(),
-          minutes: originalStartDate.getMinutes(),
-          seconds: originalStartDate.getSeconds(),
-          milliseconds: originalStartDate.getMilliseconds(),
-        });
-
-        // Calcula a nova data de término adicionando a duração original.
-        const newEnd = addMilliseconds(newStart, duration);
-
-        expandedEvents.push({
-          ...event,
-          id: `${event.id}-${date.toISOString()}`, // ID único para cada ocorrência
-          start: newStart.toISOString(),
-          end: newEnd.toISOString(),
-          isRecurrenceInstance: true, // Flag para identificar que é uma instância de recorrência
-          originalEventId: event.id, // Referência ao evento original
-        });
-      });
-    } catch (error) {
-      console.error("Error when expanding recurring event:", error);
-      expandedEvents.push(event); // Em caso de erro, adiciona o evento original
-    }
-  });
-
-  return expandedEvents;
-};
+): T[] => expandRecurrences(events, viewStartDate, viewEndDate, timezone);
 
 // Função auxiliar para garantir que uma string de data seja um objeto Date válido
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { startOfDay, endOfDay } from "date-fns";
+import { set } from "date-fns";
 
 export interface BusinessHour {
   daysOfWeek: number[]; // Ex.: [1,2,3,4,5] (segunda a sexta)
@@ -29,11 +29,11 @@ export function getBusinessHoursIntervalsForDate(
   }, [] as { start: Date; end: Date }[]);
 }
 
+// `set` keeps the input's constructor, so a TZDate stays in the calendar
+// time zone (a plain `new Date(...).setHours` used the HOST zone instead).
 function getTimeForDate(baseDate: Date, timeString: string): Date {
   const [hours, minutes] = timeString.split(':').map(Number);
-  const newDate = new Date(baseDate);
-  newDate.setHours(hours, minutes, 0, 0);
-  return newDate;
+  return set(baseDate, { hours, minutes: minutes || 0, seconds: 0, milliseconds: 0 });
 }
 
 

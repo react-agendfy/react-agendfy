@@ -30,12 +30,14 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   isSelected,
   monthDate,
   navProps,
+  rowDays,
+  isDisabled = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const { setNodeRef, isOver } = useDroppable({
     id: day?.toISOString() || "empty",
-    disabled: !day,
+    disabled: !day || isDisabled,
   });
 
   useEffect(() => {
@@ -81,6 +83,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
     isOver && "react-agendfy-calendar-day-droppable-over",
     isSelected && "react-agendfy-calendar-day-selected",
     isOtherMonth && "react-agendfy-calendar-day-other-month",
+    isDisabled && "react-agendfy-day-disabled",
   ].filter(Boolean).join(" ");
 
   const handleDayClick = (e: React.MouseEvent) => {
@@ -126,6 +129,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
       aria-label={format(day, "d MMMM yyyy")}
       aria-selected={isSelected ? true : undefined}
       aria-current={isToday ? "date" : undefined}
+      aria-disabled={isDisabled || undefined}
     >
       <div className="react-agendfy-calendar-day-header">
         <span className={`react-agendfy-day-number ${isToday ? "react-agendfy-day-number-today" : ""} ${isOtherMonth ? "react-agendfy-day-number-other-month" : ""}`}>
@@ -172,6 +176,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
               isEnd={isEventEnd}
               isMultiDay={event.isMultiDay || !isSameDay(s, e)}
               cellDate={day}
+              rowDays={rowDays}
               onEventClick={onEventClick}
               onEventResize={onEventResize}
               config={config}

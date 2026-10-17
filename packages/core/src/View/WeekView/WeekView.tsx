@@ -13,7 +13,6 @@ import {
   isSameDay,
   startOfWeek,
 } from "date-fns";
-import { RRule, rrulestr } from "rrule";
 import { ensureDate } from "../../Utils/DateTrannforms";
 import { clipEventToDay, isBannerEvent } from "../../Utils/weekViewHelpers";
 import { formatMessage } from "../../i18n";
@@ -22,6 +21,7 @@ import { TZDate } from "@date-fns/tz";
 import { DayColumn } from "./Components/DayColumn";
 import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
 
 const WeekView = ({
   events,
@@ -54,14 +54,22 @@ const WeekView = ({
   // tolerate NaN/negative lengths (Array.from({length: NaN}) === []).
   const hasInvalidSlots = isNaN(numberOfSlots) || numberOfSlots <= 0;
 
-  const currentWeekStart = useMemo(
-    () => startOfWeek(new TZDate(currentDate, config?.timeZone), { weekStartsOn: 0 }),
-    [currentDate, config?.timeZone]
+  const dayRules = useMemo(
+    () => getDayRules(config),
+    [config]
   );
 
+  const currentWeekStart = useMemo(
+    () => startOfWeek(new TZDate(currentDate, config?.timeZone), { weekStartsOn: dayRules.weekStartsOn }),
+    [currentDate, config?.timeZone, dayRules.weekStartsOn]
+  );
+
+  // Offsets from the week start of the rendered columns (hidden weekdays are
+  // skipped). Mobile renders only the current day.
   const daysOfWeek = useMemo(() => {
-    return isMobile ? [currentDate.getDay()] : Array.from({ length: 7 }, (_, i) => i);
-  }, [isMobile, currentDate]);
+    if (isMobile) return [(currentDate.getDay() - dayRules.weekStartsOn + 7) % 7];
+    return getVisibleDayOffsets(dayRules.weekStartsOn, dayRules.hidden);
+  }, [isMobile, currentDate, dayRules]);
 
   const timeSlots = useMemo(() => Array.from({ length: numberOfSlots }, (_, i) => i), [numberOfSlots]);
 
@@ -190,42 +198,7 @@ const WeekView = ({
     const slotDate = new TZDate(slotTime, config?.timeZone);
     const slotDateFormatted = format(slotDate, "yyyy-MM-dd HH:mm");
     return events.reduce((acc: EventProps[], event: EventProps) => {
-      if (event.recurrence) {
-        try {
-          const eventStart = new TZDate(ensureDate(event.start), config?.timeZone);
-          const eventEnd = new TZDate(ensureDate(event.end), config?.timeZone);
-
-          const localStart = new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate(), eventStart.getHours(), eventStart.getMinutes(), eventStart.getSeconds());
-          const ruleOptions = rrulestr(event.recurrence, { forceset: true }).options;
-          ruleOptions.dtstart = localStart;
-
-          const rule = new RRule(ruleOptions);
-
-          const occurrences = rule.between(startOfDay(slotDate), endOfDay(slotDate), true).map(d => new TZDate(d, config?.timeZone));
-
-          occurrences.forEach((occurrence) => {
-            const occurrenceStart = setMinutes(
-              setHours(occurrence, eventStart.getHours()),
-              eventStart.getMinutes()
-            );
-            const occurrenceEnd = addMinutes(
-              occurrenceStart,
-              differenceInMinutes(eventEnd, eventStart)
-            );
-            if (format(occurrenceStart, "yyyy-MM-dd HH:mm") === slotDateFormatted) {
-              acc.push({
-                ...event,
-                start: occurrenceStart.toISOString(),
-                end: occurrenceEnd.toISOString(),
-                recurring: true,
-              });
-            }
-          });
-        } catch (error) {
-          console.error("Error parsing recurrence rule:", error);
-        }
-        return acc;
-      }
+      // Recurring events arrive pre-expanded from the calendar context.
       if (isBannerEvent(event, config?.timeZone)) return acc;
       // Clip timed events to this slot's day so a midnight-crossing event
       // renders as one segment per day (continuation starts at 00:00 and
@@ -273,7 +246,7 @@ const WeekView = ({
       <div
         className="react-agendfy-weekview-container"
         role="grid"
-        aria-label={`${format(currentWeekStart, "d MMM yyyy")} - ${format(addDays(currentWeekStart, 6), "d MMM yyyy")}`}
+        aria-label={`${format(addDays(currentWeekStart, daysOfWeek[0] ?? 0), "d MMM yyyy")} - ${format(addDays(currentWeekStart, daysOfWeek[daysOfWeek.length - 1] ?? 6), "d MMM yyyy")}`}
       >
         <div className="react-agendfy-weekview-all-day">
           <div className="react-agendfy-weekview-all-day-label">
@@ -316,7 +289,7 @@ const WeekView = ({
             return (
               <div
                 key={dayIndex}
-                className={`react-agendfy-weekview-day-column ${dayIndex < daysOfWeek.length - 1 ? "react-agendfy-border-right" : ""}`}
+                className={`react-agendfy-weekview-day-column ${dayIndex !== daysOfWeek[daysOfWeek.length - 1] ? "react-agendfy-border-right" : ""}`}
                 role="gridcell"
                 aria-label={format(dayDate, "EEEE, d MMMM yyyy")}
                 aria-current={isSameDay(dayDate, new TZDate(new Date(), config?.timeZone)) ? "date" : undefined}
@@ -337,6 +310,7 @@ const WeekView = ({
                   onSelectionMouseDown={handleSelectionMouseDown}
                   onSelectionMouseMove={handleSelectionMouseMove}
                   isSlotSelected={isSlotSelected}
+                  isDisabled={dayRules.isDisabled(dayDate)}
                 />
               </div>
             );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Download, Filter } from "lucide-react";
 import { getLocale } from "../Utils/locate";
+import { resolveWeekStartsOn } from "../Utils/calendarRange";
 import { CalendarHeaderProps, Resource } from "../types/types";
 
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({ 
@@ -15,6 +16,8 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   exportOptions = [],
   headerLeftPlugins = [],
   headerRightPlugins = [],
+  isPrevDisabled = false,
+  isNextDisabled = false,
 }) => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -34,8 +37,9 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   const formatTitle = () => {
     const locale = getLocale(localeConfig.lang);
     if (currentView === "week") {
-      const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-      const end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekStartsOn = resolveWeekStartsOn(localeConfig);
+      const start = startOfWeek(currentDate, { weekStartsOn });
+      const end = endOfWeek(currentDate, { weekStartsOn });
       return `${format(start, "d")} - ${format(end, "d MMM yyyy", { locale })}`;
     }
     if (currentView === "day") {
@@ -53,6 +57,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             className="react-agendfy-prev-button react-agendfy-button react-agendfy-button-primary"
             aria-label={`${localeConfig?.back || "Back"} ${currentView}`}
             onClick={() => onNavigate("prev")}
+            disabled={isPrevDisabled}
           >
             <ChevronLeft className="react-agendfy-icon" />
           </button>
@@ -61,6 +66,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             className="react-agendfy-next-button react-agendfy-button react-agendfy-button-primary"
             aria-label={`${localeConfig?.next || "Next"} ${currentView}`}
             onClick={() => onNavigate("next")}
+            disabled={isNextDisabled}
           >
             <ChevronRight className="react-agendfy-icon" />
           </button>

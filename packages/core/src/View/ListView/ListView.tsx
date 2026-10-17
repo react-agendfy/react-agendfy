@@ -13,6 +13,7 @@ import { TZDate } from "@date-fns/tz";
 import { ListEvent } from "./Components/ListEvent";
 import { EventProps, ListViewProps } from "../../types/types";
 import { getLocale } from "../../Utils/locate";
+import { getDayRules } from "../../Utils/calendarRange";
 
 interface ListRowData {
   daysWithEvents: Date[];
@@ -49,7 +50,7 @@ const RowComponent = ({
       <div className="react-agendfy-listview-day-header-wrapper">
         <h2 className="react-agendfy-listview-day-header">
           {format(new TZDate(day, config?.timeZone), "EEEE, dd MMMM", {
-            locale: getLocale(config?.timeZone),
+            locale: getLocale(config?.lang),
           })}
         </h2>
       </div>
@@ -83,12 +84,13 @@ defaultRowHeight: 10
   const days = React.useMemo(() => {
     const dayList: Date[] = [];
     let day = monthStart;
+    const rules = getDayRules(config);
     while (day <= monthEnd) {
-      dayList.push(day);
+      if (!rules.isHidden(day) && !rules.isDisabled(day)) dayList.push(day);
       day = addDays(day, 1);
     }
     return dayList;
-  }, [monthStart, monthEnd]);
+  }, [monthStart, monthEnd, config]);
 
   const eventsByDay = React.useMemo(() => {
     const grouped: Record<string, EventProps[]> = {};

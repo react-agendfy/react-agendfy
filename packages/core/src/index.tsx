@@ -8,8 +8,14 @@ import {
   Config,
   DateRangeSelection,
   DayViewProps,
+  EventContentArg,
+  EventContentRenderer,
   EventProps,
   ExportOption,
+  RecurrenceInput,
+  RecurrenceObject,
+  ValidRange,
+  Weekday,
   ListViewProps,
   MonthViewProps,
   Resource,
@@ -30,6 +36,7 @@ import { ToastProvider } from "./Components/Toast/Toast";
 import CalendarComponent from "./View/Calendar";
 import { ensureDate } from "./Utils/DateTrannforms";
 import { downloadBlob } from './Utils/pluginUtils';
+import { expandRecurrences } from './Utils/recurrence';
 
 const WrappedCalendar = React.forwardRef<HTMLDivElement, CalendarProps>((props, ref) => {
   return (
@@ -40,7 +47,7 @@ const WrappedCalendar = React.forwardRef<HTMLDivElement, CalendarProps>((props, 
 });
 WrappedCalendar.displayName = 'WrappedCalendar';
 
-export { WrappedCalendar as Calendar, ensureDate, downloadBlob };
+export { WrappedCalendar as Calendar, ensureDate, downloadBlob, expandRecurrences };
 export type {
   CalendarProps,
   CalendarConfig,
@@ -49,6 +56,12 @@ export type {
   Config,
   DateRangeSelection,
   DayViewProps,
+  EventContentArg,
+  EventContentRenderer,
+  RecurrenceInput,
+  RecurrenceObject,
+  ValidRange,
+  Weekday,
   ListViewProps,
   MonthViewProps,
   ExportOption,

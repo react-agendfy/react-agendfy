@@ -30,6 +30,27 @@
   pointer-events: none;
 }
 
+/* Days outside config.validRange: visible but inert (no click/select/drop). */
+.react-agendfy-day-disabled {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    var(--agendfy-color-surface-2) 6px 12px
+  );
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.react-agendfy-view-loading {
+  padding: var(--agendfy-space-4, 1rem);
+  color: var(--agendfy-color-text-muted);
+}
+
+.react-agendfy-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .react-agendfy-business-hours {
   position: absolute;
   inset-inline: 0;

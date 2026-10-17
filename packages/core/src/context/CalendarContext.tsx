@@ -35,6 +35,8 @@ import { NotificationService } from "../Notify/NotificationService";
 import useCalendarNavigation from "../hooks/useCalendarNavigation";
 import usePluginManagement from "../hooks/usePluginManagement";
 import useDataSourceEvents from "../hooks/useDataSourceEvents";
+import { clampToValidRange, getDayRules, getExpansionWindow } from "../Utils/calendarRange";
+import { expandRecurrences } from "../Utils/recurrence";
 
 export const defaultConfig: Config = {
   timeZone: "America/Sao_Paulo",
@@ -151,7 +153,10 @@ export interface CalendarContextValue {
 
   // derived data
   normalizedEvents: EventProps[];
+  /** Filtered master events (recurring events still carry their rule). */
   filteredEvents: EventProps[];
+  /** Filtered events with recurrences expanded around the current date — what views render. */
+  visibleEvents: EventProps[];
   availableViews: { name: string; label: string }[];
   customViews: Record<string, FC<any>>;
   exportOptions: ExportOption[];
@@ -180,6 +185,11 @@ export interface CalendarContextValue {
   handleResourceFilterChange: (selected: string[] | ((prev: string[]) => string[])) => void;
   handleExport: (format: string) => void;
   navigate: (direction: "prev" | "next" | "today") => void;
+  /** False when prev/next would leave `validRange`. */
+  canNavigateBack: boolean;
+  canNavigateForward: boolean;
+  /** Custom event body from the `eventContent` prop. */
+  eventContent?: CalendarProps["eventContent"];
 }
 
 export const CalendarContext = createContext<CalendarContextValue | null>(null);
@@ -206,12 +216,22 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   onDayClick,
   onSlotClick,
   onDateRangeSelect,
+  onDateChange,
+  eventContent,
+  currentDate: currentDateProp,
   children,
 }) => {
   const timeZone = config.timeZone || defaultConfig.timeZone;
 
   const [state, dispatch] = useReducer(calendarReducer, undefined, () => ({
-    currentDate: new TZDate(new Date(), timeZone),
+    // Start inside validRange when today falls outside it.
+    currentDate: new TZDate(
+      clampToValidRange(
+        new TZDate(currentDateProp ?? new Date(), timeZone),
+        getDayRules({ ...config, timeZone }).validRange
+      ),
+      timeZone
+    ),
     events: initialEvents,
     localFilteredResources: filteredResources,
     pluginFilteredEvents: initialEvents,
@@ -274,6 +294,20 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     dispatch({ type: "SYNC_EVENTS", payload: initialEvents });
      
   }, [initialEvents]);
+
+  /* --- `currentDate` prop: follow changes (navigation stays internal) ---- */
+  const currentDatePropMs = currentDateProp ? currentDateProp.getTime() : null;
+  useEffect(() => {
+    if (currentDatePropMs === null || isNaN(currentDatePropMs)) return;
+    dispatch({ type: "SET_CURRENT_DATE", payload: new TZDate(currentDatePropMs, timeZone) });
+  }, [currentDatePropMs, timeZone]);
+
+  /* --- report date changes (initial date included) ----------------------- */
+  const stateDateMs = state.currentDate.getTime();
+  useEffect(() => {
+    onDateChange?.(new Date(stateDateMs));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateDateMs]);
 
   /* --- notification permission ------------------------------------------- */
   useEffect(() => {
@@ -343,6 +377,19 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ]
   );
 
+  /* --- recurrence expansion + day rules --------------------------------- */
+  const dayRules = useMemo(() => getDayRules(localeConfig), [localeConfig]);
+
+  // Expanded once for a window covering every built-in view of the current
+  // date (month grid ± 1 week), so views never deal with rules themselves.
+  const expansionWindow = getExpansionWindow(state.currentDate, dayRules.weekStartsOn);
+  const windowStart = expansionWindow.start.getTime();
+  const windowEnd = expansionWindow.end.getTime();
+  const visibleEvents = useMemo(
+    () => expandRecurrences(filteredEvents, new Date(windowStart), new Date(windowEnd), timeZone),
+    [filteredEvents, windowStart, windowEnd, timeZone]
+  );
+
   /* --- handlers ----------------------------------------------------------- */
   const handleEventUpdate = useCallback(
     (updatedEvent: EventProps) => {
@@ -399,11 +446,18 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     [timeZone]
   );
 
-  const { navigateToday, navigateBack, navigateForward } = useCalendarNavigation({
+  const {
+    navigateToday,
+    navigateBack,
+    navigateForward,
+    canNavigateBack,
+    canNavigateForward,
+  } = useCalendarNavigation({
     currentDate: state.currentDate,
     defaultView: state.currentView,
     timeZone,
     setCurrentDate,
+    dayRules,
   });
 
   const navigate = useCallback(
@@ -571,6 +625,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     resources,
     normalizedEvents,
     filteredEvents,
+    visibleEvents,
     availableViews,
     customViews,
     exportOptions,
@@ -591,6 +646,9 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     handleResourceFilterChange,
     handleExport,
     navigate,
+    canNavigateBack,
+    canNavigateForward,
+    eventContent,
   };
 
   return (

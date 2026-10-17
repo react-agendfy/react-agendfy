@@ -1,11 +1,10 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
   isValid,
   startOfDay,
-  format,
   setHours,
   setMinutes,
   isSameDay,
@@ -16,6 +15,8 @@ import { TZDate } from "@date-fns/tz";
 import { TimeSlot } from "./Components/TimeSlot";
 import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { getEventsForSlot } from "../../Utils/weekViewHelpers";
+import { getBusinessHoursIntervalsForDate } from "../../Utils/businessHours";
+import { getDayRules } from "../../Utils/calendarRange";
 
 const DayView: React.FC<DayViewProps> = ({
   events,
@@ -44,6 +45,7 @@ const DayView: React.FC<DayViewProps> = ({
     (event: any) => {
       const { active, over, delta } = event;
       if (!active?.id || !over?.id) return;
+      if (getDayRules(config).isDisabled(new Date(over.id))) return;
 
       const baseTime = new TZDate(over.id, config?.timeZone || 'UTC');
       if (!isValid(baseTime)) return;
@@ -71,8 +73,17 @@ const DayView: React.FC<DayViewProps> = ({
         onEventUpdate(updatedEvent);
       }
     },
-    [events, config?.timeZone, onEventClick, onEventUpdate]
+    [events, config, onEventClick, onEventUpdate]
   );
+
+  const businessIntervals = useMemo(
+    () =>
+      config?.businessHours?.enabled
+        ? getBusinessHoursIntervalsForDate(new TZDate(currentDate, config?.timeZone), config.businessHours)
+        : [],
+    [currentDate, config?.businessHours, config?.timeZone]
+  );
+  const isDisabled = useMemo(() => getDayRules(config).isDisabled(currentDate), [config, currentDate]);
 
   const getSlotEvents = useCallback(
     (slotTime: string) => getEventsForSlot(slotTime, events, config),
@@ -122,6 +133,10 @@ const DayView: React.FC<DayViewProps> = ({
             minute
           ).toISOString();
           const slotEvents = getSlotEvents(slotTime);
+          const slotMs = new Date(slotTime).getTime();
+          const isBusinessHour = businessIntervals.some(
+            (interval) => slotMs >= interval.start.getTime() && slotMs < interval.end.getTime()
+          );
           return (
             <TimeSlot
               key={index}
@@ -133,6 +148,8 @@ const DayView: React.FC<DayViewProps> = ({
               slotMin={parsedSlotMin}
               parsedSlotMax={parsedSlotMax}
               config={config}
+              isBusinessHour={isBusinessHour}
+              isDisabled={isDisabled}
             />
           );
         })}

@@ -27,7 +27,7 @@ export const DayColumn = memo(
     redLineOffset,
     config,
     isDraggable,
-    eventRenderingPlugins,
+    isDisabled = false,
     onSelectionMouseDown,
     onSelectionMouseMove,
     isSlotSelected,
@@ -83,21 +83,22 @@ export const DayColumn = memo(
       <div
         className={`react-agendfy-daycolumn-container react-agendfy-today ${
           isToday ? "react-agendfy-daycolumn-today" : ""
-        }`}
+        } ${isDisabled ? "react-agendfy-day-disabled" : ""}`}
+        aria-disabled={isDisabled || undefined}
       >
         <div
           className={`react-agendfy-daycolumn-header  react-agendfy-header-today ${
             isToday ? "react-agendfy-daycolumn-header-today" : ""
           }`}
           onClick={() => {
-            if (typeof onSlotClick === "function") onSlotClick(dayDate);
+            if (!isDisabled && typeof onSlotClick === "function") onSlotClick(dayDate);
           }}
           role="columnheader"
-          tabIndex={typeof onSlotClick === "function" ? 0 : undefined}
+          tabIndex={!isDisabled && typeof onSlotClick === "function" ? 0 : undefined}
           aria-label={format(dayDate, "EEEE dd/MM", { locale: getLocale(config?.lang) })}
           aria-current={isToday ? "date" : undefined}
           onKeyDown={(e) => {
-            if ((e.key === "Enter" || e.key === " ") && typeof onSlotClick === "function") {
+            if ((e.key === "Enter" || e.key === " ") && !isDisabled && typeof onSlotClick === "function") {
               e.preventDefault();
               onSlotClick(dayDate);
             }
@@ -117,12 +118,14 @@ export const DayColumn = memo(
           style={{ minHeight: timeSlots.length * 40 }}
         >
           {businessIntervals.map((interval, idx) => {
-            const top =
-              (differenceInMinutes(interval.start, dayStart) / config?.slotDuration!) *
-              40;
-            const height =
-              (differenceInMinutes(interval.end, interval.start) / config?.slotDuration!) *
-              40;
+            // Offsets are relative to the grid's first slot (slotMin), not
+            // midnight, and clipped to the rendered [slotMin, slotMax] window.
+            const gridStart = addMinutes(dayStart, startHour * 60);
+            const fromMin = Math.max(0, differenceInMinutes(interval.start, gridStart));
+            const toMin = Math.min(totalMinutes, differenceInMinutes(interval.end, gridStart));
+            if (toMin <= fromMin) return null;
+            const top = fromMin * pixelsPerMinute;
+            const height = (toMin - fromMin) * pixelsPerMinute;
             return (
               <div
                 key={idx}
@@ -183,7 +186,7 @@ export const DayColumn = memo(
                 parsedSlotMax={parsedSlotMax}
                 onEventResize={onEventResize}
                 isDraggable={isDraggable}
-                eventRenderingPlugins={eventRenderingPlugins}
+                isDisabled={isDisabled}
                 onSelectionMouseDown={onSelectionMouseDown}
                 onSelectionMouseMove={onSelectionMouseMove}
                 isSelected={isSlotSelected(new TZDate(slotTime, config?.timeZone))}

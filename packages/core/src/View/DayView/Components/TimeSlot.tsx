@@ -17,22 +17,30 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   slotMin,
   parsedSlotMax,
   config,
+  isBusinessHour = false,
+  isDisabled = false,
 }: TimeSlotProps) => {
   const slotTime = getSlotTime(dayDate, slotMin, config?.slotDuration!, index, config?.timeZone!);
-  const { setNodeRef } = useDroppable({ id: slotTime.toISOString() });
+  const { setNodeRef } = useDroppable({ id: slotTime.toISOString(), disabled: isDisabled });
 
   const handleClickSlot = useCallback(() => {
-    if (onSlotClick) {
+    if (onSlotClick && !isDisabled) {
       onSlotClick(new TZDate(slotTime, config?.timeZone));
     }
-  }, [onSlotClick, slotTime, config?.timeZone]);
+  }, [onSlotClick, slotTime, config?.timeZone, isDisabled]);
 
   const positionedEvents: EventProps[] = useMemo(() => {
     return computePositionedEvents(slotEvents, config, true, { marginLeft: "0px" });
   }, [slotEvents, config]);
 
   return (
-    <div ref={setNodeRef} className="react-agendfy-timeslot-container" onClick={handleClickSlot}>
+    <div
+      ref={setNodeRef}
+      className={`react-agendfy-timeslot-container ${isDisabled ? "react-agendfy-day-disabled" : ""}`}
+      onClick={handleClickSlot}
+      aria-disabled={isDisabled || undefined}
+    >
+      {isBusinessHour && <div className="react-agendfy-business-hours" style={{ inset: 0 }} />}
       <span className="react-agendfy-timeslot-label">
         {format(new TZDate(slotTime, config?.timeZone), "HH:mm")}
       </span>

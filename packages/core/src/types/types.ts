@@ -64,8 +64,52 @@ export interface LocaleStrings {
   data_source_error?: string;
 }
 
+/** Weekday index: 0 = Sunday … 6 = Saturday (JavaScript `Date.getDay()`). */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * Navigable/interactive date window. Both bounds are optional; `end` is
+ * EXCLUSIVE (FullCalendar semantics). "YYYY-MM-DD" strings are read as days
+ * in the calendar time zone.
+ */
+export interface ValidRange {
+  start?: string | Date;
+  end?: string | Date;
+}
+
+/**
+ * FullCalendar-style recurrence object (rrule.js option names). Weekday
+ * strings are "mo".."su"; numeric weekdays follow rrule.js (0 = Monday).
+ */
+export interface RecurrenceObject {
+  freq: "yearly" | "monthly" | "weekly" | "daily" | "hourly" | "minutely" | "secondly" | number;
+  interval?: number;
+  count?: number;
+  until?: string | Date;
+  dtstart?: string | Date;
+  byweekday?: string | number | (string | number)[];
+  bymonthday?: number | number[];
+  bymonth?: number | number[];
+  bysetpos?: number | number[];
+  wkst?: string | number;
+}
+
+/** An RRULE string (optionally multi-line with DTSTART/EXDATE) or an object. */
+export type RecurrenceInput = string | RecurrenceObject;
+
 export interface Config {
   timeZone: string;
+  /**
+   * First day of the week (0 = Sunday). Defaults to the locale's convention
+   * for `lang` (Monday for pt/es/fr…, Sunday for en-US).
+   */
+  weekStartsOn?: Weekday;
+  /** Weekdays never rendered in week/month/list/agenda views (0 = Sunday). */
+  hiddenDays?: number[];
+  /** `false` hides Saturday and Sunday (merged with `hiddenDays`). Default true. */
+  weekends?: boolean;
+  /** Days outside this range are disabled and navigation is clamped to it. */
+  validRange?: ValidRange;
   defaultView: CalendarView;
   slotDuration: number;
   slotLabelFormat: string;
@@ -176,6 +220,10 @@ export interface CalendarDayProps {
   monthDate?: TZDate | Date;
   isDroppable?: boolean;
   isDropTarget?: boolean;
+  /** Rendered days of this cell's week row (hidden weekdays excluded). */
+  rowDays?: Date[];
+  /** Day outside validRange: no click, selection or drop. */
+  isDisabled?: boolean;
   config: Config;
   /** Roving-tabindex navigation props supplied by useGridNavigation. */
   navProps?: import("../hooks/useGridNavigation").GridCellNavProps;
@@ -236,8 +284,34 @@ export interface EventProps {
   color?: string;
   resourceId?: string | number;
   resourceIds?: (string | number)[];
+  /** Recurrence rule; `start`/`end` give the first occurrence and its duration. */
+  recurrence?: RecurrenceInput;
+  /** FullCalendar alias of `recurrence`. */
+  rrule?: RecurrenceInput;
+  /** Excluded occurrences: "YYYY-MM-DD" (whole day) or date-times. */
+  exdate?: string | Date | (string | Date)[];
   [key: string]: any;
 }
+
+/** Views that render events (built-in names, or a custom view's name). */
+export type EventContentView = CalendarView | (string & {});
+
+/** Argument for `eventContent` and event-rendering plugin components. */
+export interface EventContentArg {
+  event: EventProps;
+  view: EventContentView;
+  /** Pre-formatted "HH:mm - HH:mm" for the event. */
+  timeText: string;
+  /** For multi-day pieces: whether this piece holds the event's start/end. */
+  isStart: boolean;
+  isEnd: boolean;
+}
+
+/**
+ * Custom event body. Return `null`/`undefined` to keep the default content.
+ * Only the INNER content is replaced — positioning, drag and resize stay.
+ */
+export type EventContentRenderer = (arg: EventContentArg) => React.ReactNode;
 
 export interface Resource {
   id: string | number;
@@ -270,6 +344,7 @@ export interface CalendarProps {
   filteredResources?: string[];
   emailAdapter?: EmailAdapter;
   emailConfig?: NotificationServiceConfig["emailConfig"];
+  /** Date shown initially; later changes move the calendar to the new date. */
   currentDate?: Date;
   onEventUpdate?: (event: EventProps) => void;
   onEventResize?: (event: EventProps) => void;
@@ -277,7 +352,10 @@ export interface CalendarProps {
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
   onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
+  /** Called with the displayed date on mount and after every navigation. */
   onDateChange?: (date: Date) => void;
+  /** Custom event body for every view (takes precedence over plugins). */
+  eventContent?: EventContentRenderer;
 }
 
 export interface TimeSlotProps {
@@ -292,6 +370,10 @@ export interface TimeSlotProps {
   slotMin: number;
   config?: Config;
   isDraggable?: boolean;
+  /** Slot falls inside a business-hours interval (shaded like the week view). */
+  isBusinessHour?: boolean;
+  /** Day outside validRange: no click or drop. */
+  isDisabled?: boolean;
 }
 export interface DayColumnProps {
   dayDate: any;
@@ -303,7 +385,8 @@ export interface DayColumnProps {
   onEventClick?: (event: EventProps) => void;
   onSlotClick?: (slotTime: Date) => void;
   onEventResize?: (event: EventProps) => void;
-   eventRenderingPlugins?: CalendarPlugin[];
+  /** Day outside validRange: rendered inert. */
+  isDisabled?: boolean;
     onSelectionMouseDown?: (date: Date) => void;
     onSelectionMouseMove: (date: Date) => void;
     isSlotSelected: (date: Date) => boolean;
@@ -355,4 +438,7 @@ export interface CalendarHeaderProps {
   exportOptions?: ExportOption[];
   headerLeftPlugins?: React.ReactNode[];
   headerRightPlugins?: React.ReactNode[];
+  /** Disables the prev/next buttons (e.g. outside `validRange`). */
+  isPrevDisabled?: boolean;
+  isNextDisabled?: boolean;
 }

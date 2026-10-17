@@ -1,9 +1,10 @@
-import { forwardRef, lazy, useCallback, useEffect, useRef } from "react";
+import { forwardRef, lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import CalendarHeader from "../Components/CalendarHeader";
 import { CalendarProps } from "../types/types";
 import { ThemePlugin } from "../types/plugins";
 import { CalendarProvider } from "../context/CalendarContext";
 import useCalendarState from "../hooks/useCalendarState";
+import { EventContentProvider } from "../context/EventContentContext";
 
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
@@ -23,7 +24,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
     direction,
     theme,
     resources,
-    filteredEvents,
+    visibleEvents,
     availableViews,
     customViews,
     exportOptions,
@@ -43,6 +44,9 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
     handleViewChange,
     handleExport,
     navigate,
+    canNavigateBack,
+    canNavigateForward,
+    eventContent,
   } = useCalendarState();
 
   const { currentDate, currentView } = state;
@@ -94,7 +98,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
     if (CustomViewComponent) {
       return (
         <CustomViewComponent
-          events={filteredEvents}
+          events={visibleEvents}
           currentDate={currentDate}
           config={localeConfig}
           onEventUpdate={handleEventUpdate}
@@ -111,7 +115,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
       case "week":
         return (
           <WeekView
-            events={filteredEvents}
+            events={visibleEvents}
             slotMin={localeConfig.slotMin}
             slotMax={localeConfig.slotMax}
             onEventUpdate={handleEventUpdate}
@@ -123,13 +127,12 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
             config={localeConfig}
             interactionPlugin={interactionPlugins}
             onDateRangeSelect={handleDateRangeSelect}
-            eventRenderingPlugins={eventRenderingPlugins}
           />
         );
       case "month":
         return (
           <MonthView
-            events={filteredEvents}
+            events={visibleEvents}
             onDayClick={onDayClick}
             currentDate={currentDate}
             onEventUpdate={handleEventUpdate}
@@ -143,7 +146,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
       case "day":
         return (
           <DayView
-            events={filteredEvents}
+            events={visibleEvents}
             currentDate={currentDate}
             onEventUpdate={handleEventUpdate}
             onSlotClick={onSlotClick}
@@ -154,7 +157,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
       case "list":
         return (
           <ListView
-            events={filteredEvents}
+            events={visibleEvents}
             onEventUpdate={handleEventUpdate}
             onEventClick={onEventClick}
             currentDate={currentDate}
@@ -164,7 +167,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
       case "agenda":
         return (
           <AgendaView
-            events={filteredEvents}
+            events={visibleEvents}
             onEventClick={onEventClick}
             currentDate={currentDate}
             config={localeConfig}
@@ -195,8 +198,24 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
         headerRightPlugins={headerRightPlugins}
         exportOptions={localeConfig.export ? exportOptions : []}
         onExport={handleExport}
+        isPrevDisabled={!canNavigateBack}
+        isNextDisabled={!canNavigateForward}
       />
-      <div className="react-agendfy-layout-content">{renderViewComponent()}</div>
+      <div className="react-agendfy-layout-content">
+        <EventContentProvider eventContent={eventContent} plugins={eventRenderingPlugins}>
+          {/* Views are lazy chunks: the boundary keeps SSR (renderToString)
+              and the first client render from throwing while they load. */}
+          <Suspense
+            fallback={
+              <div className="react-agendfy-view-loading" role="status">
+                {localeConfig.loading || "Loading"}
+              </div>
+            }
+          >
+            {renderViewComponent()}
+          </Suspense>
+        </EventContentProvider>
+      </div>
     </div>
   );
 });

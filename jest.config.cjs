@@ -10,7 +10,14 @@ module.exports = {
 
   // Mapeamento para importação de arquivos estáticos (ex.: CSS)
   moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.cjs'
+    '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.cjs',
+    // react is not hoisted to the repo root (only @react-agendfy/core installs
+    // it), but hoisted deps like lucide-react require it from root
+    // node_modules. Pin every import to core's single copy.
+    '^react$': '<rootDir>/packages/core/node_modules/react',
+    '^react-dom$': '<rootDir>/packages/core/node_modules/react-dom',
+    '^react/(.*)$': '<rootDir>/packages/core/node_modules/react/$1',
+    '^react-dom/(.*)$': '<rootDir>/packages/core/node_modules/react-dom/$1',
   },
   testPathIgnorePatterns: [
     '/node_modules/',

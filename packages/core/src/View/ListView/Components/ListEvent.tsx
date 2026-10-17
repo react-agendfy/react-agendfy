@@ -5,10 +5,12 @@ import generateTooltipContent from "../../../Utils/generateTooltipContent";
 import ResourceDisplay from "../../../Components/Resource/ResourceDisplay";
 import { ListEventProps } from "../../../types/types";
 import { getContrastText } from "../../../Utils/colorContrast";
+import { useEventContent } from "../../../context/EventContentContext";
 
 
 export const ListEvent = ({ event, onEventClick, currentDate, config }: ListEventProps) => {
   const tooltipContent = generateTooltipContent(event, false, true, true, config);
+  const customContent = useEventContent(event, "list", { timeZone: config?.timeZone });
 
   return (
     <div
@@ -22,17 +24,21 @@ export const ListEvent = ({ event, onEventClick, currentDate, config }: ListEven
       tabIndex={0}
       aria-label={`Event: ${event.title}, from ${format(new TZDate(parseISO(event.start.toString()), config?.timeZone!), "HH:mm")} to ${format(new TZDate(parseISO(event.end.toString()), config?.timeZone!), "HH:mm")}`}
     >
-      <div className="react-agendfy-listevent-content">
-        <span className="react-agendfy-listevent-title">{event.title}</span>
-        <span className="react-agendfy-listevent-time">
-          {format(new TZDate(parseISO(event.start.toString()), config?.timeZone!), "HH:mm")} -{" "}
-          {format(new TZDate(parseISO(event.end.toString()), config?.timeZone!), "HH:mm")}
-        </span>
-      </div>
-      {event.resources && event.resources.length > 0 && (
-        <div className="react-agendfy-listevent-resource">
-          <ResourceDisplay resources={event.resources} maxVisible={2} />
-        </div>
+      {customContent ?? (
+        <>
+          <div className="react-agendfy-listevent-content">
+            <span className="react-agendfy-listevent-title">{event.title}</span>
+            <span className="react-agendfy-listevent-time">
+              {format(new TZDate(parseISO(event.start.toString()), config?.timeZone!), "HH:mm")} -{" "}
+              {format(new TZDate(parseISO(event.end.toString()), config?.timeZone!), "HH:mm")}
+            </span>
+          </div>
+          {event.resources && event.resources.length > 0 && (
+            <div className="react-agendfy-listevent-resource">
+              <ResourceDisplay resources={event.resources} maxVisible={2} />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

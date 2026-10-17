@@ -1,9 +1,10 @@
 // MonthView.tsx
 import React, { useMemo, useCallback, useState } from 'react';
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { endOfWeek, isSameMonth, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDays, getDay, isSameDay } from 'date-fns';
+import { endOfWeek, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
-import { ensureDate, expandRecurringEvents } from '../../Utils/DateTrannforms';
+import { ensureDate } from '../../Utils/DateTrannforms';
+import { getDayRules } from '../../Utils/calendarRange';
 import { getLocale } from '../../Utils/locate';
 import ResourceView from '../../Components/Resource/ResourceView';
 import { MonthViewProps, EventProps } from '../../types/types';
@@ -38,24 +39,25 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
   const tz = config?.timeZone;
   const locale = getLocale(config?.lang);
 
+  const dayRules = useMemo(() => getDayRules(config), [config]);
+  const { weekStartsOn } = dayRules;
+
+  // Rows of RENDERED days: hidden weekdays are dropped from every row, so the
+  // grid has (7 - hidden) columns. Recurring events arrive pre-expanded from
+  // the calendar context.
   const { weeks, expandedEvents } = useMemo(() => {
-  const viewStart = startOfWeek(monthStart);
-  const monthEnd = endOfMonth(monthStart);
-  const viewEnd = endOfWeek(monthEnd);
+    const viewStart = startOfWeek(monthStart, { weekStartsOn });
+    const viewEnd = endOfWeek(endOfMonth(monthStart), { weekStartsOn });
+    const allDays = eachDayOfInterval({ start: viewStart, end: viewEnd });
+    const rows: Date[][] = [];
+    for (let i = 0; i < allDays.length; i += 7) {
+      rows.push(allDays.slice(i, i + 7).filter((d) => !dayRules.isHidden(d)));
+    }
+    return { weeks: rows, expandedEvents: normalizeEvents(events) };
+  }, [events, monthStart, weekStartsOn, dayRules]);
 
-  // Normalização e expansão de eventos para cobrir toda a view (inclui spans para prev/next)
-  const normalized = normalizeEvents(events); // Sua função existente
-  const expanded = expandRecurringEvents(normalized, viewStart, viewEnd, config?.timeZone || 'UTC');
-
-  // Gera todas as datas reais da view (sem nulls)
-  const allDays = eachDayOfInterval({ start: viewStart, end: viewEnd });
-  const weeks: Date[][] = [];
-  for (let i = 0; i < allDays.length; i += 7) {
-    weeks.push(allDays.slice(i, i + 7));
-  }
-
-  return { weeks, expandedEvents: expanded };
-}, [events, resources, currentDate, config?.timeZone, normalizeEvents]);
+  const columnCount = weeks[0]?.length || 7;
+  const gridColumns = { gridTemplateColumns: `repeat(${columnCount}, 1fr)` };
 
   const handleDragStart = (e: any) => setActiveEvent(e.active.data.current.event);
   const handleDragEnd = (e: any) => {
@@ -71,6 +73,7 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     }
 
     const targetDate = new Date(over.id);
+    if (dayRules.isDisabled(targetDate)) return;
     const origStart = ensureDate(event.start, tz);
 
     if (isSameDay(targetDate, origStart)) return;
@@ -95,9 +98,10 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
 
   const handleMouseDown = (d: Date) => {
     if (isResizing) return; // a resize gesture must never start a range selection
+    if (dayRules.isDisabled(d)) return;
     setSelecting(true); setSelStart(d); setSelEnd(d);
   };
-  const handleMouseMove = (d: Date) => { if (selecting) setSelEnd(d); };
+  const handleMouseMove = (d: Date) => { if (selecting && !dayRules.isDisabled(d)) setSelEnd(d); };
   const handleMouseUp = () => {
     if (selecting && selStart && selEnd && onDateRangeSelect) {
       const [start, end] = selStart < selEnd ? [selStart, selEnd] : [selEnd, selStart];
@@ -117,13 +121,13 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
   const handleActivateCell = useCallback(
     (index: number) => {
       const day = allDays[index];
-      if (day && !isResizing) onDayClick?.(day);
+      if (day && !isResizing && !dayRules.isDisabled(day)) onDayClick?.(day);
     },
-    [allDays, onDayClick, isResizing]
+    [allDays, onDayClick, isResizing, dayRules]
   );
   const { getCellProps } = useGridNavigation({
     cellCount: allDays.length,
-    columns: 7,
+    columns: columnCount,
     defaultIndex: defaultFocusIndex,
     onActivateCell: handleActivateCell,
   });
@@ -151,11 +155,8 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
         role="grid"
         aria-label={format(monthStart, 'MMMM yyyy', { locale })}
       >
-        <div className="react-agendfy-monthview-header" role="row">
-          {eachDayOfInterval({
-            start: startOfWeek(new TZDate(currentDate, tz)),
-            end: addDays(startOfWeek(new TZDate(currentDate, tz)), 6),
-          }).map(d => (
+        <div className="react-agendfy-monthview-header" role="row" style={gridColumns}>
+          {(weeks[0] ?? []).map(d => (
             <div
               key={d.toISOString()}
               className="react-agendfy-monthview-day-label"
@@ -169,13 +170,17 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
 
         <div className="react-agendfy-monthview-grid-container" role="rowgroup">
           {weeks.map((week, i) => (
-            <div key={i} className="react-agendfy-monthview-week-row" role="row">
-              {week.map((day, j) => (
+            <div key={i} className="react-agendfy-monthview-week-row" role="row" style={gridColumns}>
+              {week.map((day, j) => {
+                const disabled = dayRules.isDisabled(day);
+                return (
                 <CalendarDay
                   key={day ? format(day, 'yyyy-MM-dd') : `empty-${i}-${j}`}
                   day={day}
+                  rowDays={week}
+                  isDisabled={disabled}
                   events={expandedEvents}
-                  onDayClick={isResizing ? undefined : onDayClick}
+                  onDayClick={isResizing || disabled ? undefined : onDayClick}
                   onEventClick={onEventClick}
                   config={config}
                   onMouseDown={handleMouseDown}
@@ -183,9 +188,10 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
                   isSelected={isSelected(day)}
                   monthDate={monthStart}
                   onEventResize={handleEventResize}
-                  navProps={getCellProps(i * 7 + j)}
+                  navProps={getCellProps(i * columnCount + j)}
                 />
-              ))}
+                );
+              })}
             </div>
           ))}
         </div>

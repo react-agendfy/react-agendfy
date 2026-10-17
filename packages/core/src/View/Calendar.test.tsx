@@ -63,6 +63,8 @@ jest.mock('../Utils/calendarHelpers', () => ({
 jest.mock('../hooks/useCalendarNavigation', () => ({
   __esModule: true,
   default: ({ setCurrentDate, currentDate, defaultView }: any) => ({
+    canNavigateBack: true,
+    canNavigateForward: true,
     navigateToday: () => setCurrentDate(new Date()),
     navigateBack: () => {
       const newDate = new Date(currentDate);

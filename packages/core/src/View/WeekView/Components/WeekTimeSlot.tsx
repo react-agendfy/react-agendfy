@@ -5,10 +5,10 @@ import { WeekEvent } from "./WeekEvent";
 import { useDroppable } from "@dnd-kit/core";
 import { getSlotTime } from "../../../Utils/slotTime";
 import { computePositionedEvents } from "../../../Utils/positionedEventsHelper";
-import { renderEventComponent } from "./renderEventComponent";
 
 export interface WeekTimeSlotProps extends TimeSlotProps {
-  eventRenderingPlugins?: any[];
+  /** Day outside validRange: no click, selection or drop. */
+  isDisabled?: boolean;
   onSelectionMouseDown?: (date: Date) => void;
   onSelectionMouseMove?: (date: Date) => void;
   isSelected?: boolean;
@@ -26,7 +26,7 @@ export const WeekTimeSlot = memo(
     slotMin,
     config,
     isDraggable,
-    eventRenderingPlugins,
+    isDisabled = false,
     onSelectionMouseDown,
     onSelectionMouseMove,
     isSelected,
@@ -40,13 +40,13 @@ export const WeekTimeSlot = memo(
       return new TZDate(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), hour, minute, config?.timeZone);
     }, [index, dayDate, slotMin, config?.slotDuration, config?.timeZone]);
 
-    const { setNodeRef, isOver } = useDroppable({ id: slotTime.toISOString() });
+    const { setNodeRef, isOver } = useDroppable({ id: slotTime.toISOString(), disabled: isDisabled });
 
     const handleClickSlot = useCallback(() => {
-      if (typeof onSlotClick === "function") {
+      if (!isDisabled && typeof onSlotClick === "function") {
         onSlotClick(slotTime);
       }
-    }, [onSlotClick, slotTime]);
+    }, [onSlotClick, slotTime, isDisabled]);
 
     const positionedEvents: EventProps[] = useMemo(() => {
       return computePositionedEvents(slotEvents, config);
@@ -61,38 +61,24 @@ export const WeekTimeSlot = memo(
     return (
       <div
         ref={setNodeRef}
-        onMouseDown={() => onSelectionMouseDown?.(slotTime)}
-        onMouseMove={() => onSelectionMouseMove?.(slotTime)}
+        onMouseDown={isDisabled ? undefined : () => onSelectionMouseDown?.(slotTime)}
+        onMouseMove={isDisabled ? undefined : () => onSelectionMouseMove?.(slotTime)}
         onClick={handleClickSlot}
         className={slotClasses}
       >
-        {positionedEvents.map((event: EventProps) => {
-          const pluginElement = renderEventComponent(
-            event,
-            config,
-            dayDate,
-            onEventClick,
-            onEventResize,
-            parsedSlotMax,
-            isDraggable,
-            eventRenderingPlugins
-          );
-          return pluginElement ? (
-            React.cloneElement(pluginElement, { key: event.id })
-          ) : (
-            <WeekEvent
-              key={event.id}
-              event={event}
-              config={config}
-              dayDate={dayDate}
-              onEventClick={onEventClick}
-              onEventResize={onEventResize}
-              positionStyle={event.positionStyle}
-              endHour={parsedSlotMax}
-              isDraggable={isDraggable}
-            />
-          );
-        })}
+        {positionedEvents.map((event: EventProps) => (
+          <WeekEvent
+            key={event.id}
+            event={event}
+            config={config}
+            dayDate={dayDate}
+            onEventClick={onEventClick}
+            onEventResize={onEventResize}
+            positionStyle={event.positionStyle}
+            endHour={parsedSlotMax}
+            isDraggable={isDraggable}
+          />
+        ))}
       </div>
     );
   }
