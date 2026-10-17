@@ -1,6 +1,6 @@
 {
   "name": "@react-agendfy/ai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI layer for react-agendfy: provider-agnostic natural-language event parsing, smart scheduling, calendar insights, React hooks and a Quick Add header plugin.",
   "license": "MIT",
   "type": "module",
