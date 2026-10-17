@@ -220,3 +220,98 @@
     padding: 4px;
   }
 }
+
+/* "+N more" popover (dayMaxEvents). Fixed, positioned from the cell. */
+.react-agendfy-more-popover {
+  position: fixed;
+  z-index: 1100;
+  max-height: min(60vh, 22rem);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--agendfy-color-surface);
+  color: var(--agendfy-color-text);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md);
+  box-shadow: var(--agendfy-shadow-lg);
+  cursor: default;
+}
+
+.react-agendfy-more-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--agendfy-space-2);
+  padding: var(--agendfy-space-2) var(--agendfy-space-3);
+  border-bottom: 1px solid var(--agendfy-color-border);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+/* Only the first letter ("quarta-feira, 14 outubro" → "Quarta-feira, …"):
+   capitalize would uppercase every word, wrong in pt/es/fr. */
+.react-agendfy-more-popover-header > span::first-letter {
+  text-transform: uppercase;
+}
+
+.react-agendfy-more-popover-close {
+  border: none;
+  background: transparent;
+  color: var(--agendfy-color-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.react-agendfy-more-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--agendfy-space-1);
+  overflow-y: auto;
+}
+
+.react-agendfy-more-popover-item {
+  display: flex;
+  width: 100%;
+  gap: var(--agendfy-space-2);
+  align-items: baseline;
+  padding: var(--agendfy-space-1) var(--agendfy-space-2);
+  border: none;
+  border-inline-start: 3px solid transparent;
+  border-radius: var(--agendfy-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: var(--font-size-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.react-agendfy-more-popover-item:hover,
+.react-agendfy-more-popover-item:focus-visible {
+  background-color: var(--agendfy-color-surface-hover);
+}
+
+.react-agendfy-more-popover-time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--agendfy-color-text-muted);
+}
+
+.react-agendfy-more-popover-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Week numbers (weekNumbers). */
+.react-agendfy-week-number {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--agendfy-color-text-faint, var(--agendfy-color-text-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.react-agendfy-weekview-timeslot-label-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

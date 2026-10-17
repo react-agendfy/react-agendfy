@@ -26,6 +26,9 @@ const pt: CalendarMessages = {
   invalid_slot_duration:
     "Duração de intervalo inválida ({duration}). Certifique-se de que a hora final é posterior à hora inicial e de que ambas são válidas.",
   hidden_events: "+{count} eventos ocultos",
+  more_events: "+{count} mais",
+  week_number_label: "S",
+  close: "Fechar",
   notification_title: "Próximo evento",
   alert_title: "Alerta de Evento",
   event_starts_at: "{title} começa às {time}",

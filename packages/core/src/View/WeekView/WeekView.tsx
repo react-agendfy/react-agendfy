@@ -22,6 +22,7 @@ import { DayColumn } from "./Components/DayColumn";
 import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import DragPreview from "../../Components/DragPreview";
+import { formatSlotLabel, showsSlotLabel, weekNumberOf } from "../../Utils/displayOptions";
 import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
 
@@ -81,9 +82,10 @@ const WeekView = ({
       const hour = startHour + Math.floor(minutes / 60);
       const minute = minutes % 60;
       const time = setMinutes(setHours(startOfDay(new TZDate(currentDate, config?.timeZone)), hour), minute);
-      return format(time, "HH:mm");
+      // slotLabelInterval: label only every N minutes (empty rows keep the grid).
+      return showsSlotLabel(minutes, config) ? formatSlotLabel(time, config) : "";
     });
-  }, [timeSlots, currentDate, config?.timeZone, startHour, slotDuration]);
+  }, [timeSlots, currentDate, config, startHour, slotDuration]);
 
   const redLineOffset = useMemo(
     () => calculateRedLineOffset(currentDate, startHour, slotDuration, config?.timeZone),
@@ -289,6 +291,7 @@ const WeekView = ({
         role="grid"
         aria-label={`${format(addDays(currentWeekStart, daysOfWeek[0] ?? 0), "d MMM yyyy")} - ${format(addDays(currentWeekStart, daysOfWeek[daysOfWeek.length - 1] ?? 6), "d MMM yyyy")}`}
       >
+        {config?.allDaySlot !== false && (
         <div className="react-agendfy-weekview-all-day">
           <div className="react-agendfy-weekview-all-day-label">
             <div className="react-agendfy-weekview-all-day-text">{config?.all_day}</div>
@@ -311,6 +314,7 @@ const WeekView = ({
             );
           })}
         </div>
+        )}
         <div
           className="react-agendfy-weekview-timeslot-grid"
           onMouseUp={handleSelectionMouseUp}
@@ -318,7 +322,13 @@ const WeekView = ({
           role="row"
         >
           <div className="react-agendfy-weekview-timeslot-label">
-            <div className="react-agendfy-weekview-timeslot-label-top" />
+            <div className="react-agendfy-weekview-timeslot-label-top">
+              {config?.weekNumbers && (
+                <span className="react-agendfy-week-number" title={`${config?.week_number_label ?? "W"}${weekNumberOf(currentWeekStart, config)}`}>
+                  {`${config?.week_number_label ?? "W"}${weekNumberOf(currentWeekStart, config)}`}
+                </span>
+              )}
+            </div>
             {timeslotLabels.map((label, index) => (
               <div key={`hour-${index}`} className="react-agendfy-weekview-timeslot">
                 {label}

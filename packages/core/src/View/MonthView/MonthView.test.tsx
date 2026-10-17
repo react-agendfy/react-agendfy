@@ -129,7 +129,7 @@ describe('MonthView Component', () => {
     );
   });
 
-  it('should display hidden events counter if there are more than 3 events in a day and trigger alert on click', () => {
+  it('should display hidden events counter if there are more than 3 events in a day and open a popover on click', () => {
     const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
     render(
       <MonthView
@@ -142,7 +142,9 @@ describe('MonthView Component', () => {
     const hiddenCount = screen.getByText('+1');
     expect(hiddenCount).toBeInTheDocument();
     fireEvent.click(hiddenCount);
-    expect(alertSpy).toHaveBeenCalled();
+    // The day's events open in a popover — never a blocking browser alert.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 

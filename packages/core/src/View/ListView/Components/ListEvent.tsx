@@ -6,11 +6,14 @@ import ResourceDisplay from "../../../Components/Resource/ResourceDisplay";
 import { ListEventProps } from "../../../types/types";
 import { getContrastText } from "../../../Utils/colorContrast";
 import { useEventContent } from "../../../context/EventContentContext";
+import { formatEventTime } from "../../../Utils/displayOptions";
 
 
 export const ListEvent = ({ event, onEventClick, currentDate, config }: ListEventProps) => {
   const tooltipContent = generateTooltipContent(event, false, true, true, config);
-  const customContent = useEventContent(event, "list", { timeZone: config?.timeZone });
+  const customContent = useEventContent(event, "list", { config });
+  const startLabel = formatEventTime(parseISO(event.start.toString()), config);
+  const endLabel = formatEventTime(parseISO(event.end.toString()), config);
 
   return (
     <div
@@ -22,15 +25,14 @@ export const ListEvent = ({ event, onEventClick, currentDate, config }: ListEven
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onEventClick?.(event); } }}
       role="button"
       tabIndex={0}
-      aria-label={`Event: ${event.title}, from ${format(new TZDate(parseISO(event.start.toString()), config?.timeZone!), "HH:mm")} to ${format(new TZDate(parseISO(event.end.toString()), config?.timeZone!), "HH:mm")}`}
+      aria-label={`Event: ${event.title}, from ${startLabel} to ${endLabel}`}
     >
       {customContent ?? (
         <>
           <div className="react-agendfy-listevent-content">
             <span className="react-agendfy-listevent-title">{event.title}</span>
             <span className="react-agendfy-listevent-time">
-              {format(new TZDate(parseISO(event.start.toString()), config?.timeZone!), "HH:mm")} -{" "}
-              {format(new TZDate(parseISO(event.end.toString()), config?.timeZone!), "HH:mm")}
+              {startLabel} - {endLabel}
             </span>
           </div>
           {event.resources && event.resources.length > 0 && (

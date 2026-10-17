@@ -7,6 +7,7 @@ import { ensureDate } from "../../../Utils/DateTrannforms";
 import { EventItem } from "./EventItem";
 import { TZDate } from "@date-fns/tz";
 import { computePositionedEvents, layoutPositionStyle } from "../../../Utils/positionedEventsHelper";
+import { formatSlotLabel, showsSlotLabel } from "../../../Utils/displayOptions";
 
 export const TimeSlot: React.FC<TimeSlotProps> = ({
   index,
@@ -47,7 +48,9 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
     >
       {isBusinessHour && <div className="react-agendfy-business-hours" style={{ inset: 0 }} />}
       <span className="react-agendfy-timeslot-label">
-        {format(new TZDate(slotTime, config?.timeZone), "HH:mm")}
+        {showsSlotLabel(index * (config?.slotDuration || 30), config)
+          ? formatSlotLabel(new TZDate(slotTime, config?.timeZone), config)
+          : ""}
       </span>
       <div className="react-agendfy-timeslot-events">
         {positionedEvents.map((event: EventProps) => {

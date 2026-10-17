@@ -26,6 +26,9 @@ const fr: CalendarMessages = {
   invalid_slot_duration:
     "Durée de créneau non valide ({duration}). Vérifiez que l'heure de fin est postérieure à l'heure de début et que les deux sont valides.",
   hidden_events: "+{count} événements masqués",
+  more_events: "+{count} de plus",
+  week_number_label: "S",
+  close: "Fermer",
   notification_title: "Événement à venir",
   alert_title: "Alerte d'événement",
   event_starts_at: "{title} commence à {time}",

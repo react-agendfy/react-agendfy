@@ -36,13 +36,15 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   const formatTitle = () => {
     const locale = getLocale(localeConfig.lang);
-    if (currentView === "week") {
+    // The list view's title follows its span (listRange).
+    const titleView = currentView === "list" ? (localeConfig.listRange ?? "month") : currentView;
+    if (titleView === "week") {
       const weekStartsOn = resolveWeekStartsOn(localeConfig);
       const start = startOfWeek(currentDate, { weekStartsOn });
       const end = endOfWeek(currentDate, { weekStartsOn });
       return `${format(start, "d")} - ${format(end, "d MMM yyyy", { locale })}`;
     }
-    if (currentView === "day") {
+    if (titleView === "day") {
       return format(currentDate, "d MMMM yyyy", { locale });
     }
     return format(currentDate, "MMMM yyyy", { locale });

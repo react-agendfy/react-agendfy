@@ -23,13 +23,14 @@ export const getFilteredEventsList = (
   pluginSearchResults: EventProps[],
   isSearchActive: boolean
 ): EventProps[] => {
+  // Plugin filter/search results only decide WHICH events show (by id); the
+  // events themselves always come from the live list. Returning the plugin
+  // copies (as before) froze them at the last sync, so an optimistic move
+  // or resize never showed until the host re-sent the events.
   const filteredByResource = filterEvents(normalizedEvents, localFilteredResources);
-  const filteredByPlugin = pluginFilteredEvents.filter((event) =>
-    filteredByResource.some((e: any) => e.id === event.id)
-  );
-  return isSearchActive
-    ? pluginSearchResults.filter((event) =>
-        filteredByPlugin.some((e) => e.id === event.id)
-      )
-    : filteredByPlugin;
+  const pluginIds = new Set(pluginFilteredEvents.map((e) => e.id));
+  const filteredByPlugin = filteredByResource.filter((event: EventProps) => pluginIds.has(event.id));
+  if (!isSearchActive) return filteredByPlugin;
+  const searchIds = new Set(pluginSearchResults.map((e) => e.id));
+  return filteredByPlugin.filter((event: EventProps) => searchIds.has(event.id));
 }

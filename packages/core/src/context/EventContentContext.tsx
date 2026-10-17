@@ -1,9 +1,8 @@
 import React, { createContext, ReactNode, useContext, useMemo } from "react";
-import { TZDate } from "@date-fns/tz";
-import { format } from "date-fns";
-import type { EventContentArg, EventContentRenderer, EventProps } from "../types/types";
+import type { Config, EventContentArg, EventContentRenderer, EventProps } from "../types/types";
 import type { CalendarPlugin } from "../types/plugins";
 import { ensureDate } from "../Utils/DateTrannforms";
+import { formatEventTime } from "../Utils/displayOptions";
 
 /*
  * Custom event bodies for every view. Sources, in priority order:
@@ -39,11 +38,9 @@ export const EventContentProvider = ({
   return <EventContentContext.Provider value={renderer}>{children}</EventContentContext.Provider>;
 };
 
-export const formatEventTimeText = (event: EventProps, timeZone?: string): string => {
-  const start = new TZDate(ensureDate(event.start), timeZone);
-  const end = new TZDate(ensureDate(event.end), timeZone);
-  return `${format(start, "HH:mm")} - ${format(end, "HH:mm")}`;
-};
+/** "start - end" in the calendar time zone, with `eventTimeFormat`. */
+export const formatEventTimeText = (event: EventProps, config?: Partial<Config>): string =>
+  `${formatEventTime(ensureDate(event.start), config)} - ${formatEventTime(ensureDate(event.end), config)}`;
 
 /**
  * Custom content for `event` in `view`, or null to render the default body.
@@ -52,14 +49,14 @@ export const formatEventTimeText = (event: EventProps, timeZone?: string): strin
 export const useEventContent = (
   event: EventProps,
   view: EventContentArg["view"],
-  options: { timeZone?: string; isStart?: boolean; isEnd?: boolean } = {}
+  options: { config?: Partial<Config>; isStart?: boolean; isEnd?: boolean } = {}
 ): ReactNode | null => {
   const renderer = useContext(EventContentContext);
   if (!renderer) return null;
   const content = renderer({
     event,
     view,
-    timeText: formatEventTimeText(event, options.timeZone),
+    timeText: formatEventTimeText(event, options.config),
     isStart: options.isStart ?? true,
     isEnd: options.isEnd ?? true,
   });

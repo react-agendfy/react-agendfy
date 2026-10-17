@@ -1,5 +1,5 @@
-import { format } from 'date-fns';
 import { Config, EventProps, LocaleStrings } from '../types/types';
+import { formatEventTime } from './displayOptions';
 
 /**
  * Generates the tooltip content for a calendar event.
@@ -23,13 +23,16 @@ function generateTooltipContent(
   const eventEnd = new Date(event.end);
 
 
+  // Calendar time zone + eventTimeFormat (it used the host zone before).
+  const config = strings as Partial<Config> | undefined;
+  const time = (date: Date) => formatEventTime(date, config);
   const timeDisplay = isMultiDay
     ? isStart
-      ? `${strings?.tooltip_start || 'Start'}: ${format(eventStart, 'HH:mm')}`
+      ? `${strings?.tooltip_start || 'Start'}: ${time(eventStart)}`
       : isEnd
-        ? `${strings?.tooltip_end || 'End'}: ${format(eventEnd, 'HH:mm')}`
+        ? `${strings?.tooltip_end || 'End'}: ${time(eventEnd)}`
         : strings?.all_day || 'All day'
-    : `${format(eventStart, 'HH:mm')} - ${format(eventEnd, 'HH:mm')}`;
+    : `${time(eventStart)} - ${time(eventEnd)}`;
 
   const displayTitle = event.title;
 

@@ -89,12 +89,28 @@ describe('DayView Component', () => {
   });
 
   test('renders red line overlay if current date is today', () => {
-    const today = new Date();
-    const props = { ...baseProps, currentDate: today };
-    render(<DayView {...props} />);
-    const redLine = screen.getByText((content, element) => {
-      return element?.classList.contains("react-agendfy-now-line") ?? false;
-    });
-    expect(redLine).toBeInTheDocument();
+    // The line shows only while "now" is inside the grid (08:00-10:00 UTC).
+    jest.useFakeTimers({ now: new Date('2026-03-11T09:15:00Z') });
+    try {
+      const props = { ...baseProps, currentDate: new Date('2026-03-11T09:15:00Z') };
+      const { container } = render(<DayView {...props} />);
+      const redLine = container.querySelector('.react-agendfy-now-line') as HTMLElement;
+      expect(redLine).toBeInTheDocument();
+      // 75 min after 08:00 with 30-min slots of 40px.
+      expect(redLine.style.top).toBe('100px');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('hides the red line when now is outside the grid hours', () => {
+    jest.useFakeTimers({ now: new Date('2026-03-11T13:00:00Z') });
+    try {
+      const props = { ...baseProps, currentDate: new Date('2026-03-11T13:00:00Z') };
+      const { container } = render(<DayView {...props} />);
+      expect(container.querySelector('.react-agendfy-now-line')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

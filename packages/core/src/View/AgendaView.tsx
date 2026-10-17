@@ -6,15 +6,16 @@ import { getLocale } from '../Utils/locate';
 import { formatMessage } from '../i18n';
 import { getDayRules } from '../Utils/calendarRange';
 import { useEventContent } from '../context/EventContentContext';
+import { formatEventTime } from '../Utils/displayOptions';
 
 const AgendaEvent: React.FC<{
   event: EventProps;
   config: ListViewProps['config'];
   onEventClick?: (event: EventProps) => void;
 }> = ({ event, config, onEventClick }) => {
-  const customContent = useEventContent(event, 'agenda', { timeZone: config?.timeZone });
-  const startLabel = format(new TZDate(parseISO(event.start.toString()), config?.timeZone), 'HH:mm');
-  const endLabel = format(new TZDate(parseISO(event.end.toString()), config?.timeZone), 'HH:mm');
+  const customContent = useEventContent(event, 'agenda', { config });
+  const startLabel = formatEventTime(parseISO(event.start.toString()), config);
+  const endLabel = formatEventTime(parseISO(event.end.toString()), config);
   return (
     <div
       className="react-agendfy-agendaview-event"

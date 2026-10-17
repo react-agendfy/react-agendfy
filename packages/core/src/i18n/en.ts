@@ -30,6 +30,9 @@ const en = {
   invalid_slot_duration:
     "Invalid slot duration ({duration}). Make sure the end time is later than the start time and that both are valid.",
   hidden_events: "+{count} hidden events",
+  more_events: "+{count} more",
+  week_number_label: "W",
+  close: "Close",
   notification_title: "Upcoming event",
   alert_title: "Event Alert",
   event_starts_at: "{title} starts at {time}",

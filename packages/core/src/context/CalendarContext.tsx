@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   ReactNode,
   FC,
   Dispatch,
@@ -391,20 +392,33 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   );
 
   /* --- handlers ----------------------------------------------------------- */
-  const handleEventUpdate = useCallback(
-    (updatedEvent: EventProps) => {
-      dispatch({ type: "UPDATE_EVENT", payload: updatedEvent });
-      onEventUpdate?.(updatedEvent);
+  // Optimistic update with FullCalendar-style revert: when the host's
+  // callback returns a Promise that rejects (e.g. the server refused the
+  // move), the event goes back to where it was. A void return is unaffected.
+  const eventsRef = useRef(state.events);
+  eventsRef.current = state.events;
+  const applyWithRevert = useCallback(
+    (changed: EventProps, callback?: (event: EventProps) => void | Promise<unknown>) => {
+      const previous = eventsRef.current.find((e) => e.id === changed.id);
+      dispatch({ type: "UPDATE_EVENT", payload: changed });
+      const result = callback?.(changed);
+      if (result && typeof (result as Promise<unknown>).then === "function") {
+        (result as Promise<unknown>).then(undefined, () => {
+          if (previous) dispatch({ type: "UPDATE_EVENT", payload: previous });
+        });
+      }
     },
-    [onEventUpdate]
+    []
+  );
+
+  const handleEventUpdate = useCallback(
+    (updatedEvent: EventProps) => applyWithRevert(updatedEvent, onEventUpdate),
+    [applyWithRevert, onEventUpdate]
   );
 
   const handleEventResize = useCallback(
-    (resizeEvent: EventProps) => {
-      dispatch({ type: "UPDATE_EVENT", payload: resizeEvent });
-      onEventResize?.(resizeEvent);
-    },
-    [onEventResize]
+    (resizeEvent: EventProps) => applyWithRevert(resizeEvent, onEventResize),
+    [applyWithRevert, onEventResize]
   );
 
   const handleDateRangeSelect = useCallback(

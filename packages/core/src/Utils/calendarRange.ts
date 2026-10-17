@@ -17,7 +17,9 @@ import { getNewDate } from "./calendarNavigation";
  * hidden weekdays and the valid (interactive) date range.
  */
 
-type RangeConfig = Partial<Pick<Config, "weekStartsOn" | "hiddenDays" | "weekends" | "validRange" | "lang" | "timeZone">>;
+type RangeConfig = Partial<
+  Pick<Config, "weekStartsOn" | "hiddenDays" | "weekends" | "validRange" | "lang" | "timeZone" | "listRange">
+>;
 
 /** Explicit `weekStartsOn`, else the locale's convention, else Sunday. */
 export const resolveWeekStartsOn = (config?: RangeConfig): Weekday => {
@@ -82,6 +84,8 @@ export interface DayRules {
   weekStartsOn: Weekday;
   hidden: Set<number>;
   validRange: ResolvedValidRange;
+  /** Span of the list view (navigation steps by it). */
+  listRange: "day" | "week" | "month";
   isHidden: (date: Date) => boolean;
   isDisabled: (date: Date) => boolean;
 }
@@ -93,6 +97,7 @@ export const getDayRules = (config?: RangeConfig): DayRules => {
     weekStartsOn: resolveWeekStartsOn(config),
     hidden,
     validRange,
+    listRange: config?.listRange ?? "month",
     isHidden: (date) => hidden.has(date.getDay()),
     isDisabled: (date) => !isDayInRange(date, validRange),
   };
@@ -147,12 +152,14 @@ export const getNavigationTarget = (
   direction: 1 | -1,
   rules: DayRules
 ): Date | null => {
-  let target = getNewDate(date, view, direction);
-  if (view === "day") {
+  // The list view navigates by its own span (listRange).
+  const stepView = view === "list" ? rules.listRange : view;
+  let target = getNewDate(date, stepView, direction);
+  if (stepView === "day") {
     for (let i = 0; i < 7 && rules.isHidden(target); i++) target = addDays(target, direction);
   }
-  if (!periodOverlapsRange(getViewPeriod(view, target, rules.weekStartsOn), rules.validRange)) {
+  if (!periodOverlapsRange(getViewPeriod(stepView, target, rules.weekStartsOn), rules.validRange)) {
     return null;
   }
-  return view === "day" ? clampToValidRange(target, rules.validRange) : target;
+  return stepView === "day" ? clampToValidRange(target, rules.validRange) : target;
 };

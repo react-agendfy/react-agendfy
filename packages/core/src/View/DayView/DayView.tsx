@@ -13,7 +13,8 @@ import { ensureDate } from "../../Utils/DateTrannforms";
 import { DayViewProps, EventProps } from "../../types/types";
 import { TZDate } from "@date-fns/tz";
 import { TimeSlot } from "./Components/TimeSlot";
-import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
+import { nowLineOffset } from "../../Utils/calculateRedLineOffset";
+import { useMinuteTick } from "../../hooks/useMinuteTick";
 import { getEventsForSlot } from "../../Utils/weekViewHelpers";
 import { computeDayLayout } from "../../Utils/positionedEventsHelper";
 import DragPreview from "../../Components/DragPreview";
@@ -148,6 +149,9 @@ const DayView: React.FC<DayViewProps> = ({
     [slots, config?.timeZone]
   );
 
+  // Moves the current-time line once a minute.
+  useMinuteTick(config?.nowIndicator !== false);
+
   // Early return AFTER all hooks so hook order stays stable (rules-of-hooks).
   if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
     return (
@@ -157,14 +161,10 @@ const DayView: React.FC<DayViewProps> = ({
     );
   }
 
-  const today = new TZDate(new Date(), config?.timeZone || 'UTC');
-  const isToday = isSameDay(currentDate, today);
-  const redLineOffset = calculateRedLineOffset(
-    currentDate,
-    parsedSlotMin,
-    config?.slotDuration || 30,
-    config?.timeZone
-  );
+  const redLineOffset =
+    config?.nowIndicator !== false
+      ? nowLineOffset(currentDate, parsedSlotMin, parsedSlotMax, config?.slotDuration || 30, config?.timeZone)
+      : null;
 
   return (
     <DndContext
@@ -205,7 +205,7 @@ const DayView: React.FC<DayViewProps> = ({
             />
           );
         })}
-        {isToday && (
+        {redLineOffset !== null && (
           <div
             className="react-agendfy-now-line"
             style={{

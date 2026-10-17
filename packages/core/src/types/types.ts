@@ -50,6 +50,12 @@ export interface LocaleStrings {
   invalid_slot_duration?: string;
   /** Month-view overflow badge label. Template vars: {count}. */
   hidden_events?: string;
+  /** Prefix of week numbers (e.g. "W" → "W42", "S" → "S42"). */
+  week_number_label?: string;
+  /** Month-view "+N more" link. Template vars: {count}. */
+  more_events?: string;
+  /** Close button label (day popover). */
+  close?: string;
   /** Browser notification title for an upcoming event. */
   notification_title?: string;
   /** Toast title for event reminders. */
@@ -110,6 +116,30 @@ export interface Config {
   weekends?: boolean;
   /** Days outside this range are disabled and navigation is clamped to it. */
   validRange?: ValidRange;
+  /**
+   * date-fns pattern for event times (e.g. "HH:mm", "h:mm a"). Default
+   * "HH:mm". Used by every view and by `EventContentArg.timeText`.
+   */
+  eventTimeFormat?: string;
+  /** Minutes between time labels in week/day grids. Default: slotDuration. */
+  slotLabelInterval?: number;
+  /** Show week numbers (month rows, week view corner). Default false. */
+  weekNumbers?: boolean;
+  /** "local" follows weekStartsOn; "ISO" is ISO-8601 (Monday, week 1 has Jan 4). Default "local". */
+  weekNumberCalculation?: "local" | "ISO";
+  /**
+   * Max events per month cell before the "+N" link (which opens a popover
+   * with the day's events). `true` = 3, `false` = no limit. Default 3.
+   */
+  dayMaxEvents?: number | boolean;
+  /** Month view always renders 6 rows. Default false (only the weeks of the month). */
+  fixedWeekCount?: boolean;
+  /** Span of the list view. Default "month". */
+  listRange?: "day" | "week" | "month";
+  /** Show the all-day row in the week view. Default true. */
+  allDaySlot?: boolean;
+  /** Show the current-time line. Default true. */
+  nowIndicator?: boolean;
   defaultView: CalendarView;
   slotDuration: number;
   slotLabelFormat: string;
@@ -167,6 +197,12 @@ export interface Config {
   invalid_slot_duration?: string;
   /** Month-view overflow badge label. Template vars: {count}. */
   hidden_events?: string;
+  /** Prefix of week numbers (e.g. "W" → "W42", "S" → "S42"). */
+  week_number_label?: string;
+  /** Month-view "+N more" link. Template vars: {count}. */
+  more_events?: string;
+  /** Close button label (day popover). */
+  close?: string;
   /** Browser notification title for an upcoming event. */
   notification_title?: string;
   /** Toast title for event reminders. */
@@ -224,6 +260,8 @@ export interface CalendarDayProps {
   rowDays?: Date[];
   /** Day outside validRange: no click, selection or drop. */
   isDisabled?: boolean;
+  /** Week number shown in the row's first cell (`weekNumbers`). */
+  weekNumber?: number;
   config: Config;
   /** Roving-tabindex navigation props supplied by useGridNavigation. */
   navProps?: import("../hooks/useGridNavigation").GridCellNavProps;
@@ -346,8 +384,13 @@ export interface CalendarProps {
   emailConfig?: NotificationServiceConfig["emailConfig"];
   /** Date shown initially; later changes move the calendar to the new date. */
   currentDate?: Date;
-  onEventUpdate?: (event: EventProps) => void;
-  onEventResize?: (event: EventProps) => void;
+  /**
+   * Called after a drag. Return a Promise that rejects to revert the move
+   * (like FullCalendar's `info.revert()`); a void return keeps it.
+   */
+  onEventUpdate?: (event: EventProps) => void | Promise<unknown>;
+  /** Called after a resize. A rejected Promise reverts it. */
+  onEventResize?: (event: EventProps) => void | Promise<unknown>;
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;

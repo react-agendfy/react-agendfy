@@ -29,6 +29,9 @@ const ar: CalendarMessages = {
   invalid_slot_duration:
     "مدة الفترة غير صالحة ({duration}). تأكد من أن وقت النهاية بعد وقت البداية وأن كليهما صالح.",
   hidden_events: "+{count} أحداث مخفية",
+  more_events: "+{count} المزيد",
+  week_number_label: "أ",
+  close: "إغلاق",
   notification_title: "حدث قادم",
   alert_title: "تنبيه حدث",
   event_starts_at: "{title} يبدأ في {time}",

@@ -7,6 +7,7 @@ import { BaseEventProps } from "../types/types";
 import { TZDate } from "@date-fns/tz";
 import { getContrastText } from "../Utils/colorContrast";
 import { useEventContent } from "../context/EventContentContext";
+import { formatEventTime } from "../Utils/displayOptions";
 
 const BaseEvent = ({
   event,
@@ -96,13 +97,13 @@ const BaseEvent = ({
 
   // Views pass the resolved config, whose defaultView is the active view.
   const customContent = useEventContent(event, config?.defaultView ?? "week", {
-    timeZone: config?.timeZone,
+    config,
     isStart: !isMultiDay || isStart,
     isEnd: !isMultiDay || isEnd,
   });
 
-  const startLabel = format(new TZDate(parseISO(event.start.toString()), config?.timeZone), "HH:mm");
-  const endLabel = format(new TZDate(parseISO(event.end.toString()), config?.timeZone), "HH:mm");
+  const startLabel = formatEventTime(parseISO(event.start.toString()), config);
+  const endLabel = formatEventTime(parseISO(event.end.toString()), config);
 
   return (
     <div

@@ -14,6 +14,8 @@ import { DayColumnProps, EventProps } from "../../../types/types";
 import { TZDate } from "@date-fns/tz";
 import { getLocale } from "../../../Utils/locate";
 import { computeDayLayout } from "../../../Utils/positionedEventsHelper";
+import { nowLineOffset } from "../../../Utils/calculateRedLineOffset";
+import { useMinuteTick } from "../../../hooks/useMinuteTick";
 
 export const DayColumn = memo(
   ({
@@ -34,6 +36,12 @@ export const DayColumn = memo(
     isSlotSelected,
   }: DayColumnProps) => {
     const isToday = isSameDay(dayDate, new TZDate(new Date(), config?.timeZone));
+    // Current-time line: only in today's column, at the real current time.
+    const showNow = isToday && config?.nowIndicator !== false;
+    useMinuteTick(showNow);
+    const nowOffset = showNow
+      ? nowLineOffset(dayDate, parsedSlotMin, parsedSlotMax, config?.slotDuration || 30, config?.timeZone)
+      : null;
     const dayStart = startOfDay(dayDate);
     
     const eventsMapping = useMemo(() => {
@@ -201,13 +209,15 @@ export const DayColumn = memo(
               />
             );
           })}
-          <div
-            className="react-agendfy-now-line"
-            style={{
-              top: `${redLineOffset}px`,
-              zIndex: 1,
-            }}
-          />
+          {nowOffset !== null && (
+            <div
+              className="react-agendfy-now-line"
+              style={{
+                top: `${nowOffset}px`,
+                zIndex: 1,
+              }}
+            />
+          )}
         </div>
       </div>
     );

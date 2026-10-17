@@ -25,3 +25,23 @@ import {
   
     return redLineOffset;
   };
+/**
+ * Pixel offset of the current-time line inside `day`'s column, or null when
+ * the line must not show: `day` is not today, or now falls outside the
+ * rendered [slotMin, slotMax] window. (calculateRedLineOffset above returns
+ * 0 in those cases, which drew the line at the top of every column.)
+ */
+export const nowLineOffset = (
+  day: Date,
+  slotMinHours: number,
+  slotMaxHours: number,
+  slotDuration: number,
+  timeZone?: string,
+  now: Date = new Date()
+): number | null => {
+  const zonedNow = new TZDate(now, timeZone);
+  if (!isSameDay(new TZDate(day, timeZone), zonedNow)) return null;
+  const minutes = zonedNow.getHours() * 60 + zonedNow.getMinutes() - slotMinHours * 60;
+  if (minutes < 0 || minutes > (slotMaxHours - slotMinHours) * 60) return null;
+  return (minutes / (slotDuration || 30)) * 40;
+};

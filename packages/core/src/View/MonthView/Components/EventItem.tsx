@@ -20,6 +20,7 @@ import ResourceDisplay from '../../../Components/Resource/ResourceDisplay';
 import { BaseEventProps } from '../../../types/types';
 import { getContrastText } from '../../../Utils/colorContrast';
 import { useEventContent } from '../../../context/EventContentContext';
+import { formatEventTime } from '../../../Utils/displayOptions';
 import './EventItem.css';
 
 interface EventItemProps extends Omit<BaseEventProps, 'onEventResize'> {
@@ -115,12 +116,12 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
 
   const enableResizing = Boolean(onEventResize) && !isOtherMonth && (isEnd || !spansDays);
 
-  const startTime = useMemo(() => format(tzStart, 'HH:mm'), [tzStart]);
-  const endTime = useMemo(() => format(tzEnd, 'HH:mm'), [tzEnd]);
+  const startTime = useMemo(() => formatEventTime(tzStart, config), [tzStart, config]);
+  const endTime = useMemo(() => formatEventTime(tzEnd, config), [tzEnd, config]);
 
   const showContent = isVisiblePiece;
   const customContent = useEventContent(event, 'month', {
-    timeZone: config?.timeZone,
+    config,
     isStart,
     isEnd,
   });

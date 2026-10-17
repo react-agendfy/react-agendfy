@@ -1,10 +1,11 @@
 // MonthView.tsx
 import React, { useMemo, useCallback, useState } from 'react';
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { endOfWeek, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
+import { addDays, endOfWeek, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
 import { ensureDate } from '../../Utils/DateTrannforms';
 import { getDayRules } from '../../Utils/calendarRange';
+import { weekNumberOf } from '../../Utils/displayOptions';
 import { getLocale } from '../../Utils/locate';
 import ResourceView from '../../Components/Resource/ResourceView';
 import { MonthViewProps, EventProps } from '../../types/types';
@@ -47,14 +48,19 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
   // the calendar context.
   const { weeks, expandedEvents } = useMemo(() => {
     const viewStart = startOfWeek(monthStart, { weekStartsOn });
-    const viewEnd = endOfWeek(endOfMonth(monthStart), { weekStartsOn });
+    let viewEnd = endOfWeek(endOfMonth(monthStart), { weekStartsOn });
+    // fixedWeekCount: always 6 rows (FullCalendar's default is true; ours
+    // stays false so existing layouts keep only the weeks of the month).
+    if (config?.fixedWeekCount) {
+      viewEnd = endOfWeek(addDays(viewStart, 41), { weekStartsOn });
+    }
     const allDays = eachDayOfInterval({ start: viewStart, end: viewEnd });
     const rows: Date[][] = [];
     for (let i = 0; i < allDays.length; i += 7) {
       rows.push(allDays.slice(i, i + 7).filter((d) => !dayRules.isHidden(d)));
     }
     return { weeks: rows, expandedEvents: normalizeEvents(events) };
-  }, [events, monthStart, weekStartsOn, dayRules]);
+  }, [events, monthStart, weekStartsOn, dayRules, config?.fixedWeekCount]);
 
   const columnCount = weeks[0]?.length || 7;
   const gridColumns = { gridTemplateColumns: `repeat(${columnCount}, 1fr)` };
@@ -178,6 +184,7 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
                   key={day ? format(day, 'yyyy-MM-dd') : `empty-${i}-${j}`}
                   day={day}
                   rowDays={week}
+                  weekNumber={config?.weekNumbers && j === 0 ? weekNumberOf(day, config) : undefined}
                   isDisabled={disabled}
                   events={expandedEvents}
                   onDayClick={isResizing || disabled ? undefined : onDayClick}

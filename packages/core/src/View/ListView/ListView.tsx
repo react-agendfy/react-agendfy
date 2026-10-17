@@ -8,12 +8,15 @@ import {
   isWithinInterval,
   parseISO,
   startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
 } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 import { ListEvent } from "./Components/ListEvent";
 import { EventProps, ListViewProps } from "../../types/types";
 import { getLocale } from "../../Utils/locate";
-import { getDayRules } from "../../Utils/calendarRange";
+import { getDayRules, resolveWeekStartsOn } from "../../Utils/calendarRange";
 
 interface ListRowData {
   daysWithEvents: Date[];
@@ -75,22 +78,31 @@ const ListView: React.FC<ListViewProps> = ({
   config,
   currentDate = new TZDate(new Date(), config?.timeZone),
 }) => {
-  const monthStart = startOfMonth(new TZDate(currentDate, config?.timeZone || 'UTC'));
-  const monthEnd = endOfMonth(new TZDate(currentDate, config?.timeZone || 'UTC'));
+  // Span: listRange "day" | "week" | "month" (default month).
+  const { rangeStart, rangeEnd } = React.useMemo(() => {
+    const anchor = new TZDate(currentDate, config?.timeZone || 'UTC');
+    const range = config?.listRange ?? 'month';
+    if (range === 'day') return { rangeStart: startOfDay(anchor), rangeEnd: endOfDay(anchor) };
+    if (range === 'week') {
+      const weekStartsOn = resolveWeekStartsOn(config);
+      return { rangeStart: startOfWeek(anchor, { weekStartsOn }), rangeEnd: endOfWeek(anchor, { weekStartsOn }) };
+    }
+    return { rangeStart: startOfMonth(anchor), rangeEnd: endOfMonth(anchor) };
+  }, [currentDate, config]);
 
 const rowHeight = useDynamicRowHeight({
 defaultRowHeight: 10
 });  
   const days = React.useMemo(() => {
     const dayList: Date[] = [];
-    let day = monthStart;
+    let day = rangeStart;
     const rules = getDayRules(config);
-    while (day <= monthEnd) {
+    while (day <= rangeEnd) {
       if (!rules.isHidden(day) && !rules.isDisabled(day)) dayList.push(day);
       day = addDays(day, 1);
     }
     return dayList;
-  }, [monthStart, monthEnd, config]);
+  }, [rangeStart, rangeEnd, config]);
 
   const eventsByDay = React.useMemo(() => {
     const grouped: Record<string, EventProps[]> = {};
