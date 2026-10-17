@@ -36,7 +36,7 @@ const BaseEvent = ({
     disabled: !isDraggable,
   });
 
-  const { setNodeRef, transform, isDragging } = draggableProps;
+  const { setNodeRef, isDragging } = draggableProps;
   const attributes = isDraggable ? draggableProps.attributes : {};
   const listeners = isDraggable ? draggableProps.listeners : {};
 
@@ -72,20 +72,19 @@ const BaseEvent = ({
 
   const eventStyle: React.CSSProperties = {
     ...positionStyle,
-    width: "100%",
+    // Honour the layout width (day view overlap columns); full width otherwise.
+    width: positionStyle.width ?? "100%",
     // Only translate when THIS instance owns the drag. dnd-kit activates
     // `transform` by draggable id, so a wrapped/disabled instance sharing the
     // id of an active drag would otherwise apply a second translate3d and the
     // event would drift away from the pointer (2x movement).
-    transform:
-      isDraggable && transform
-        ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-        : undefined,
+    // While dragging, the moving copy is the view's DragOverlay; this
+    // element stays in place as a faint ghost (it never translates, so it
+    // cannot slide underneath neighbouring events).
     position: "absolute",
     top: computedTop,
     height: computedHeight,
-    opacity: isDraggable && isDragging ? 0.8 : 1,
-    boxShadow: isDraggable && isDragging ? "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" : "none",
+    opacity: isDraggable && isDragging ? 0.35 : 1,
     backgroundColor: event.color,
     color: getContrastText(event.color),
   };

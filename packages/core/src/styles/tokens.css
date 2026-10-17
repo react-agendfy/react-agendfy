@@ -261,10 +261,10 @@
   --baseevent-padding-small: var(--agendfy-space-1);
   --baseevent-border-radius-small: var(--agendfy-radius-sm);
   --baseevent-padding-medium: 0rem;
-  --baseevent-border-radius-medium: var(--agendfy-radius-md);
+  --baseevent-border-radius-medium: var(--agendfy-radius-sm);
   --baseevent-padding-large: var(--agendfy-space-3);
   --baseevent-padding-min: 0rem;
-  --baseevent-border-radius-large: var(--agendfy-radius-lg);
+  --baseevent-border-radius-large: var(--agendfy-radius-sm);
   --baseevent-time-font-size-small: 0.65rem;
   --baseevent-time-font-size-medium: 0.75rem;
   --baseevent-time-font-size-large: 0.85rem;

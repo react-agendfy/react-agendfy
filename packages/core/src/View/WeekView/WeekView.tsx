@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { DndContext, KeyboardSensor, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
+import type { Modifier } from "@dnd-kit/core";
 import {
   format,
   addMinutes,
@@ -21,6 +22,7 @@ import { TZDate } from "@date-fns/tz";
 import { DayColumn } from "./Components/DayColumn";
 import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import DragPreview from "../../Components/DragPreview";
 import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
 
 const WeekView = ({
@@ -105,37 +107,64 @@ const WeekView = ({
     return mapping;
   }, [daysOfWeek, currentWeekStart, events, config?.timeZone]);
 
-  const draggedEventRef = useRef<EventProps | null>(null);
+  // Drag preview: the dragged event is drawn in a DragOverlay (above every
+  // slot and column) that moves in whole slots/columns, while the original
+  // stays in place as a ghost. The drop lands exactly where the preview is.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const dragMetricsRef = useRef<{ slotPx: number; columnPx: number } | null>(null);
+  const [activeDrag, setActiveDrag] = useState<EventProps | null>(null);
 
   const handleDragStart = useCallback((event: any) => {
     const { active } = event;
-    if (active?.id) {
-      draggedEventRef.current = events.find((e: EventProps) => e.id === active.id) || null;
-    }
+    const dragged = events.find((e: EventProps) => e.id === active?.id);
+    const slot = containerRef.current?.querySelector(".react-agendfy-weektimeslot");
+    const column = containerRef.current?.querySelector(".react-agendfy-weekview-day-column");
+    const slotPx = slot?.getBoundingClientRect().height ?? 0;
+    const columnPx = column?.getBoundingClientRect().width ?? 0;
+    dragMetricsRef.current = slotPx > 0 && columnPx > 0 ? { slotPx, columnPx } : null;
+    if (dragged) setActiveDrag(dragged);
   }, [events]);
+
+  const snapToGrid = useCallback<Modifier>(({ transform }) => {
+    const metrics = dragMetricsRef.current;
+    if (!metrics) return transform;
+    return {
+      ...transform,
+      x: Math.round(transform.x / metrics.columnPx) * metrics.columnPx,
+      y: Math.round(transform.y / metrics.slotPx) * metrics.slotPx,
+    };
+  }, []);
 
   const handleDragEnd = useCallback((event: any) => {
     const { active, over, delta } = event;
-    draggedEventRef.current = null;
+    const metrics = dragMetricsRef.current;
+    dragMetricsRef.current = null;
+    setActiveDrag(null);
     if (!active?.id || !over?.id) return;
 
     const baseTime = new TZDate(new Date(over.id), config?.timeZone);
     if (!isValid(baseTime)) return;
 
-    // Snap to the slot under the pointer. `over.id` (pointerWithin collision)
-    // already identifies the exact drop slot — adding any transform-based
-    // offset on top would double-count the drag distance and produce
-    // fractional-minute start times (see phase-0 audit, bug B8). This also
-    // matches DayView's behavior.
-    const newStartTime = baseTime;
-
     const draggedEvent = events.find((ev: EventProps) => ev.id === active.id);
     if (!draggedEvent) return;
 
+    const originalStart = new TZDate(ensureDate(draggedEvent.start, config?.timeZone), config?.timeZone);
     const duration = differenceInMinutes(
       ensureDate(draggedEvent.end, config?.timeZone),
-      ensureDate(draggedEvent.start, config?.timeZone)
+      originalStart
     );
+
+    // With real layout metrics the new start is the original time moved by
+    // the snapped vertical distance, on the day under the pointer — exactly
+    // where the snapped preview sits. Without metrics (no layout, e.g. tests)
+    // fall back to the slot under the pointer (`over.id`, pointerWithin); a
+    // transform offset on top of it would double-count the drag (bug B8).
+    const newStartTime = metrics
+      ? addMinutes(
+          setMinutes(setHours(startOfDay(baseTime), originalStart.getHours()), originalStart.getMinutes()),
+          Math.round(delta.y / metrics.slotPx) * slotDuration
+        )
+      : baseTime;
 
     // Consider both axes so a horizontal drag (moving to another day column)
     // is not misclassified as a click and discarded.
@@ -155,7 +184,7 @@ const WeekView = ({
     if (typeof onEventUpdate === "function") {
       onEventUpdate(updatedEvent);
     }
-  }, [events, config?.timeZone, onEventClick, onEventUpdate]);
+  }, [events, config?.timeZone, onEventClick, onEventUpdate, slotDuration]);
 
   const handleSelectionMouseDown = useCallback((slotTime: Date) => {
     if (!slotTime) return;
@@ -244,6 +273,7 @@ const WeekView = ({
       }}
     >
       <div
+        ref={containerRef}
         className="react-agendfy-weekview-container"
         role="grid"
         aria-label={`${format(addDays(currentWeekStart, daysOfWeek[0] ?? 0), "d MMM yyyy")} - ${format(addDays(currentWeekStart, daysOfWeek[daysOfWeek.length - 1] ?? 6), "d MMM yyyy")}`}
@@ -317,6 +347,9 @@ const WeekView = ({
           })}
         </div>
       </div>
+      <DragOverlay modifiers={[snapToGrid]} dropAnimation={null} zIndex={1000}>
+        {activeDrag && <DragPreview event={activeDrag} config={config} />}
+      </DragOverlay>
     </DndContext>
   );
 };

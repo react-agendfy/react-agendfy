@@ -4,11 +4,14 @@ import { EventProps, TimeSlotProps } from "../../../types/types";
 import { WeekEvent } from "./WeekEvent";
 import { useDroppable } from "@dnd-kit/core";
 import { getSlotTime } from "../../../Utils/slotTime";
-import { computePositionedEvents } from "../../../Utils/positionedEventsHelper";
+import { computePositionedEvents, DayLayoutSlot, layoutPositionStyle } from "../../../Utils/positionedEventsHelper";
+import { ensureDate } from "../../../Utils/DateTrannforms";
 
 export interface WeekTimeSlotProps extends TimeSlotProps {
   /** Day outside validRange: no click, selection or drop. */
   isDisabled?: boolean;
+  /** Column placement for the whole day (see computeDayLayout). */
+  dayLayout?: Map<string, DayLayoutSlot>;
   onSelectionMouseDown?: (date: Date) => void;
   onSelectionMouseMove?: (date: Date) => void;
   isSelected?: boolean;
@@ -27,6 +30,7 @@ export const WeekTimeSlot = memo(
     config,
     isDraggable,
     isDisabled = false,
+    dayLayout,
     onSelectionMouseDown,
     onSelectionMouseMove,
     isSelected,
@@ -49,8 +53,18 @@ export const WeekTimeSlot = memo(
     }, [onSlotClick, slotTime, isDisabled]);
 
     const positionedEvents: EventProps[] = useMemo(() => {
-      return computePositionedEvents(slotEvents, config);
-    }, [slotEvents, config]);
+      if (!dayLayout) return computePositionedEvents(slotEvents, config);
+      return (slotEvents || []).map((event) => ({
+        ...event,
+        positionStyle: {
+          top: "0",
+          ...layoutPositionStyle(dayLayout.get(String(event.id))),
+          height: `${
+            ((ensureDate(event.end).getTime() - ensureDate(event.start).getTime()) / 60000 / (config?.slotDuration || 30)) * 40
+          }px`,
+        },
+      }));
+    }, [slotEvents, config, dayLayout]);
 
     const slotClasses = [
       "react-agendfy-weektimeslot",

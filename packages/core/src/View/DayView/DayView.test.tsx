@@ -14,6 +14,7 @@ jest.mock('@dnd-kit/core', () => ({
       {children}
     </div>
   ),
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useDroppable: jest.fn(() => ({ setNodeRef: jest.fn(), isOver: false })),
   useSensor: jest.fn(),
   useSensors: jest.fn(() => []),

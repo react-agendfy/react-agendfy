@@ -4,9 +4,13 @@
  * hidden days, weekStartsOn, validRange and eventContent.
  */
 import React from "react";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { render, screen, within, fireEvent, configure } from "@testing-library/react";
 import { Calendar } from "../index";
 import { EventProps } from "../types/types";
+
+// Views are lazy chunks; under a full parallel run the first load can exceed
+// the 1s default of findBy*.
+configure({ asyncUtilTimeout: 5000 });
 
 beforeAll(() => {
   // react-window (list view) measures rows with ResizeObserver; jsdom lacks it.

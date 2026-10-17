@@ -6,7 +6,7 @@ import { format, isSameDay } from "date-fns";
 import { ensureDate } from "../../../Utils/DateTrannforms";
 import { EventItem } from "./EventItem";
 import { TZDate } from "@date-fns/tz";
-import { computePositionedEvents } from "../../../Utils/positionedEventsHelper";
+import { computePositionedEvents, layoutPositionStyle } from "../../../Utils/positionedEventsHelper";
 
 export const TimeSlot: React.FC<TimeSlotProps> = ({
   index,
@@ -19,6 +19,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   config,
   isBusinessHour = false,
   isDisabled = false,
+  dayLayout,
 }: TimeSlotProps) => {
   const slotTime = getSlotTime(dayDate, slotMin, config?.slotDuration!, index, config?.timeZone!);
   const { setNodeRef } = useDroppable({ id: slotTime.toISOString(), disabled: isDisabled });
@@ -30,8 +31,12 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   }, [onSlotClick, slotTime, config?.timeZone, isDisabled]);
 
   const positionedEvents: EventProps[] = useMemo(() => {
-    return computePositionedEvents(slotEvents, config, true, { marginLeft: "0px" });
-  }, [slotEvents, config]);
+    if (!dayLayout) return computePositionedEvents(slotEvents, config, true, { marginLeft: "0px" });
+    return (slotEvents || []).map((event) => ({
+      ...event,
+      positionStyle: { top: "0", marginLeft: "0px", ...layoutPositionStyle(dayLayout.get(String(event.id))) },
+    }));
+  }, [slotEvents, config, dayLayout]);
 
   return (
     <div

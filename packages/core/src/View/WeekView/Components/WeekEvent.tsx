@@ -111,7 +111,7 @@ export const WeekEvent = ({
     }
   };
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
     data: { event },
     disabled: !canDrag,
@@ -120,13 +120,9 @@ export const WeekEvent = ({
   // Apply the drag translate only when THIS segment owns the drag —
   // continuation segments have a distinct id (<id>::cont) AND are disabled,
   // so they must never move with an active drag of the start segment.
-  const style =
-    canDrag && transform
-      ? {
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          opacity: isDragging ? 0.5 : 1,
-        }
-      : undefined;
+  // The moving copy lives in WeekView's DragOverlay; the original stays put
+  // as a faint ghost so neighbours keep their layout during the drag.
+  const style = canDrag && isDragging ? { opacity: 0.35 } : undefined;
 
   return (
     <Resizable

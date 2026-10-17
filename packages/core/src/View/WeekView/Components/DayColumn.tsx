@@ -13,6 +13,7 @@ import { useBusinessHours } from "../../../Utils/businessHours";
 import { DayColumnProps, EventProps } from "../../../types/types";
 import { TZDate } from "@date-fns/tz";
 import { getLocale } from "../../../Utils/locate";
+import { computeDayLayout } from "../../../Utils/positionedEventsHelper";
 
 export const DayColumn = memo(
   ({
@@ -48,6 +49,12 @@ export const DayColumn = memo(
       });
       return mapping;
     }, [dayStart, parsedSlotMin, timeSlots, getEventsForDay, config?.slotDuration]);
+
+    // Overlap columns are decided for the whole day, not per slot.
+    const dayLayout = useMemo(
+      () => computeDayLayout(Object.values(eventsMapping).flat(), config?.timeZone),
+      [eventsMapping, config?.timeZone]
+    );
 
     const businessIntervals = useBusinessHours(dayDate, config?.businessHours);
 
@@ -187,6 +194,7 @@ export const DayColumn = memo(
                 onEventResize={onEventResize}
                 isDraggable={isDraggable}
                 isDisabled={isDisabled}
+                dayLayout={dayLayout}
                 onSelectionMouseDown={onSelectionMouseDown}
                 onSelectionMouseMove={onSelectionMouseMove}
                 isSelected={isSlotSelected(new TZDate(slotTime, config?.timeZone))}

@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo } from "react";
-import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import type { Modifier } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
@@ -15,6 +16,8 @@ import { TZDate } from "@date-fns/tz";
 import { TimeSlot } from "./Components/TimeSlot";
 import { calculateRedLineOffset } from "../../Utils/calculateRedLineOffset";
 import { getEventsForSlot } from "../../Utils/weekViewHelpers";
+import { computeDayLayout } from "../../Utils/positionedEventsHelper";
+import DragPreview from "../../Components/DragPreview";
 import { getBusinessHoursIntervalsForDate } from "../../Utils/businessHours";
 import { getDayRules } from "../../Utils/calendarRange";
 
@@ -41,8 +44,26 @@ const DayView: React.FC<DayViewProps> = ({
   // early return so the hook order stays stable.
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
+  // Same drag preview as the week view: a DragOverlay snapped to slots.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const slotPxRef = useRef(0);
+  const [activeDrag, setActiveDrag] = useState<EventProps | null>(null);
+  const handleDragStart = useCallback(
+    ({ active }: any) => {
+      const slot = containerRef.current?.querySelector(".react-agendfy-timeslot-container");
+      slotPxRef.current = slot?.getBoundingClientRect().height ?? 0;
+      setActiveDrag(events.find((ev: EventProps) => ev.id === active?.id) ?? null);
+    },
+    [events]
+  );
+  const snapToSlots = useCallback<Modifier>(({ transform }) => {
+    const px = slotPxRef.current;
+    return px > 0 ? { ...transform, x: 0, y: Math.round(transform.y / px) * px } : transform;
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: any) => {
+      setActiveDrag(null);
       const { active, over, delta } = event;
       if (!active?.id || !over?.id) return;
       if (getDayRules(config).isDisabled(new Date(over.id))) return;
@@ -53,15 +74,24 @@ const DayView: React.FC<DayViewProps> = ({
       const draggedEvent = events.find((ev: EventProps) => ev.id === active.id);
       if (!draggedEvent) return;
 
+      const originalStart = ensureDate(draggedEvent.start, config?.timeZone);
       const duration = differenceInMinutes(
         ensureDate(draggedEvent.end, config?.timeZone),
-        ensureDate(draggedEvent.start, config?.timeZone)
+        originalStart
       );
+
+      // With layout metrics, move by the snapped distance — where the
+      // DragOverlay preview sits. Without them (tests), the pointer's slot.
+      const slotPx = slotPxRef.current;
+      const newStart =
+        slotPx > 0
+          ? addMinutes(originalStart, Math.round(delta.y / slotPx) * (config?.slotDuration || 30))
+          : baseTime;
 
       const updatedEvent = {
         ...draggedEvent,
-        start: baseTime.toISOString(),
-        end: addMinutes(baseTime, duration).toISOString(),
+        start: new Date(newStart.getTime()).toISOString(),
+        end: new Date(addMinutes(newStart, duration).getTime()).toISOString(),
       };
 
       if (Math.abs(delta.y) < 1 && onEventClick) {
@@ -90,6 +120,25 @@ const DayView: React.FC<DayViewProps> = ({
     [events, config]
   );
 
+  // Slot start times + their events, computed once so overlap columns can be
+  // decided for the whole day (computeDayLayout) instead of per slot.
+  const slots = useMemo(() => {
+    if (isNaN(numberOfSlots) || numberOfSlots <= 0) return [];
+    return Array.from({ length: numberOfSlots }, (_, index) => {
+      const minutes = index * (config?.slotDuration || 30);
+      const totalMinutes = (parsedSlotMin * 60) + minutes;
+      const slotTime = setMinutes(
+        setHours(startOfDay(currentDate), Math.floor(totalMinutes / 60)),
+        minutes % 60
+      ).toISOString();
+      return { index, slotTime, events: getSlotEvents(slotTime) };
+    });
+  }, [numberOfSlots, config?.slotDuration, parsedSlotMin, currentDate, getSlotEvents]);
+  const dayLayout = useMemo(
+    () => computeDayLayout(slots.flatMap((s) => s.events), config?.timeZone),
+    [slots, config?.timeZone]
+  );
+
   // Early return AFTER all hooks so hook order stays stable (rules-of-hooks).
   if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
     return (
@@ -110,6 +159,7 @@ const DayView: React.FC<DayViewProps> = ({
 
   return (
     <DndContext
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       sensors={sensors}
       accessibility={{
@@ -119,20 +169,12 @@ const DayView: React.FC<DayViewProps> = ({
         },
       }}
     >
-      <div 
+      <div
+        ref={containerRef}
         className="react-agendfy-dayview-container"
         style={{ position: 'relative', zIndex: 0 }}
       >
-        {[...Array(numberOfSlots)].map((_, index) => {
-          const minutes = index * (config?.slotDuration || 30);
-          const totalMinutes = (parsedSlotMin * 60) + minutes;
-          const calculatedHour = Math.floor(totalMinutes / 60);
-          const minute = minutes % 60;
-          const slotTime = setMinutes(
-            setHours(startOfDay(currentDate), calculatedHour),
-            minute
-          ).toISOString();
-          const slotEvents = getSlotEvents(slotTime);
+        {slots.map(({ index, slotTime, events: slotEvents }) => {
           const slotMs = new Date(slotTime).getTime();
           const isBusinessHour = businessIntervals.some(
             (interval) => slotMs >= interval.start.getTime() && slotMs < interval.end.getTime()
@@ -150,6 +192,7 @@ const DayView: React.FC<DayViewProps> = ({
               config={config}
               isBusinessHour={isBusinessHour}
               isDisabled={isDisabled}
+              dayLayout={dayLayout}
             />
           );
         })}
@@ -163,6 +206,9 @@ const DayView: React.FC<DayViewProps> = ({
           />
         )}
       </div>
+      <DragOverlay modifiers={[snapToSlots]} dropAnimation={null} zIndex={1000}>
+        {activeDrag && <DragPreview event={activeDrag} config={config} />}
+      </DragOverlay>
     </DndContext>
   );
 };

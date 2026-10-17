@@ -1,59 +1,57 @@
+/* Timed event block (week/day grids). The padding lives on the block, not on
+   the default body, so custom `eventContent` gets the same inset. */
 .react-agendfy-baseevent {
   position: absolute;
+  box-sizing: border-box; /* padding must not widen it past its column */
   color: var(--agendfy-color-event-fg);
   border-radius: var(--baseevent-border-radius-medium);
+  padding: var(--baseevent-padding-block, 2px 6px);
+  font-size: var(--baseevent-time-font-size-medium);
+  line-height: 1.25;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 200;
-  box-shadow: var(--agendfy-shadow-sm);
+  /* Inset 1px ring in the grid colour: separates side-by-side and
+     back-to-back events, which share edges once laid out (an outer ring
+     would be covered by the neighbour). */
+  box-shadow: inset 0 0 0 1px var(--agendfy-color-surface);
   transition: box-shadow var(--agendfy-transition-duration)
     var(--agendfy-transition-timing);
 }
 
 .react-agendfy-baseevent:hover {
-  box-shadow: var(--agendfy-shadow-md);
+  box-shadow: inset 0 0 0 1px var(--agendfy-color-surface), var(--agendfy-shadow-md);
 }
 
 .react-agendfy-baseevent--preview {
   opacity: 0.5;
 }
 
+/* The copy that follows the pointer while dragging. */
+.react-agendfy-baseevent--dragging {
+  cursor: grabbing;
+  box-shadow: inset 0 0 0 1px var(--agendfy-color-surface), var(--agendfy-shadow-lg, 0 10px 24px rgba(0, 0, 0, 0.18));
+}
+
 .react-agendfy-baseevent__time {
-  font-size: var(--baseevent-time-font-size-medium);
-  padding: var(--baseevent-padding-large);
   color: inherit;
   opacity: 0.95;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 640px) {
   .react-agendfy-baseevent {
-    padding: var(--baseevent-padding-small);
+    padding: 1px 3px;
     border-radius: var(--baseevent-border-radius-small);
-  }
-  .react-agendfy-baseevent__time {
     font-size: var(--baseevent-time-font-size-small);
-    padding: var(--baseevent-padding-medium);
-  }
-}
-
-@media (min-width: 768px) {
-  .react-agendfy-baseevent {
-    padding: var(--baseevent-padding-medium);
-    border-radius: var(--baseevent-border-radius-medium);
-  }
-  .react-agendfy-baseevent__time {
-    font-size: var(--baseevent-time-font-size-medium);
   }
 }
 
 @media (min-width: 1024px) {
   .react-agendfy-baseevent {
-    padding: var(--baseevent-padding-min);
-    border-radius: var(--baseevent-border-radius-large);
-  }
-  .react-agendfy-baseevent__time {
     font-size: var(--baseevent-time-font-size-large);
   }
 }

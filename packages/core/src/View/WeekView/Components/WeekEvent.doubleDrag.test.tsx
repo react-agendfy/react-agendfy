@@ -4,7 +4,10 @@
  * WeekEvent (drag owner) wraps BaseEvent; both used to register useDraggable
  * with the SAME id. dnd-kit activates `transform` by id, so both layers
  * translated and the event drifted away from the pointer at 2x speed.
- * Exactly ONE rendered element may carry the drag translate3d.
+ *
+ * Since the DragOverlay preview, the moving copy is rendered by the view;
+ * the grid elements must NEVER translate (a translated original slid under
+ * neighbouring events) and the drag owner is shown as a faint ghost.
  */
 import React from 'react';
 import { render } from '@testing-library/react';
@@ -50,8 +53,11 @@ function countTranslated(container: HTMLElement): number {
   ).length;
 }
 
-describe('drag translate is applied by exactly one layer', () => {
-  test('WeekEvent during drag: exactly ONE translate3d in the tree', () => {
+const ghostCount = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll<HTMLElement>('*')).filter((el) => el.style.opacity === '0.35').length;
+
+describe('grid events never translate while dragged (the DragOverlay moves)', () => {
+  test('WeekEvent during drag: no translate3d, one ghost layer', () => {
     const { container } = render(
       <WeekEvent
         event={event}
@@ -62,7 +68,8 @@ describe('drag translate is applied by exactly one layer', () => {
         isDraggable={true}
       />
     );
-    expect(countTranslated(container)).toBe(1);
+    expect(countTranslated(container)).toBe(0);
+    expect(ghostCount(container)).toBe(1);
   });
 
   test('BaseEvent with isDraggable=false never translates, even with an active same-id transform', () => {
@@ -77,7 +84,7 @@ describe('drag translate is applied by exactly one layer', () => {
     expect(countTranslated(container)).toBe(0);
   });
 
-  test('BaseEvent as standalone drag owner still translates (DayView path)', () => {
+  test('BaseEvent as standalone drag owner stays in place as a ghost (DayView path)', () => {
     const { container } = render(
       <BaseEvent
         event={event}
@@ -86,6 +93,7 @@ describe('drag translate is applied by exactly one layer', () => {
         isDraggable={true}
       />
     );
-    expect(countTranslated(container)).toBe(1);
+    expect(countTranslated(container)).toBe(0);
+    expect(ghostCount(container)).toBe(1);
   });
 });

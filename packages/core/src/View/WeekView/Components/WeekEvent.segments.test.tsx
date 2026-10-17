@@ -152,12 +152,11 @@ describe('horizontal multi-day resize (one gesture)', () => {
 });
 
 describe('start segment of a crossing event', () => {
-  test('applies the drag transform (it owns the drag)', () => {
+  test('owns the drag: shown as the ghost while the overlay moves (no translate)', () => {
     const { container } = renderSegment(startSegment);
-    const translated = Array.from(container.querySelectorAll<HTMLElement>('*')).filter((el) =>
-      (el.style.transform || '').includes('translate3d')
-    );
-    expect(translated).toHaveLength(1);
+    const all = Array.from(container.querySelectorAll<HTMLElement>('*'));
+    expect(all.filter((el) => (el.style.transform || '').includes('translate3d'))).toHaveLength(0);
+    expect(all.filter((el) => el.style.opacity === '0.35')).toHaveLength(1);
   });
 
   test('hides end-side handles (its bottom edge is midnight, not the real end)', () => {

@@ -374,6 +374,8 @@ export interface TimeSlotProps {
   isBusinessHour?: boolean;
   /** Day outside validRange: no click or drop. */
   isDisabled?: boolean;
+  /** Column placement for the whole day (see computeDayLayout). */
+  dayLayout?: Map<string, import("../Utils/positionedEventsHelper").DayLayoutSlot>;
 }
 export interface DayColumnProps {
   dayDate: any;
