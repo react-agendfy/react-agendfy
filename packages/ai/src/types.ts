@@ -181,3 +181,99 @@ export interface CalendarInsights {
   /** Optional event-count per category (when categorization was requested). */
   categories?: Record<string, number>;
 }
+
+/* -------------------------------------------------------------------------- */
+/* NL Event Editing                                                            */
+/* -------------------------------------------------------------------------- */
+
+export type EditAction = 'update' | 'delete' | 'reschedule' | 'rename';
+
+export interface EventEditResult {
+  action: EditAction;
+  /** The id of the event to edit. */
+  eventId: string;
+  /** Fields to update (for update/reschedule/rename). */
+  updates?: Partial<AgendfyEvent>;
+  confidence: ParseConfidence;
+  raw: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Agenda Generation                                                           */
+/* -------------------------------------------------------------------------- */
+
+export type AgendaPeriod = 'day' | 'week' | 'month';
+
+export interface AgendaItem {
+  event: AgendfyEvent;
+  /** Formatted time string, e.g. "09:00 - 10:00". */
+  timeRange: string;
+  /** Duration in minutes. */
+  durationMinutes: number;
+}
+
+export interface AgendaResult {
+  period: AgendaPeriod;
+  /** ISO date of the agenda start. */
+  dateStart: string;
+  /** ISO date of the agenda end. */
+  dateEnd: string;
+  items: AgendaItem[];
+  /** LLM-generated prose summary (or undefined if no adapter). */
+  summary?: string;
+  stats: CalendarStats;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Conflict Resolution                                                         */
+/* -------------------------------------------------------------------------- */
+
+export interface ConflictResolution {
+  conflict: ConflictReport;
+  /** Human-readable suggestion. */
+  suggestion: string;
+  /** Proposed fix: which event to move and to what time. */
+  proposedFix?: {
+    eventId: string;
+    newStart: string;
+    newEnd: string;
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Batch Event Parsing                                                         */
+/* -------------------------------------------------------------------------- */
+
+export interface BatchParseResult {
+  events: ParsedEventResult[];
+  /** Events that could not be parsed. */
+  failed: Array<{ input: string; error: string }>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Smart Reminders                                                             */
+/* -------------------------------------------------------------------------- */
+
+export type ReminderTrigger = 'before-start' | 'before-end' | 'at-time';
+
+export interface SmartReminder {
+  eventId: string;
+  /** Minutes before/after the trigger point. */
+  minutes: number;
+  trigger: ReminderTrigger;
+  /** LLM reasoning for this reminder time. */
+  reason: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Availability Check                                                          */
+/* -------------------------------------------------------------------------- */
+
+export interface AvailabilityResult {
+  /** Human-readable answer. */
+  answer: string;
+  /** Matching free slots. */
+  slots: FreeSlot[];
+  /** The original NL request constraints. */
+  constraints: SchedulingConstraints;
+}

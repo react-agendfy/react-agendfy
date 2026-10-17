@@ -52,13 +52,31 @@ export function buildParseSystemPrompt(opts: ParseEventOptions): string {
   return [
     'You convert one natural-language sentence into a single calendar event.',
     `Current datetime ("now"): ${now}.`,
-    `User timezone: ${timeZone}. Resolve every relative date/time expression`,
-    '("tomorrow", "next Tuesday 3pm", "terça às 15h") against that "now" in',
-    'that timezone, and return ISO 8601 datetimes including the correct offset.',
-    `The input language is likely "${locale}", but detect it if different.`,
-    'If no duration is given, assume 60 minutes. If no time of day is given,',
-    "use 09:00 and add 'time' to missing. Never invent attendees or locations.",
-  ].join(' ');
+    `User timezone: ${timeZone}.`,
+    '',
+    'CRITICAL DATE RULES:',
+    `- "dia 24 de dezembro" = December 24th of the CURRENT year (${new Date().getFullYear()}).`,
+    `- "dia 1 de janeiro" = January 1st of the current year.`,
+    `- "24/12" or "24-12" = December 24th of the current year.`,
+    `- "amanhã"/"tomorrow" = the day after today.`,
+    `- "terça"/"terça-feira"/"Tuesday" = next occurrence of that weekday.`,
+    `- "hoje"/"today" = today.`,
+    '',
+    'CRITICAL TIME RULES:',
+    `- "às 15h" or "15:00" or "3pm" = 15:00 in 24h format.`,
+    `- "dia inteiro"/"all day" = set allDay: true, start at 00:00, end at 23:59.`,
+    `- If NO time is mentioned, default to 09:00 and add "time" to missing array.`,
+    `- If duration is not mentioned, assume 60 minutes.`,
+    '',
+    'OUTPUT: Return ISO 8601 datetimes with timezone offset for the user timezone.',
+    'The input language is likely "' + locale + '", but detect it if different.',
+    'Never invent attendees or locations.',
+    '',
+    'EXAMPLES:',
+    `- "vamos para a praia dia 24 de dezembro" → start: ${new Date().getFullYear()}-12-24T09:00:00, end: ${new Date().getFullYear()}-12-24T10:00:00, allDay: false, missing: ["time"]`,
+    `- "reunião amanhã às 14h30" → start: tomorrow at 14:30, end: tomorrow at 15:30, allDay: false, missing: []`,
+    `- "dia todo de confraternização" → start: today 00:00, end: today 23:59, allDay: true, missing: []`,
+  ].join('\n');
 }
 
 interface LLMParsedEvent {

@@ -1,1 +1,93 @@
 html,body,#root { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+
+/* AI Panel */
+.ai-panel {
+  border-top: 2px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 16px;
+  font-size: 14px;
+}
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ai-panel-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+.ai-panel-badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ai-panel-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.ai-tab {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+.ai-tab:hover { background: #f1f5f9; }
+.ai-tab.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+.ai-panel-body { display: flex; flex-direction: column; gap: 10px; }
+.ai-panel-hint {
+  color: #64748b;
+  font-style: italic;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e1;
+  text-align: center;
+}
+.ai-panel-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+}
+.ai-panel-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+.ai-panel-btn {
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ai-panel-btn:hover { background: #2563eb; }
+.ai-panel-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.ai-panel-output {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+}

@@ -20,6 +20,20 @@ import {
   SuggestSchedulingOptions,
 } from '../scheduling';
 import { summarizeCalendar, SummarizeOptions } from '../insights';
+import { parseEditRequest, ParseEditOptions } from '../editing';
+import { generateAgenda, GenerateAgendaOptions } from '../agenda';
+import { suggestConflictResolutions, SuggestResolutionOptions } from '../resolution';
+import { parseMultipleEvents, BatchParseOptions } from '../batch';
+import { suggestReminders, SuggestRemindersOptions } from '../reminders';
+import { parseAvailabilityRequest, ParseAvailabilityOptions } from '../availability';
+import type {
+  AgendaResult,
+  ConflictResolution,
+  BatchParseResult,
+  SmartReminder,
+  AvailabilityResult,
+  EventEditResult,
+} from '../types';
 
 interface AsyncState<T> {
   loading: boolean;
@@ -172,4 +186,180 @@ export function useCalendarInsights(
   );
 
   return { summarize: run, loading, error, result, reset };
+}
+
+/* -------------------------------------------------------------------------- */
+/* useEventEditing                                                             */
+/* -------------------------------------------------------------------------- */
+
+export type UseEventEditingOptions = Omit<ParseEditOptions, 'adapter' | 'signal' | 'events'>;
+
+export function useEventEditing(
+  adapter?: AIAdapter,
+  options: UseEventEditingOptions = {}
+) {
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
+
+  const { run, loading, error, result, reset } = useAIOperation(
+    (
+      signal: AbortSignal,
+      input: string,
+      events: AgendfyEvent[]
+    ): Promise<EventEditResult | null> =>
+      parseEditRequest(input, {
+        ...optionsRef.current,
+        events,
+        adapter: adapterRef.current,
+        signal,
+      })
+  );
+
+  return { edit: run, loading, error, result, reset };
+}
+
+/* -------------------------------------------------------------------------- */
+/* useAgenda                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export type UseAgendaOptions = Omit<GenerateAgendaOptions, 'adapter' | 'signal'>;
+
+export function useAgenda(
+  adapter?: AIAdapter,
+  options: UseAgendaOptions = { period: 'day' }
+) {
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
+
+  const { run, loading, error, result, reset } = useAIOperation(
+    (
+      signal: AbortSignal,
+      events: AgendfyEvent[]
+    ): Promise<AgendaResult> =>
+      generateAgenda(events, {
+        ...optionsRef.current,
+        adapter: adapterRef.current,
+        signal,
+      })
+  );
+
+  return { generate: run, loading, error, result, reset };
+}
+
+/* -------------------------------------------------------------------------- */
+/* useConflictResolution                                                       */
+/* -------------------------------------------------------------------------- */
+
+export type UseConflictResolutionOptions = Omit<
+  SuggestResolutionOptions,
+  'adapter' | 'signal' | 'events' | 'conflicts'
+>;
+
+export function useConflictResolution(
+  adapter?: AIAdapter,
+  options: UseConflictResolutionOptions = {}
+) {
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
+
+  const { run, loading, error, result, reset } = useAIOperation(
+    (
+      signal: AbortSignal,
+      events: AgendfyEvent[],
+      conflicts: import('../types').ConflictReport[]
+    ): Promise<ConflictResolution[]> =>
+      suggestConflictResolutions({
+        ...optionsRef.current,
+        events,
+        conflicts,
+        adapter: adapterRef.current,
+        signal,
+      })
+  );
+
+  return { resolve: run, loading, error, result, reset };
+}
+
+/* -------------------------------------------------------------------------- */
+/* useBatchParser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export type UseBatchParserOptions = Omit<BatchParseOptions, 'adapter' | 'signal'>;
+
+export function useBatchParser(
+  adapter?: AIAdapter,
+  options: UseBatchParserOptions = {}
+) {
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
+
+  const { run, loading, error, result, reset } = useAIOperation(
+    (signal: AbortSignal, input: string): Promise<BatchParseResult> =>
+      parseMultipleEvents(input, {
+        ...optionsRef.current,
+        adapter: adapterRef.current,
+        signal,
+      })
+  );
+
+  return { parse: run, loading, error, result, reset };
+}
+
+/* -------------------------------------------------------------------------- */
+/* useSmartReminders                                                           */
+/* -------------------------------------------------------------------------- */
+
+export type UseSmartRemindersOptions = Omit<SuggestRemindersOptions, 'adapter' | 'signal' | 'events'>;
+
+export function useSmartReminders(
+  adapter?: AIAdapter,
+  options: UseSmartRemindersOptions = {}
+) {
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
+
+  const { run, loading, error, result, reset } = useAIOperation(
+    (
+      signal: AbortSignal,
+      events: AgendfyEvent[]
+    ): Promise<SmartReminder[]> =>
+      suggestReminders({
+        ...optionsRef.current,
+        events,
+        adapter: adapterRef.current,
+        signal,
+      })
+  );
+
+  return { suggest: run, loading, error, result, reset };
+}
+
+/* -------------------------------------------------------------------------- */
+/* useAvailability                                                             */
+/* -------------------------------------------------------------------------- */
+
+export type UseAvailabilityOptions = Omit<ParseAvailabilityOptions, 'adapter' | 'signal' | 'events'>;
+
+export function useAvailability(
+  adapter?: AIAdapter,
+  options: UseAvailabilityOptions = {}
+) {
+  const optionsRef = useLatest(options);
+  const adapterRef = useLatest(adapter);
+
+  const { run, loading, error, result, reset } = useAIOperation(
+    (
+      signal: AbortSignal,
+      input: string,
+      events: AgendfyEvent[]
+    ): Promise<AvailabilityResult> =>
+      parseAvailabilityRequest(input, {
+        ...optionsRef.current,
+        events,
+        adapter: adapterRef.current,
+        signal,
+      })
+  );
+
+  return { check: run, loading, error, result, reset };
 }

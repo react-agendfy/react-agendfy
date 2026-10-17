@@ -7,7 +7,8 @@ import { Settings } from "lucide-react";
 import MyRightHeaderPlugin from "./components/RightHeaderPlugin";
 import  exportsPlugin from '@react-agendfy/plugin-export-reports'
 import resourceFilterPlugin from "@react-agendfy/plugin-filter";
-import { createQuickAddPlugin, httpAdapter } from "@react-agendfy/ai";
+import { createQuickAddPlugin, httpAdapter, go4aiAdapter } from "@react-agendfy/ai";
+import AIPanel from "./components/AIPanel";
 import { v6 } from "uuid";
 
 class ExampleEmailAdapter {
@@ -293,9 +294,16 @@ const App: FC = () => {
       // If the proxy is down/unauthenticated, parsing silently falls back
       // to the local parser.
       ...createQuickAddPlugin({
-        adapter: import.meta.env.VITE_AI_PROXY
-          ? httpAdapter({ endpoint: import.meta.env.VITE_AI_PROXY })
-          : undefined,
+        adapter: import.meta.env.VITE_GO4AI_API_KEY
+          ? go4aiAdapter({
+              apiKey: import.meta.env.VITE_GO4AI_API_KEY,
+              baseUrl: import.meta.env.VITE_GO4AI_BASE_URL || 'https://ai.go4ai.io/v1',
+              model: import.meta.env.VITE_GO4AI_MODEL || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+              dangerouslyAllowBrowser: true,
+            })
+          : import.meta.env.VITE_AI_PROXY
+            ? httpAdapter({ endpoint: import.meta.env.VITE_AI_PROXY })
+            : undefined,
         onEventCreate: (event) => setEvents(prev => [...prev, event]),
       }),
       label: 'AI Quick Add',
@@ -333,6 +341,10 @@ const App: FC = () => {
     );
   }, [allPlugins, activePlugins, calendarConfig]);
 
+  const handleEventDelete = useCallback((eventId: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+  }, []);
+
   return (
     <ErrorBoundary>
       <div style={{width: "100%", height: 'auto', display: "flex", flexDirection: "column"}}>
@@ -352,6 +364,13 @@ const App: FC = () => {
           emailConfig={{ defaultRecipient: "user@example.com" }}
           theme={theme}
           plugins={enabledPlugins}
+        />
+        <AIPanel
+          events={events}
+          onEventCreate={(e) => setEvents((prev) => [...prev, { ...e, id: e.id || String(Date.now()) }])}
+          onEventUpdate={handleEventUpdate}
+          onEventDelete={handleEventDelete}
+          timeZone={calendarConfig.timeZone}
         />
         <EventFormModal
           isOpen={isModalOpen}

@@ -32,3 +32,8 @@ src/plugins
 # TypeScript incremental build metadata
 *.tsbuildinfo
 .claude/
+
+# Env files
+.env
+.env.*
+!.env.example

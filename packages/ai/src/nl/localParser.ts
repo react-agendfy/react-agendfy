@@ -29,6 +29,24 @@ const WEEKDAYS: Record<string, number> = {
   saturday: 6, sat: 6, 'sábado': 6, sabado: 6,
 };
 
+const MONTHS: Record<string, number> = {
+  janeiro: 0, jan: 0, january: 0,
+  fevereiro: 1, feb: 1, february: 1,
+  março: 2, mar: 2, march: 2,
+  abril: 3, apr: 3, april: 3,
+  maio: 4, may: 4,
+  junho: 5, jun: 5, june: 5,
+  julho: 6, jul: 6, july: 6,
+  agosto: 7, aug: 7, august: 7,
+  setembro: 8, sep: 8, september: 8,
+  outubro: 9, oct: 9, october: 9,
+  novembro: 10, nov: 10, november: 10,
+  dezembro: 11, dec: 11, december: 11,
+};
+
+// Matches "dia 24 de dezembro", "24 de dezembro", "24/12", "24-12", "dia 24", "on December 24"
+const SPECIFIC_DATE_RE = /(?:dia\s+)?(\d{1,2})\s*(?:de\s+|\/|-)\s*(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\b/i;
+
 const WEEKDAY_RE = new RegExp(
   `(?:\\bnext\\s+|\\bna\\s+|\\bno\\s+)?\\b(${Object.keys(WEEKDAYS).join('|')})(?:-feira)?\\b`,
   'i'
@@ -102,9 +120,11 @@ export function parseNaturalEventLocal(
   // 2. Day offset relative to the reference date (UTC arithmetic).
   let dayOffset = 0;
   let hasDate = false;
+  let specificDate: { month: number; day: number } | null = null;
   const today = TODAY_RE.exec(working);
   const tomorrow = TOMORROW_RE.exec(working);
   const weekday = WEEKDAY_RE.exec(working);
+  const specific = SPECIFIC_DATE_RE.exec(working);
   if (tomorrow) {
     dayOffset = 1;
     hasDate = true;
@@ -112,6 +132,15 @@ export function parseNaturalEventLocal(
   } else if (today) {
     hasDate = true;
     consumed.push(today[0]);
+  } else if (specific) {
+    const day = parseInt(specific[1], 10);
+    const monthName = specific[2].toLowerCase();
+    const month = MONTHS[monthName];
+    if (month !== undefined && day >= 1 && day <= 31) {
+      specificDate = { month, day };
+      hasDate = true;
+      consumed.push(specific[0]);
+    }
   } else if (weekday) {
     const target = WEEKDAYS[weekday[1].toLowerCase()];
     const diff = (target - ref.getUTCDay() + 7) % 7;
@@ -134,13 +163,24 @@ export function parseNaturalEventLocal(
   }
 
   // 4. Assemble ISO start/end.
-  const startMs = Date.UTC(
-    ref.getUTCFullYear(),
-    ref.getUTCMonth(),
-    ref.getUTCDate() + dayOffset,
-    hour,
-    minute
-  );
+  let startMs: number;
+  if (specificDate) {
+    // Use the specific date (e.g., "24 de dezembro")
+    const year = ref.getUTCFullYear();
+    startMs = Date.UTC(year, specificDate.month, specificDate.day, hour, minute);
+    // If that date has already passed this year, use next year
+    if (startMs < ref.getTime()) {
+      startMs = Date.UTC(year + 1, specificDate.month, specificDate.day, hour, minute);
+    }
+  } else {
+    startMs = Date.UTC(
+      ref.getUTCFullYear(),
+      ref.getUTCMonth(),
+      ref.getUTCDate() + dayOffset,
+      hour,
+      minute
+    );
+  }
   const endMs = startMs + durationMinutes * 60_000;
 
   // 5. Title = leftovers after removing every consumed token.
