@@ -294,7 +294,9 @@ const App: FC = () => {
       // If the proxy is down/unauthenticated, parsing silently falls back
       // to the local parser.
       ...createQuickAddPlugin({
-        adapter: import.meta.env.VITE_GO4AI_API_KEY
+        // Browser-side key: local development only (a production build
+        // would ship it inside the public JavaScript).
+        adapter: import.meta.env.DEV && import.meta.env.VITE_GO4AI_API_KEY
           ? go4aiAdapter({
               apiKey: import.meta.env.VITE_GO4AI_API_KEY,
               baseUrl: import.meta.env.VITE_GO4AI_BASE_URL || 'https://ai.go4ai.io/v1',

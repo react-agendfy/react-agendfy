@@ -13,9 +13,14 @@ import {
   type AgendfyEvent,
 } from "@react-agendfy/ai";
 
-const adapter = import.meta.env.VITE_GO4AI_API_KEY
+// A browser-side API key is for LOCAL development only: in a production
+// build (the public demo) it would ship inside the JavaScript. Production
+// uses the proxy (VITE_AI_PROXY) or runs without the LLM (local parser).
+const devBrowserKey = import.meta.env.DEV ? import.meta.env.VITE_GO4AI_API_KEY : undefined;
+
+const adapter = devBrowserKey
   ? go4aiAdapter({
-      apiKey: import.meta.env.VITE_GO4AI_API_KEY,
+      apiKey: devBrowserKey,
       baseUrl: import.meta.env.VITE_GO4AI_BASE_URL || "https://ai.go4ai.io/v1",
       model:
         import.meta.env.VITE_GO4AI_MODEL ||

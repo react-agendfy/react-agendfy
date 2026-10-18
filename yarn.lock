@@ -8675,6 +8675,8 @@ __metadata:
     jest: "npm:^29.7.0"
     jest-environment-jsdom: "npm:^30.2.0"
     lucide-react: "npm:^0.548.0"
+    react: "npm:^19.2.0"
+    react-dom: "npm:^19.2.0"
     typescript: "npm:^5.9.3"
     typescript-eslint: "npm:^8.65.0"
     uuid: "npm:^13.0.0"
