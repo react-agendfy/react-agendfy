@@ -1,5 +1,15 @@
 # @react-agendfy/example-basic
 
+## 1.0.2
+
+### Patch Changes
+
+- Updated dependencies [4fadcc5]
+- Updated dependencies [4fadcc5]
+- Updated dependencies [4fadcc5]
+  - @react-agendfy/ai@0.2.1
+  - @react-agendfy/core@2.1.0
+
 ## 1.0.1
 
 ### Patch Changes

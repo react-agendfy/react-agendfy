@@ -1,5 +1,11 @@
 # @react-agendfy/ai
 
+## 0.2.1
+
+### Patch Changes
+
+- 4fadcc5: The offline parser (no adapter, or an adapter failure) now applies `timeZone`: "lunch tomorrow at 1pm" is 1pm in that zone, and "today"/"tomorrow" follow the zone's calendar day. Without `timeZone` it still reads times as UTC wall-clock.
+
 ## 0.2.0
 
 ### Minor Changes
