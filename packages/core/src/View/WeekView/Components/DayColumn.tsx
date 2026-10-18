@@ -222,7 +222,6 @@ export const DayColumn = memo(
               className="react-agendfy-now-line"
               style={{
                 top: `${nowOffset}px`,
-                zIndex: 1,
               }}
             />
           )}

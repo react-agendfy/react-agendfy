@@ -29,6 +29,8 @@
   inset-inline: 0;
   border-top: var(--agendfy-now-line-width) solid var(--agendfy-color-now);
   pointer-events: none;
+  /* above timed events (200), below popovers (1000) */
+  z-index: 250;
 }
 
 /* Days outside config.validRange: visible but inert (no click/select/drop). */

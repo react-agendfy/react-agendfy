@@ -233,7 +233,6 @@ const DayView: React.FC<DayViewProps> = ({
             className="react-agendfy-now-line"
             style={{
               top: `${redLineOffset}px`,
-              zIndex: 15,
             }}
           />
         )}
