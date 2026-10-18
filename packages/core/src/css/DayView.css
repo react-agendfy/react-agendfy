@@ -12,7 +12,7 @@
 .react-agendfy-timeslot-container {
   position: relative;
   border-bottom: 1px solid var(--agendfy-color-border);
-  height: var(--dayview-timeslot-height);
+  height: var(--agendfy-slot-height);
   cursor: pointer;
 }
 
@@ -33,9 +33,8 @@
 }
 
 @media (max-width: 640px) {
-  .react-agendfy-timeslot-container {
-    height: 2rem;
-  }
+  /* The slot height is NOT shrunk here any more: event positions are
+     computed from config.slotHeight, so a CSS-only height desynced them. */
   .react-agendfy-timeslot-label {
     font-size: var(--font-size-xs);
   }

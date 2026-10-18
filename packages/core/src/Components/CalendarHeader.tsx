@@ -44,6 +44,10 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       const end = endOfWeek(currentDate, { weekStartsOn });
       return `${format(start, "d")} - ${format(end, "d MMM yyyy", { locale })}`;
     }
+    if (titleView === "agenda") {
+      const end = new Date(currentDate.getTime() + 6 * 86400000);
+      return `${format(currentDate, "d")} - ${format(end, "d MMM yyyy", { locale })}`;
+    }
     if (titleView === "day") {
       return format(currentDate, "d MMMM yyyy", { locale });
     }

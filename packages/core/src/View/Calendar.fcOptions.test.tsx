@@ -199,3 +199,32 @@ describe("Calendar FullCalendar options", () => {
     expect(screen.getByTestId("start")).toHaveTextContent("2026-03-11T09:00:00Z");
   });
 });
+
+describe("all-day events", () => {
+  it("treat the end as exclusive in the week view's all-day row", async () => {
+    const { container } = render(
+      <Calendar
+        events={[{ id: "a", title: "Reunião", start: "2026-03-11T00:00:00Z", end: "2026-03-12T00:00:00Z", allDay: true }]}
+        currentDate={MARCH_11}
+        config={{ ...base, defaultView: "week" }}
+      />
+    );
+    await screen.findAllByRole("columnheader");
+    expect(container.querySelectorAll(".react-agendfy-weekview-all-day-event")).toHaveLength(1);
+  });
+
+  it("treat the end as exclusive in the month view and show no 00:00", async () => {
+    const { container } = render(
+      <Calendar
+        events={[{ id: "r", title: "Release day", start: "2026-03-11T00:00:00Z", end: "2026-03-12T00:00:00Z", allDay: true }]}
+        currentDate={MARCH_11}
+        config={{ ...base, defaultView: "month" }}
+      />
+    );
+    await screen.findAllByRole("gridcell");
+    const chips = container.querySelectorAll(".react-agendfy-event-item");
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toHaveTextContent("Release day");
+    expect(chips[0]).not.toHaveTextContent("00:00");
+  });
+});

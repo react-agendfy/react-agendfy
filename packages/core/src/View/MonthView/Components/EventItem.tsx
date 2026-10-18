@@ -20,6 +20,7 @@ import ResourceDisplay from '../../../Components/Resource/ResourceDisplay';
 import { BaseEventProps } from '../../../types/types';
 import { getContrastText } from '../../../Utils/colorContrast';
 import { useEventContent } from '../../../context/EventContentContext';
+import { publicEventId, useEventClassNames } from '../../../context/ClassNamesContext';
 import { formatEventTime } from '../../../Utils/displayOptions';
 import './EventItem.css';
 
@@ -119,6 +120,12 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
 
   const enableResizing = Boolean(onEventResize) && !isOtherMonth && (isEnd || !spansDays);
 
+  // All-day (explicit, or midnight-to-midnight): no "00:00" on the chip.
+  const isAllDayEvent = useMemo(() => {
+    if (event.allDay || event.isAllDay) return true;
+    const midnight = (d: Date) => d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
+    return midnight(tzStart) && midnight(tzEnd) && tzEnd.getTime() > tzStart.getTime();
+  }, [event.allDay, event.isAllDay, tzStart, tzEnd]);
   const startTime = useMemo(() => formatEventTime(tzStart, config), [tzStart, config]);
   const endTime = useMemo(() => formatEventTime(tzEnd, config), [tzEnd, config]);
 
@@ -129,6 +136,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
     isEnd,
   });
 
+  const extraClassNames = useEventClassNames(event, 'month');
   const className = [
     'react-agendfy-event-item',
     isDragging && 'react-agendfy-event-item-dragging',
@@ -136,9 +144,10 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
     spansDays && isStart && 'react-agendfy-event-item-multiday-start',
     spansDays && isEnd && 'react-agendfy-event-item-multiday-end',
     spansDays && !isStart && !isEnd && 'react-agendfy-event-item-multiday-middle',
+    extraClassNames,
   ].filter(Boolean).join(' ');
 
-  const radius = 'var(--agendfy-radius-sm)';
+  const radius = 'var(--agendfy-event-radius)';
   const cornerStyle: React.CSSProperties = spansDays
     ? {
         borderStartStartRadius: roundStart ? radius : 0,
@@ -148,7 +157,11 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
       }
     : {};
 
-  const color = event.color || '#3490dc';
+  // No event colour: the themeable default (--agendfy-color-event-default).
+  const background = event.color || 'var(--agendfy-color-event-default, #3490dc)';
+  const foreground = event.color
+    ? getContrastText(event.color)
+    : 'var(--agendfy-color-event-default-fg, #ffffff)';
 
   return (
     // The stretch lives on OUR wrapper, not on re-resizable: its `size` prop
@@ -203,8 +216,8 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         ref={setNodeRef}
         className={className}
         style={{
-          backgroundColor: isVisiblePiece ? color : 'transparent',
-          color: isVisiblePiece ? getContrastText(color) : 'transparent',
+          backgroundColor: isVisiblePiece ? background : 'transparent',
+          color: isVisiblePiece ? foreground : 'transparent',
           // Shadows paint around transparent boxes too — an invisible piece
           // must not cast a ghost bar over the stretched row bar beneath it.
           boxShadow: isVisiblePiece ? undefined : 'none',
@@ -215,6 +228,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
           ...cornerStyle,
         }}
         title={isVisiblePiece ? event.title : undefined}
+        data-event-id={publicEventId(event)}
         onClick={(e) => {
           e.stopPropagation();
           if (!isResizing) {
@@ -230,7 +244,11 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
         role={isVisiblePiece ? 'button' : undefined}
         tabIndex={isVisiblePiece ? 0 : -1}
         aria-hidden={isVisiblePiece ? undefined : true}
-        aria-label={isVisiblePiece ? `${event.title}, ${startTime} - ${endTime}` : undefined}
+        aria-label={
+          isVisiblePiece
+            ? `${event.title}, ${isAllDayEvent ? config?.all_day || 'All day' : `${startTime} - ${endTime}`}`
+            : undefined
+        }
         onKeyDown={(e: React.KeyboardEvent) => {
           if (!isVisiblePiece) return;
           if (e.key === 'Enter') {
@@ -255,7 +273,7 @@ const EventItemMemo: React.FC<EventItemProps & { dayWidth: number; isOtherMonth?
           <>
             <div className="react-agendfy-event-item-content">
               <span>{event.title}</span>
-              <span>{startTime}</span>
+              {!isAllDayEvent && <span>{startTime}</span>}
             </div>
             {event.resources?.length > 0 && (
               <div className="react-agendfy-event-item-resources">

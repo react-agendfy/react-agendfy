@@ -192,6 +192,9 @@ export interface CalendarContextValue {
   canNavigateForward: boolean;
   /** Custom event body from the `eventContent` prop. */
   eventContent?: CalendarProps["eventContent"];
+  /** Styling hooks from the `eventClassNames` / `dayCellClassNames` props. */
+  eventClassNames?: CalendarProps["eventClassNames"];
+  dayCellClassNames?: CalendarProps["dayCellClassNames"];
 }
 
 export const CalendarContext = createContext<CalendarContextValue | null>(null);
@@ -223,6 +226,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   onViewChange,
   apiRef,
   eventContent,
+  eventClassNames,
+  dayCellClassNames,
   currentDate: currentDateProp,
   children,
 }) => {
@@ -737,6 +742,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     canNavigateBack,
     canNavigateForward,
     eventContent,
+    eventClassNames,
+    dayCellClassNames,
   };
 
   return (

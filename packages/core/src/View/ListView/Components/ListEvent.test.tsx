@@ -77,10 +77,30 @@ describe('ListEvent Component', () => {
   });
 
 
-  it('Should apply the backgroundColor style with the event color', () => {
+  it('Should mark the event colour on the dot (not by filling the row)', () => {
     render(<ListEvent event={defaultEvent} currentDate={new Date()} config={defaultConfig} />);
-    const listEventDiv = screen.getByTestId('list-event-container');
-    expect(listEventDiv).toHaveStyle({ backgroundColor: '#abcdef' });
+    const row = screen.getByTestId('list-event-container');
+    expect(row.style.getPropertyValue('--agendfy-event-color')).toBe('#abcdef');
+    expect(row.querySelector('.react-agendfy-event-row-dot')).toBeInTheDocument();
+  });
+
+  it('Should keep an event without colour visible (accent dot)', () => {
+    const { color: _color, ...noColor } = defaultEvent as any;
+    render(<ListEvent event={noColor} currentDate={new Date()} config={defaultConfig} />);
+    expect(screen.getByTestId('list-event-container').style.getPropertyValue('--agendfy-event-color')).toBe(
+      'var(--agendfy-color-accent)'
+    );
+  });
+
+  it('Should show "All day" instead of 00:00 - 00:00 for all-day events', () => {
+    render(
+      <ListEvent
+        event={{ ...defaultEvent, allDay: true }}
+        currentDate={new Date()}
+        config={{ ...defaultConfig, all_day: 'All day' }}
+      />
+    );
+    expect(screen.getByText('All day')).toBeInTheDocument();
   });
  
   it('Should call onEventClick when the component is clicked', () => {

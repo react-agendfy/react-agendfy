@@ -9,7 +9,7 @@
 }
 
 .react-agendfy-weekview-all-day-label {
-  width: 4rem;
+  width: var(--agendfy-time-gutter-width);
   background-color: var(--agendfy-color-surface-2);
   border-inline-end: 1px solid var(--agendfy-color-border);
 }
@@ -37,7 +37,7 @@
   color: var(--agendfy-color-event-fg);
   padding: 0.125rem;
   margin-bottom: var(--agendfy-space-1);
-  border-radius: var(--agendfy-radius-sm);
+  border-radius: var(--agendfy-event-radius);
 }
 
 .react-agendfy-weekview-timeslot-grid {
@@ -51,18 +51,32 @@
 }
 
 .react-agendfy-weekview-timeslot-label {
-  width: 4rem;
+  width: var(--agendfy-time-gutter-width);
   background-color: var(--agendfy-color-surface-2);
   border-inline-end: 1px solid var(--agendfy-color-border);
 }
 
+/* The labels sit bottom-aligned in slot-tall boxes; this spacer keeps each
+   label just under its grid line for ANY slot height:
+   offset = column header - slot height + 0.5rem (1rem with the defaults).
+   A negative offset (tall slots) is applied as a negative margin instead. */
+.react-agendfy-weekview-timeslot-label {
+  --agendfy-label-offset: calc(
+    var(--agendfy-column-header-height) - var(--agendfy-slot-height) + 0.5rem
+  );
+}
+
 .react-agendfy-weekview-timeslot-label-top {
-  height: 1rem;
+  height: max(0px, var(--agendfy-label-offset));
   border-bottom: 1px solid var(--agendfy-color-border);
 }
 
+.react-agendfy-weekview-timeslot-label-top + .react-agendfy-weekview-timeslot {
+  margin-top: min(0px, var(--agendfy-label-offset));
+}
+
 .react-agendfy-weekview-timeslot {
-  height: var(--dayview-timeslot-height);
+  height: var(--agendfy-slot-height);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -91,17 +105,17 @@
 .react-agendfy-weektimeslot {
   position: relative;
   border-bottom: 0;
-  height: var(--dayview-timeslot-height);
+  height: var(--agendfy-slot-height);
   transition: background-color 200ms var(--agendfy-transition-timing),
     border-color 200ms var(--agendfy-transition-timing);
 }
 
 .react-agendfy-weektimeslot-selected {
-  background-color: var(--agendfy-color-accent-soft);
+  background-color: var(--agendfy-color-selection);
 }
 
 .react-agendfy-bg-green-200 {
-  background-color: var(--agendfy-color-accent-soft);
+  background-color: var(--agendfy-color-selection);
 }
 
 .react-agendfy-daycolumn-container {
@@ -115,7 +129,7 @@
 }
 
 .react-agendfy-daycolumn-header {
-  height: 3rem;
+  height: var(--agendfy-column-header-height);
   border-bottom: 1px solid var(--agendfy-color-border);
   display: flex;
   align-items: center;
@@ -160,6 +174,23 @@
 
 .react-agendfy-daycolumn-slot-container {
   position: relative;
+}
+
+/* Hour / 15-minute lines drawn over each day column. */
+.react-agendfy-grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.react-agendfy-grid-line--hour {
+  border-top: var(--agendfy-grid-line-hour);
+}
+
+.react-agendfy-grid-line--minor {
+  border-top: var(--agendfy-grid-line-minor);
 }
 
 @media (max-width: 640px) {

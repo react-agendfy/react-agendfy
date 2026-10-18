@@ -38,9 +38,9 @@
 .react-agendfy-button-group {
   display: inline-flex;
   border: 1px solid var(--agendfy-color-border);
-  border-radius: var(--agendfy-radius-md);
+  border-radius: var(--agendfy-button-radius);
   overflow: hidden;
-  background-color: var(--agendfy-color-surface-2);
+  background-color: var(--agendfy-button-bg);
   box-shadow: var(--agendfy-shadow-sm);
 }
 
@@ -49,7 +49,7 @@
   border-radius: 0;
   padding: var(--agendfy-space-2) var(--agendfy-space-3);
   background-color: transparent;
-  color: var(--agendfy-color-text-muted);
+  color: var(--agendfy-button-fg);
   font: inherit;
   font-weight: 500;
   cursor: pointer;
@@ -71,8 +71,30 @@
 }
 
 .react-agendfy-button.react-agendfy-button-primary.react-agendfy-button-active {
-  background-color: var(--agendfy-color-accent);
-  color: var(--agendfy-color-event-fg);
+  background-color: var(--agendfy-button-active-bg);
+  color: var(--agendfy-button-active-fg);
+}
+
+/* standalone toolbar button (export, filter): same look as a one-item group */
+.react-agendfy-export-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--agendfy-space-1);
+  padding: var(--agendfy-space-2) var(--agendfy-space-3);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-button-radius);
+  background-color: var(--agendfy-button-bg);
+  color: var(--agendfy-button-fg);
+  box-shadow: var(--agendfy-shadow-sm);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--agendfy-transition-duration) var(--agendfy-transition-timing);
+}
+
+.react-agendfy-export-button:hover {
+  background-color: var(--agendfy-color-surface-hover);
+  color: var(--agendfy-color-text);
 }
 
 /* Filter & export containers */
@@ -88,8 +110,8 @@
   inset-inline-end: 0;
   background-color: var(--agendfy-color-surface);
   border: 1px solid var(--agendfy-color-border);
-  border-radius: var(--agendfy-radius-md);
-  box-shadow: var(--agendfy-shadow-lg);
+  border-radius: var(--agendfy-popover-radius);
+  box-shadow: var(--agendfy-popover-shadow);
   z-index: 1000;
   min-width: 12rem;
   padding: var(--agendfy-space-2) 0;

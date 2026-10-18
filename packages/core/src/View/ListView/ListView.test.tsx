@@ -72,8 +72,9 @@ describe("ListView Component", () => {
   test("should render events grouped by day", () => {
     render(<ListView events={mockEvents} currentDate={new Date("2023-01-01")} />);
 
-    expect(screen.getByText("Sunday, 15 January")).toBeInTheDocument();
-    expect(screen.getByText("Monday, 16 January")).toBeInTheDocument();
+    // Day headings use the language's natural form (Intl): en → "Sunday, January 15".
+    expect(screen.getByText("Sunday, January 15")).toBeInTheDocument();
+    expect(screen.getByText("Monday, January 16")).toBeInTheDocument();
     expect(screen.getByText("Event 1")).toBeInTheDocument();
     expect(screen.getByText("Event 2")).toBeInTheDocument();
   });
@@ -96,5 +97,16 @@ describe("ListView Component", () => {
     fireEvent.click(eventItem);
 
     expect(onEventClickMock).toHaveBeenCalledWith(mockEvents[0]);
+  });
+
+  test("orders each day's events by start time, all-day first", () => {
+    const unordered: EventProps[] = [
+      { id: "a", title: "Late", start: "2023-01-15T10:30:00", end: "2023-01-15T11:00:00" },
+      { id: "b", title: "Early", start: "2023-01-15T09:00:00", end: "2023-01-15T09:30:00" },
+      { id: "c", title: "Holiday", start: "2023-01-15T00:00:00", end: "2023-01-16T00:00:00", allDay: true },
+    ];
+    render(<ListView events={unordered} currentDate={new Date("2023-01-01")} />);
+    const titles = screen.getAllByText(/^(Late|Early|Holiday)$/).map((el) => el.textContent);
+    expect(titles).toEqual(["Holiday", "Early", "Late"]);
   });
 });

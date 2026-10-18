@@ -2,14 +2,14 @@ import React from 'react';
 import { ResourceIcon } from "./ResourceIcon";
 import { Resource } from '../../types/types';
 
-const defaultResource: Resource = {
-  id: "default",
-  name: "Geral",
-  type: "equipment",
-};
-
+/**
+ * Shows an event's resources. Nothing when there are none — including the
+ * "default" placeholder that normalizeEvents assigns for resource filtering
+ * (it used to render a 📌 on every event).
+ */
 const ResourceDisplay = ({ resources, maxVisible = 2 }: { resources: Resource[], maxVisible: number}) => {
-  const resourceList = resources && resources.length > 0 ? resources : [defaultResource];
+  const resourceList = (resources ?? []).filter((r) => r && r.id !== "default");
+  if (resourceList.length === 0) return null;
 
   const visibleResources = resourceList.slice(0, maxVisible);
   const hiddenCount = resourceList.length - maxVisible;

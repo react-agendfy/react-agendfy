@@ -141,6 +141,12 @@ export interface Config {
   /** Show the current-time line. Default true. */
   nowIndicator?: boolean;
   /**
+   * Height of one time-grid slot (one `slotDuration`) in px, in the week and
+   * day views. Drives event positions, the now line and the grid lines, and
+   * is mirrored to the `--agendfy-slot-height` CSS variable. Default 40.
+   */
+  slotHeight?: number;
+  /**
    * View buttons shown in the header, in order (built-in or custom view
    * names). Default: every built-in view, then the custom views.
    */
@@ -370,6 +376,35 @@ export interface EventContentArg {
  */
 export type EventContentRenderer = (arg: EventContentArg) => React.ReactNode;
 
+/** What a class-name callback may return. Falsy / empty entries are ignored. */
+export type ClassNamesInput = string | (string | false | null | undefined)[] | false | null | undefined;
+
+/** Argument for `eventClassNames`. */
+export interface EventClassNamesArg {
+  event: EventProps;
+  view: EventContentView;
+}
+
+/**
+ * Extra class names for every event element (week/day blocks, month chips,
+ * week all-day chips, list/agenda rows, the drag preview).
+ */
+export type EventClassNamesGenerator = (arg: EventClassNamesArg) => ClassNamesInput;
+
+/** Argument for `dayCellClassNames`. */
+export interface DayCellClassNamesArg {
+  date: Date;
+  view: EventContentView;
+  isToday: boolean;
+  /** Outside `validRange`. */
+  isDisabled: boolean;
+  /** Month view: the day belongs to the previous/next month. */
+  isOtherMonth?: boolean;
+}
+
+/** Extra class names for month cells and week/day columns. */
+export type DayCellClassNamesGenerator = (arg: DayCellClassNamesArg) => ClassNamesInput;
+
 export interface Resource {
   id: string | number;
   title?: string;
@@ -450,6 +485,12 @@ export interface CalendarProps {
   apiRef?: React.Ref<CalendarApi>;
   /** Custom event body for every view (takes precedence over plugins). */
   eventContent?: EventContentRenderer;
+  /** Extra class names for every event element, in every view. */
+  eventClassNames?: EventClassNamesGenerator;
+  /** Extra class names for month day cells and week/day columns. */
+  dayCellClassNames?: DayCellClassNamesGenerator;
+  /** Extra class name(s) for the calendar root (`.agendfy`). */
+  className?: string;
 }
 
 export interface TimeSlotProps {

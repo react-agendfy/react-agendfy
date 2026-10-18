@@ -17,6 +17,7 @@ import { ensureDate } from "../../../Utils/DateTrannforms";
 import { formatMessage } from "../../../i18n";
 import { CalendarDayProps } from "../../../types/types";
 import { EventItem } from "./EventItem";
+import { useDayCellClassNames } from "../../../context/ClassNamesContext";
 
 const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   day,
@@ -84,6 +85,13 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
     if (ref.current) setWidth(ref.current.offsetWidth);
   }, [day]);
 
+  // Called before the early return (rules of hooks); ignored for empty cells.
+  const isToday = !!day && isSameDay(day, new TZDate(new Date(), config?.timeZone));
+  const isOtherMonth = !!day && !!monthDate && !isSameMonth(day, monthDate);
+  const extraClassNames = useDayCellClassNames(
+    day ? { date: day, view: "month", isToday, isDisabled, isOtherMonth } : null
+  );
+
   if (!day) {
     return <div className="react-agendfy-calendar-day-empty" role="gridcell" aria-disabled="true" />;
   }
@@ -91,11 +99,17 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   const dayEvents = events.filter((e) => {
     try {
       const eventStart = ensureDate(e.start, config?.timeZone);
-      const eventEnd = addMilliseconds(ensureDate(e.end, config?.timeZone), 1);
+      const eventEnd = ensureDate(e.end, config?.timeZone);
+      // The end is exclusive (FullCalendar/iCal): an all-day event ending at
+      // 00:00 on the 22nd covers the 21st only. In the calendar time zone.
+      const lastMoment =
+        eventEnd.getTime() > eventStart.getTime()
+          ? new TZDate(eventEnd.getTime() - 1, config?.timeZone)
+          : eventEnd;
       return isWithinInterval(day, {
         start: startOfDay(eventStart),
-        end: endOfDay(eventEnd),
-      }); 
+        end: endOfDay(lastMoment),
+      });
     } catch (error) {
       console.error("Erro ao filtrar evento:", error, e);
       return false;
@@ -115,8 +129,6 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   const maxVisible = resolveDayMaxEvents(config);
   const visible = sorted.slice(0, maxVisible);
   const hidden = Math.max(0, sorted.length - maxVisible);
-  const isToday = isSameDay(day, new TZDate(new Date(), config?.timeZone)); 
-  const isOtherMonth = monthDate && !isSameMonth(day, monthDate);
 
   const classes = [
     "react-agendfy-calendar-day",
@@ -125,6 +137,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
     isSelected && "react-agendfy-calendar-day-selected",
     isOtherMonth && "react-agendfy-calendar-day-other-month",
     isDisabled && "react-agendfy-day-disabled",
+    extraClassNames,
   ].filter(Boolean).join(" ");
 
   const handleDayClick = (e: React.MouseEvent) => {
@@ -161,7 +174,8 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
             <button
               type="button"
               className="react-agendfy-more-popover-item"
-              style={{ borderInlineStartColor: ev.color || "#3490dc" }}
+              style={{ borderInlineStartColor: ev.color || "var(--agendfy-color-event-default, #3490dc)" }}
+              data-event-id={ev.id}
               onClick={() => {
                 closeMore();
                 onEventClick?.(ev);
@@ -186,6 +200,10 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
         navProps?.setRef(el);
       }}
       className={classes}
+      data-date={format(day, "yyyy-MM-dd")}
+      data-today={isToday || undefined}
+      data-disabled={isDisabled || undefined}
+      data-other-month={isOtherMonth || undefined}
       onClick={handleDayClick}
       onMouseDown={(e) => {
         const target = e.target as HTMLElement;

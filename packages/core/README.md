@@ -77,6 +77,10 @@ plugin types, and more — see `src/index.tsx`).
 | `onDateRangeSelect` | `(selection: EventProps \| DateRangeSelection) => void` | Fired when the user drags across a range of days/slots. |
 | `currentDate` | `Date` | Declared on the type but **not currently consumed** — the calendar always starts at "now" in `config.timeZone`. |
 | `onDateChange` | `(date: Date) => void` | Declared on the type but **not currently consumed**. |
+| `eventContent` | `(arg: EventContentArg) => ReactNode` | Custom event body in every view — see [Customizing the look](#customizing-the-look). |
+| `eventClassNames` | `(arg: { event, view }) => string \| string[]` | Extra classes on every event element. |
+| `dayCellClassNames` | `(arg: { date, view, isToday, isDisabled, isOtherMonth? }) => string \| string[]` | Extra classes on month cells and week/day columns. |
+| `className` | `string` | Extra class(es) on the `.agendfy` root. |
 
 ## Config defaults
 
@@ -91,6 +95,7 @@ plugin types, and more — see `src/index.tsx`).
 | `slotLabelFormat` | `"HH:mm"` | date-fns format for slot labels. |
 | `slotMin` | `"00:00"` | First visible time of day. |
 | `slotMax` | `"23:59"` | Last visible time of day. |
+| `slotHeight` | `40` | Height in px of one slot in the week/day grids (see [Customizing the look](#customizing-the-look)). |
 | `lang` | `"en"` | Language tag; selects the bundled message catalog. |
 | `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — highlighted in week/day views. |
 | `alerts` | `{ enabled: false, thresholdMinutes: 15 }` | Event reminders (toast/browser notification/email). |
@@ -214,14 +219,33 @@ const txtExportPlugin: CalendarPlugin = {
 Plugins may also declare optional `activate()` / `deactivate()` lifecycle
 hooks and a `description`.
 
-## Design tokens
+## Customizing the look
 
-All styling is scoped under the `.agendfy` root class (the library never
-styles `:root` or `document.documentElement`). Tokens live in three layers in
-`src/styles/tokens.css`:
+Everything visual is driven by CSS custom properties scoped to the `.agendfy`
+root (the library never styles `:root` or the host document), plus a few
+props for things CSS alone cannot reach. Every token defaults to the built-in
+look, so you only override what you want to change.
 
-- **L1 primitives** — `--agendfy-space-1…8`, `--agendfy-radius-sm/md/lg/xl/full`, `--agendfy-font-sans/mono`, palette primitives (`--agendfy-indigo-500`, `--agendfy-coral-500`, …).
-- **L2 semantic** (override these to theme):
+### Overriding tokens
+
+Override on the root, either globally or through `className`:
+
+```css
+/* every calendar */
+.agendfy { --agendfy-color-accent: #e11d48; }
+
+/* one calendar: <Calendar className="team-cal" … /> */
+.agendfy.team-cal { --agendfy-event-radius: 999px; }
+```
+
+Declare overrides on the `.agendfy` element itself (as above): the derived
+tokens below are resolved there, so overriding e.g. `--agendfy-color-accent`
+also updates `--agendfy-button-active-bg`.
+
+Tokens live in `src/styles/tokens.css`, in three layers:
+
+- **L1 primitives** — `--agendfy-space-1…8`, `--agendfy-radius-sm/md/lg/xl/full`, `--agendfy-font-sans/mono`, `--agendfy-font-size-xs/sm/base/lg/xl` (0.75 → 1.25rem), palette primitives (`--agendfy-indigo-500`, `--agendfy-coral-500`, …).
+- **L2 semantic colors** (light defaults; dark values are swapped automatically):
 
 | Token | Purpose |
 | --- | --- |
@@ -229,21 +253,144 @@ styles `:root` or `document.documentElement`). Tokens live in three layers in
 | `--agendfy-color-surface` / `-surface-2` / `-surface-hover` | Card/cell surfaces and hover state. |
 | `--agendfy-color-border` / `-border-strong` | Grid and control borders. |
 | `--agendfy-color-text` / `-text-muted` / `-text-faint` | Text hierarchy. |
-| `--agendfy-color-accent` / `-accent-hover` / `-accent-soft` | Primary accent (buttons, active view, selection). |
-| `--agendfy-color-now` | Current-time indicator / destructive accents. |
-| `--agendfy-color-today-wash` | "Today" cell background. |
-| `--agendfy-color-event-fg` | Text color on colored event chips. |
+| `--agendfy-color-accent` / `-accent-hover` / `-accent-soft` | Primary accent (buttons, active view, today number). |
+| `--agendfy-color-now` | Current-time line / destructive accents. |
+| `--agendfy-color-today-wash` | "Today" cell/column background. |
+| `--agendfy-color-event-fg` | Text on colored event blocks. |
 | `--agendfy-focus-ring` | Focus-visible ring. |
 | `--agendfy-shadow-sm/md/lg` | Elevation. |
 | `--agendfy-transition-duration/-timing` | Motion. |
 
-- **L3 component/event** — event category colors `--ev-work`, `--ev-meeting`, `--ev-focus`, `--ev-personal`, `--ev-travel`, `--ev-free`.
+- **L3 component tokens** (theme-agnostic; most derive from L2):
+
+| Token | Default | Controls |
+| --- | --- | --- |
+| `--agendfy-slot-height` | `40px` | Time-grid slot height. **Written by the views from `config.slotHeight`** — set the config, not this variable. |
+| `--agendfy-time-gutter-width` | `4rem` | Width of the week view's time-label / all-day-label column. |
+| `--agendfy-column-header-height` | `3rem` | Week view day header height. |
+| `--agendfy-grid-line-hour` | `1px solid var(--agendfy-color-border)` | Hour lines in week columns (any `border` shorthand). |
+| `--agendfy-grid-line-minor` | `1px dashed var(--agendfy-color-border-strong)` | 15-minute lines in week columns. |
+| `--agendfy-now-line-width` | `2px` | Current-time line thickness (color: `--agendfy-color-now`). |
+| `--agendfy-business-hours-bg` / `-opacity` | `var(--agendfy-color-accent-soft)` / `0.45` | Business-hours tint. |
+| `--agendfy-color-selection` | `var(--agendfy-color-accent-soft)` | Range selection and drop-target background. |
+| `--agendfy-disabled-stripe` / `--agendfy-disabled-opacity` | `var(--agendfy-color-surface-2)` / `0.55` | Days outside `validRange` (striped). |
+| `--agendfy-month-cell-min-height` | `120px` | Month cell height (`-compact`: `80px` at ≤ 640px). |
+| `--agendfy-event-radius` | `var(--agendfy-radius-sm)` (6px) | Corner radius of every event block/chip. |
+| `--agendfy-event-font-size` / `-font-weight` / `-shadow` | `xs` / `600` / `shadow-sm` | Month event chips. |
+| `--agendfy-color-event-default` / `-default-fg` | `#3490dc` / `#ffffff` | Month chip without `event.color`. |
+| `--agendfy-resize-handle-color` / `-hover-color` | `rgba(0,0,0,.25)` / `rgba(0,0,0,.4)` | Month resize grip. |
+| `--agendfy-color-accent-fg` | `#ffffff` | Text on the accent ("Today" pill in list/agenda). |
+| `--agendfy-button-radius` / `-bg` / `-fg` | `radius-md` / `surface-2` / `text-muted` | Header button groups. |
+| `--agendfy-button-active-bg` / `-active-fg` | `var(--agendfy-color-accent)` / `var(--agendfy-color-event-fg)` | Active view button. |
+| `--agendfy-popover-radius` / `-shadow` | `radius-md` / `shadow-lg` | "+N more" popover, filter and export menus. |
+| `--ev-work`, `--ev-meeting`, `--ev-focus`, `--ev-personal`, `--ev-travel`, `--ev-free` | palette | Event category colors you can use in your own CSS. |
 
 Dark mode: OS `prefers-color-scheme: dark` applies automatically; the `theme`
 prop forces it either way via a scoped `data-theme="dark" | "light"` attribute
-on the calendar root. A compatibility layer maps the legacy v1 variable names
-(`--color-*`, `--padding-*`, `--margin-*`, `--radius-*`, `--shadow-*`, …) onto
-the new tokens, so v1 overrides keep working.
+on the root. A compatibility layer maps the legacy v1 names (`--color-*`,
+`--padding-*`, `--radius-*`, `--font-size-*`, `--baseevent-*`, …) onto these
+tokens, so v1 overrides keep working (`--dayview-timeslot-height` is no longer
+read — use `slotHeight`).
+
+### Grid density: `slotHeight`
+
+`config.slotHeight` (px, default `40`) is the single source of truth for the
+week/day grid: event positions and heights, the current-time line, hour/15-min
+lines, resize steps and drag snapping all follow it, and it is mirrored to
+`--agendfy-slot-height` for the CSS rows.
+
+```tsx
+<Calendar config={{ slotDuration: 30, slotHeight: 24 }} />  // compact
+<Calendar config={{ slotDuration: 15, slotHeight: 56 }} />  // roomy
+```
+
+### Class-name hooks and stable selectors
+
+```tsx
+<Calendar
+  className="team-cal"
+  eventClassNames={({ event, view }) => [`cat-${event.category}`, event.done && "is-done"]}
+  dayCellClassNames={({ date, isToday, isDisabled }) => (date.getDay() === 5 ? "friday" : "")}
+/>
+```
+
+- `eventClassNames({ event, view })` → `string | string[]` (falsy entries ignored), applied to every event element: week/day blocks, week all-day chips, month chips, list/agenda rows and the drag preview. `view` is the active view name.
+- `dayCellClassNames({ date, view, isToday, isDisabled, isOtherMonth })` → applied to month cells (`.react-agendfy-calendar-day`), week columns (`.react-agendfy-daycolumn-container`) and the day view container.
+- A callback that throws is logged and ignored (the calendar keeps rendering).
+
+Data attributes for CSS/test targeting:
+
+| Element | Attributes |
+| --- | --- |
+| Root `.agendfy` | `data-view` (active view), `data-theme` (when forced) |
+| Event elements | `data-event-id` (your id; recurring occurrences use `<id>-<start ISO>`), list/agenda rows also `data-all-day` |
+| Month cells, week columns, day view | `data-date="yyyy-MM-dd"`, `data-today`, `data-disabled`, month cells also `data-other-month` |
+| List/agenda day headings | `data-today` |
+
+Main element classes: `.react-agendfy-baseevent` (week/day event),
+`.react-agendfy-event-item` (month chip), `.react-agendfy-weekview-all-day-event`,
+`.react-agendfy-event-row` (list/agenda row), `.react-agendfy-day-heading`,
+`.react-agendfy-now-line`, `.react-agendfy-business-hours`,
+`.react-agendfy-grid-line--hour` / `--minor`, `.react-agendfy-header-toolbar`,
+`.react-agendfy-button-active`.
+
+### Custom event content: `eventContent`
+
+Replaces the inner body of an event in every view (the frame — position,
+color, drag and resize — stays). Return `null` to keep the default body.
+
+```tsx
+<Calendar
+  eventContent={({ event, timeText, view }) => (
+    <div className="my-event">
+      <b>{event.title}</b>
+      {view !== "month" && <small>{timeText}</small>}
+    </div>
+  )}
+/>
+```
+
+### Recipes
+
+**Brand color**
+
+```css
+.agendfy.brand {
+  --agendfy-color-accent: #e11d48;
+  --agendfy-color-accent-hover: #be123c;
+  --agendfy-color-accent-soft: #ffe4e6;
+  --agendfy-color-today-wash: #fff1f2;
+  --agendfy-font-sans: "Inter", system-ui, sans-serif;
+}
+```
+
+**Compact grid**
+
+```tsx
+<Calendar className="compact" config={{ slotDuration: 30, slotHeight: 22 }} />
+```
+
+```css
+.agendfy.compact {
+  --agendfy-time-gutter-width: 3rem;
+  --agendfy-grid-line-minor: 0 none;   /* hide 15-minute lines */
+  --agendfy-month-cell-min-height: 84px;
+}
+```
+
+**Styling events by a field** (e.g. `event.category`)
+
+```tsx
+<Calendar eventClassNames={({ event }) => event.category && `cat-${event.category}`} />
+```
+
+```css
+/* Week/day blocks and month chips get their color inline from event.color;
+   use !important (or omit event.color) to let CSS decide. */
+.agendfy .cat-urgent { box-shadow: inset 3px 0 0 var(--agendfy-color-now); font-weight: 700; }
+.agendfy .cat-urgent .react-agendfy-event-row-dot { background-color: var(--agendfy-color-now); }
+.agendfy .cat-cancelled { opacity: 0.5; text-decoration: line-through; }
+```
 
 ## i18n message keys
 

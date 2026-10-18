@@ -16,6 +16,8 @@ import { getLocale } from "../../../Utils/locate";
 import { computeDayLayout } from "../../../Utils/positionedEventsHelper";
 import { nowLineOffset } from "../../../Utils/calculateRedLineOffset";
 import { useMinuteTick } from "../../../hooks/useMinuteTick";
+import { getSlotHeight } from "../../../Utils/slotHeight";
+import { cx, useDayCellClassNames } from "../../../context/ClassNamesContext";
 
 export const DayColumn = memo(
   ({
@@ -39,9 +41,24 @@ export const DayColumn = memo(
     // Current-time line: only in today's column, at the real current time.
     const showNow = isToday && config?.nowIndicator !== false;
     useMinuteTick(showNow);
+    const slotHeight = getSlotHeight(config);
     const nowOffset = showNow
-      ? nowLineOffset(dayDate, parsedSlotMin, parsedSlotMax, config?.slotDuration || 30, config?.timeZone)
+      ? nowLineOffset(
+          dayDate,
+          parsedSlotMin,
+          parsedSlotMax,
+          config?.slotDuration || 30,
+          config?.timeZone,
+          new Date(),
+          slotHeight
+        )
       : null;
+    const extraClassNames = useDayCellClassNames({
+      date: dayDate,
+      view: config?.defaultView ?? "week",
+      isToday,
+      isDisabled,
+    });
     const dayStart = startOfDay(dayDate);
     
     const eventsMapping = useMemo(() => {
@@ -69,7 +86,6 @@ export const DayColumn = memo(
     const startHour = parsedSlotMin;
     const endHour = parsedSlotMax;
     const slotDuration = config?.slotDuration || 30;
-    const slotHeight = 40;
     const pixelsPerMinute = slotHeight / slotDuration;
     const totalMinutes = (endHour - startHour) * 60;
 
@@ -96,9 +112,15 @@ export const DayColumn = memo(
 
     return (
       <div
-        className={`react-agendfy-daycolumn-container react-agendfy-today ${
-          isToday ? "react-agendfy-daycolumn-today" : ""
-        } ${isDisabled ? "react-agendfy-day-disabled" : ""}`}
+        className={cx(
+          "react-agendfy-daycolumn-container react-agendfy-today",
+          isToday && "react-agendfy-daycolumn-today",
+          isDisabled && "react-agendfy-day-disabled",
+          extraClassNames
+        )}
+        data-date={format(dayDate, "yyyy-MM-dd")}
+        data-today={isToday || undefined}
+        data-disabled={isDisabled || undefined}
         aria-disabled={isDisabled || undefined}
       >
         <div
@@ -130,7 +152,7 @@ export const DayColumn = memo(
         </div>
         <div
           className="react-agendfy-daycolumn-slot-container"
-          style={{ minHeight: timeSlots.length * 40 }}
+          style={{ minHeight: timeSlots.length * slotHeight }}
         >
           {businessIntervals.map((interval, idx) => {
             // Offsets are relative to the grid's first slot (slotMin), not
@@ -156,30 +178,16 @@ export const DayColumn = memo(
           {hourLines.map((line, idx) => (
             <div
               key={`hour-line-${idx}`}
-              style={{
-                position: "absolute",
-                top: `${line.top}px`,
-                left: 0,
-                right: 0,
-                borderTop: "1px solid var(--color-border)",
-                pointerEvents: "none",
-                zIndex: 1,
-              }}
+              className="react-agendfy-grid-line react-agendfy-grid-line--hour"
+              style={{ top: `${line.top}px` }}
             />
           ))}
 
           {quarterLines.map((line, idx) => (
             <div
               key={`quarter-line-${idx}`}
-              style={{
-                position: "absolute",
-                top: `${line.top}px`,
-                left: 0,
-                right: 0,
-                borderTop: "1px dashed var(--color-border-gray-300)",
-                pointerEvents: "none",
-                zIndex: 1,
-              }}
+              className="react-agendfy-grid-line react-agendfy-grid-line--minor"
+              style={{ top: `${line.top}px` }}
             />
           ))}
 

@@ -1,0 +1,99 @@
+/* Shared list/agenda event row and day heading (see Components/EventRow). */
+
+.react-agendfy-day-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--agendfy-space-2);
+  margin: 0;
+  padding: var(--agendfy-space-2) var(--agendfy-space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--agendfy-color-text);
+  background-color: var(--agendfy-color-surface-2);
+  border: 1px solid var(--agendfy-color-border);
+  border-bottom: none;
+  border-start-start-radius: var(--agendfy-radius-md);
+  border-start-end-radius: var(--agendfy-radius-md);
+}
+
+/* "segunda-feira, 19 de outubro" → only the first letter uppercased. */
+.react-agendfy-day-heading-label::first-letter {
+  text-transform: uppercase;
+}
+
+.react-agendfy-day-heading-today {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: 0.0625rem var(--agendfy-space-2);
+  border-radius: var(--agendfy-radius-full);
+  color: var(--agendfy-color-accent-fg);
+  background-color: var(--agendfy-color-accent);
+}
+
+.react-agendfy-event-row {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, max-content) 0.625rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--agendfy-space-3);
+  min-height: 2.75rem;
+  padding: var(--agendfy-space-2) var(--agendfy-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  background-color: var(--agendfy-color-surface);
+  color: var(--agendfy-color-text);
+  border: 1px solid var(--agendfy-color-border);
+  border-top: none;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background-color var(--agendfy-transition-duration) var(--agendfy-transition-timing);
+}
+
+.react-agendfy-event-row:last-child {
+  border-end-start-radius: var(--agendfy-radius-md);
+  border-end-end-radius: var(--agendfy-radius-md);
+}
+
+.react-agendfy-event-row:hover {
+  background-color: var(--agendfy-color-surface-hover);
+}
+
+.react-agendfy-event-row:focus-visible {
+  outline: 2px solid var(--agendfy-color-focus-ring, var(--agendfy-color-accent));
+  outline-offset: -2px;
+}
+
+.react-agendfy-event-row-time {
+  color: var(--agendfy-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.react-agendfy-event-row-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background-color: var(--agendfy-event-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--agendfy-event-color) 22%, transparent);
+}
+
+.react-agendfy-event-row-body {
+  display: flex;
+  align-items: center;
+  gap: var(--agendfy-space-2);
+  min-width: 0;
+}
+
+.react-agendfy-event-row-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .react-agendfy-event-row {
+    grid-template-columns: max-content 0.5rem minmax(0, 1fr);
+    gap: var(--agendfy-space-2);
+    font-size: var(--font-size-xs);
+  }
+}

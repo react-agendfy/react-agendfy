@@ -5,6 +5,7 @@ import { ThemePlugin } from "../types/plugins";
 import { CalendarProvider } from "../context/CalendarContext";
 import useCalendarState from "../hooks/useCalendarState";
 import { EventContentProvider } from "../context/EventContentContext";
+import { ClassNamesProvider } from "../context/ClassNamesContext";
 
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
@@ -17,7 +18,7 @@ const ListView = lazy(() => import("./ListView/ListView"));
  * CalendarContext (see CalendarProvider), so this component only wires the
  * header and the active view.
  */
-const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
+const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
   const {
     state,
     localeConfig,
@@ -47,6 +48,8 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
     canNavigateBack,
     canNavigateForward,
     eventContent,
+    eventClassNames,
+    dayCellClassNames,
   } = useCalendarState();
 
   const { currentDate, currentView } = state;
@@ -186,7 +189,12 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
   };
 
   return (
-    <div ref={setRootRef} dir={direction} className={`agendfy react-agendfy-layout theme-${theme}`}>
+    <div
+      ref={setRootRef}
+      dir={direction}
+      className={`agendfy react-agendfy-layout theme-${theme}${className ? ` ${className}` : ""}`}
+      data-view={currentView}
+    >
       <div className="visually-hidden" aria-live="polite" aria-atomic="true">
         {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(
           localeConfig.lang
@@ -211,6 +219,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
       />
       )}
       <div className="react-agendfy-layout-content">
+        <ClassNamesProvider eventClassNames={eventClassNames} dayCellClassNames={dayCellClassNames}>
         <EventContentProvider eventContent={eventContent} plugins={eventRenderingPlugins}>
           {/* Views are lazy chunks: the boundary keeps SSR (renderToString)
               and the first client render from throwing while they load. */}
@@ -224,6 +233,7 @@ const CalendarView = forwardRef<HTMLDivElement>((_props, ref) => {
             {renderViewComponent()}
           </Suspense>
         </EventContentProvider>
+        </ClassNamesProvider>
       </div>
     </div>
   );
@@ -232,7 +242,7 @@ CalendarView.displayName = "CalendarView";
 
 const Calendar = forwardRef<HTMLDivElement, CalendarProps>((props, ref) => (
   <CalendarProvider {...props}>
-    <CalendarView ref={ref} />
+    <CalendarView ref={ref} className={props.className} />
   </CalendarProvider>
 ));
 Calendar.displayName = "Calendar";

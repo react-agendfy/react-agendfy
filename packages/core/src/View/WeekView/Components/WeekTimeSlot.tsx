@@ -6,6 +6,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { getSlotTime } from "../../../Utils/slotTime";
 import { computePositionedEvents, DayLayoutSlot, layoutPositionStyle } from "../../../Utils/positionedEventsHelper";
 import { ensureDate } from "../../../Utils/DateTrannforms";
+import { getSlotHeight } from "../../../Utils/slotHeight";
 
 export interface WeekTimeSlotProps extends TimeSlotProps {
   /** Day outside validRange: no click, selection or drop. */
@@ -60,7 +61,7 @@ export const WeekTimeSlot = memo(
           top: "0",
           ...layoutPositionStyle(dayLayout.get(String(event.id))),
           height: `${
-            ((ensureDate(event.end).getTime() - ensureDate(event.start).getTime()) / 60000 / (config?.slotDuration || 30)) * 40
+            ((ensureDate(event.end).getTime() - ensureDate(event.start).getTime()) / 60000 / (config?.slotDuration || 30)) * getSlotHeight(config)
           }px`,
         },
       }));

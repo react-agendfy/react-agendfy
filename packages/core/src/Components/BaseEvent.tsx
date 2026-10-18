@@ -7,7 +7,9 @@ import { BaseEventProps } from "../types/types";
 import { TZDate } from "@date-fns/tz";
 import { getContrastText } from "../Utils/colorContrast";
 import { useEventContent } from "../context/EventContentContext";
+import { cx, publicEventId, useEventClassNames } from "../context/ClassNamesContext";
 import { formatEventTime } from "../Utils/displayOptions";
+import { getSlotHeight } from "../Utils/slotHeight";
 
 const BaseEvent = ({
   event,
@@ -41,6 +43,7 @@ const BaseEvent = ({
   const attributes = isDraggable ? draggableProps.attributes : {};
   const listeners = isDraggable ? draggableProps.listeners : {};
 
+  const slotHeight = getSlotHeight(config);
   let computedTop = positionStyle.top || "0";
   let computedHeight = positionStyle.height;
 
@@ -53,17 +56,17 @@ const BaseEvent = ({
       const effectiveStart = isStart ? actualStart : dayStart;
       const effectiveEnd = isEnd ? actualEnd : dayEnd;
       computedHeight =
-        (differenceInMinutes(effectiveEnd, effectiveStart) / config?.slotDuration!) * 40;
+        (differenceInMinutes(effectiveEnd, effectiveStart) / config?.slotDuration!) * slotHeight;
       computedTop =
         isStart
-          ? `${(differenceInMinutes(actualStart, dayStart) / config?.slotDuration!) * 40}px`
+          ? `${(differenceInMinutes(actualStart, dayStart) / config?.slotDuration!) * slotHeight}px`
           : "0";
     } else {
       computedHeight =
         (differenceInMinutes(
           new TZDate(parseISO(event.end.toString()), config?.timeZone),
           new TZDate(parseISO(event.start.toString()), config?.timeZone)
-        ) / config?.slotDuration!) * 40;
+        ) / config?.slotDuration!) * slotHeight;
     }
 
     if (typeof computedHeight === "number") {
@@ -96,7 +99,9 @@ const BaseEvent = ({
   const tooltipContent = generateTooltipContent(event, isMultiDay, isStart, isEnd, config);
 
   // Views pass the resolved config, whose defaultView is the active view.
-  const customContent = useEventContent(event, config?.defaultView ?? "week", {
+  const view = config?.defaultView ?? "week";
+  const extraClassNames = useEventClassNames(event, view);
+  const customContent = useEventContent(event, view, {
     config,
     isStart: !isMultiDay || isStart,
     isEnd: !isMultiDay || isEnd,
@@ -111,7 +116,13 @@ const BaseEvent = ({
       {...listeners}
       {...attributes}
       style={eventStyle}
-      className={`react-agendfy-baseevent ${isPreview ? "react-agendfy-baseevent--preview" : ""} ${customClassName}`}
+      className={cx(
+        "react-agendfy-baseevent",
+        isPreview && "react-agendfy-baseevent--preview",
+        customClassName,
+        extraClassNames
+      )}
+      data-event-id={publicEventId(event)}
       title={tooltipContent}
       role="button"
       tabIndex={0}

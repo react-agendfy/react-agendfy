@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {  TZDate } from '@date-fns/tz';
 import { ensureDate } from "../../../Utils/DateTrannforms";
 import BaseEvent from "../../../Components/BaseEvent";
+import { getSlotHeight } from "../../../Utils/slotHeight";
 import { BaseEventProps } from "../../../types/types";
 
 export const WeekEvent = ({
@@ -75,7 +76,7 @@ export const WeekEvent = ({
     };
 
     if (direction === "bottom") {
-      const additionalMinutes = Math.round((delta.height / 40) * config?.slotDuration!);
+      const additionalMinutes = Math.round((delta.height / getSlotHeight(config)) * config?.slotDuration!);
       const newEndTime = addMinutes(eventEnd, additionalMinutes);
       // The day boundary is the REAL midnight in the configured timezone —
       // crossing it simply keeps the computed end and flags the event as

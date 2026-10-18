@@ -6,6 +6,7 @@
 @import "./css/DayView.css";
 @import "./css/BaseEvent.css";
 @import "./css/ListView.css";
+@import "./css/EventRow.css";
 @import "./css/Resource.css";
 
 /* NOTE: the global `html, body { font-family: 'Roboto' }` rule was removed.
@@ -26,7 +27,7 @@
 .react-agendfy-now-line {
   position: absolute;
   inset-inline: 0;
-  border-top: 2px solid var(--agendfy-color-now);
+  border-top: var(--agendfy-now-line-width) solid var(--agendfy-color-now);
   pointer-events: none;
 }
 
@@ -35,9 +36,9 @@
   background-image: repeating-linear-gradient(
     -45deg,
     transparent 0 6px,
-    var(--agendfy-color-surface-2) 6px 12px
+    var(--agendfy-disabled-stripe) 6px 12px
   );
-  opacity: 0.55;
+  opacity: var(--agendfy-disabled-opacity);
   cursor: not-allowed;
 }
 
@@ -54,8 +55,8 @@
 .react-agendfy-business-hours {
   position: absolute;
   inset-inline: 0;
-  background-color: var(--agendfy-color-accent-soft);
-  opacity: 0.45;
+  background-color: var(--agendfy-business-hours-bg);
+  opacity: var(--agendfy-business-hours-opacity);
   pointer-events: none;
   z-index: 0;
 }

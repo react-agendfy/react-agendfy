@@ -19,8 +19,7 @@
 }
 
 .react-agendfy-listview-day-container {
-  border-bottom: 1px solid var(--agendfy-color-border);
-  padding: var(--agendfy-space-6);
+  padding: var(--agendfy-space-3) var(--agendfy-space-4);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -28,11 +27,9 @@
 }
 
 .react-agendfy-listview-day-header-wrapper {
-  margin-bottom: var(--agendfy-space-3);
   position: relative;
   background: transparent;
   z-index: 1;
-  padding-bottom: var(--agendfy-space-2);
   flex-shrink: 0;
 }
 
@@ -47,7 +44,6 @@
 .react-agendfy-listview-day-events {
   display: flex;
   flex-direction: column;
-  gap: var(--agendfy-space-3);
   position: static;
   width: 100%;
   flex-shrink: 0;
@@ -65,71 +61,4 @@
   }
 }
 
-.react-agendfy-listevent-container {
-  padding: var(--agendfy-space-3);
-  margin: 0;
-  border-radius: var(--agendfy-radius-lg);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: var(--agendfy-shadow-md);
-  transition: transform var(--agendfy-transition-duration)
-      var(--agendfy-transition-timing),
-    box-shadow var(--agendfy-transition-duration)
-      var(--agendfy-transition-timing);
-  position: static !important;
-  width: 100%;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  min-height: 60px;
-  color: var(--agendfy-color-event-fg);
-}
-
-.react-agendfy-listevent-container:hover {
-  transform: translateY(-1px) scale(1.01);
-  box-shadow: var(--agendfy-shadow-lg);
-  z-index: 2;
-}
-
-.react-agendfy-listevent-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  gap: var(--agendfy-space-1);
-}
-
-.react-agendfy-listevent-title {
-  font-weight: bold;
-  font-size: var(--font-size-sm);
-  color: inherit;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.react-agendfy-listevent-time {
-  font-size: var(--font-size-xs);
-  color: inherit;
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-.react-agendfy-listevent-resource {
-  margin-inline-start: var(--agendfy-space-3);
-  flex-shrink: 0;
-}
-
-@media (max-width: 640px) {
-  .react-agendfy-listevent-container {
-    padding: var(--agendfy-space-3);
-    min-height: 50px;
-  }
-  .react-agendfy-listevent-title {
-    font-size: var(--font-size-xs);
-  }
-  .react-agendfy-listevent-time {
-    font-size: 0.65rem;
-  }
-}
+/* Event rows: see css/EventRow.css (shared with the agenda view). */

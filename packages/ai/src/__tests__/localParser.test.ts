@@ -62,4 +62,18 @@ describe('parseNaturalEventLocal', () => {
     expect(r.event.title).toBe('Untitled event');
     expect(r.missing).toContain('title');
   });
+
+  it('reads times in the given time zone', () => {
+    // 08:00Z = 09:00 in Lisbon (WEST, UTC+1): "tomorrow at 1pm" is 13:00 there.
+    const r = parseNaturalEventLocal('Lunch tomorrow at 1pm', { referenceDate: REF, timeZone: 'Europe/Lisbon' });
+    expect(r.event.start).toBe('2026-07-02T12:00:00.000Z');
+    expect(r.event.end).toBe('2026-07-02T13:00:00.000Z');
+  });
+
+  it('uses the zone\'s calendar day for "today"/"tomorrow"', () => {
+    // 2026-07-01T23:30Z is already July 2 in Tokyo (UTC+9).
+    const late = new Date('2026-07-01T23:30:00.000Z');
+    const r = parseNaturalEventLocal('Call tomorrow at 10am', { referenceDate: late, timeZone: 'Asia/Tokyo' });
+    expect(r.event.start).toBe('2026-07-03T01:00:00.000Z'); // July 3, 10:00 JST
+  });
 });

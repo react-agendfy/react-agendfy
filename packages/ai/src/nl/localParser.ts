@@ -6,10 +6,9 @@
  * ("90min", "2 hours", "2 horas"). Used automatically when no adapter is
  * provided or the adapter call fails; results always carry confidence 'low'.
  *
- * Determinism note: dates are computed with UTC arithmetic from the
- * reference date, so times are interpreted as UTC wall-clock. The `timeZone`
- * option is accepted for API symmetry but not applied here — precise
- * timezone resolution is the LLM path's job.
+ * Dates are computed with UTC arithmetic on the reference date's wall
+ * clock. With `timeZone`, that wall clock is the zone's ("3pm tomorrow" is
+ * 3pm THERE, DST included); without it, times are UTC wall-clock.
  */
 import { ParsedEventResult } from '../types';
 
@@ -98,11 +97,41 @@ function cleanTitle(input: string, matched: string[]): string {
     .trim();
 }
 
+/** `date`'s wall clock in `timeZone`, expressed as a UTC timestamp. */
+function wallClockMs(date: Date, timeZone: string): number {
+  const p: Record<string, number> = {};
+  for (const part of new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+  }).formatToParts(date)) {
+    if (part.type !== 'literal') p[part.type] = Number(part.value);
+  }
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second);
+}
+
+/** The instant whose wall clock in `timeZone` is `wallMs` (UTC-encoded). */
+function zonedWallToInstant(wallMs: number, timeZone: string): number {
+  let guess = wallMs;
+  // Two passes settle the offset across DST transitions.
+  for (let i = 0; i < 2; i++) guess += wallMs - wallClockMs(new Date(guess), timeZone);
+  return guess;
+}
+
 export function parseNaturalEventLocal(
   input: string,
   opts: LocalParseOptions = {}
 ): ParsedEventResult {
-  const ref = opts.referenceDate ?? new Date();
+  const instant = opts.referenceDate ?? new Date();
+  // The reference wall clock as a UTC timestamp, so the UTC arithmetic below
+  // works on the zone's calendar day.
+  const ref = opts.timeZone ? new Date(wallClockMs(instant, opts.timeZone)) : instant;
+  const toInstant = (wallMs: number) => (opts.timeZone ? zonedWallToInstant(wallMs, opts.timeZone) : wallMs);
   const missing: string[] = [];
   const consumed: string[] = [];
 
@@ -169,7 +198,7 @@ export function parseNaturalEventLocal(
     const year = ref.getUTCFullYear();
     startMs = Date.UTC(year, specificDate.month, specificDate.day, hour, minute);
     // If that date has already passed this year, use next year
-    if (startMs < ref.getTime()) {
+    if (toInstant(startMs) < instant.getTime()) {
       startMs = Date.UTC(year + 1, specificDate.month, specificDate.day, hour, minute);
     }
   } else {
@@ -181,6 +210,7 @@ export function parseNaturalEventLocal(
       minute
     );
   }
+  startMs = toInstant(startMs);
   const endMs = startMs + durationMinutes * 60_000;
 
   // 5. Title = leftovers after removing every consumed token.

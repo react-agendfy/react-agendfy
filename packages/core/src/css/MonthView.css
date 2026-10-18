@@ -47,7 +47,7 @@
 
 /* ---- day cells ---- */
 .react-agendfy-calendar-day {
-  min-height: 120px;
+  min-height: var(--agendfy-month-cell-min-height);
   padding: var(--agendfy-space-2);
   border-inline-end: 1px solid var(--agendfy-color-border);
   transition: background-color var(--agendfy-transition-duration)
@@ -66,19 +66,19 @@
 }
 
 .react-agendfy-calendar-day-droppable-over {
-  background-color: var(--agendfy-color-accent-soft);
+  background-color: var(--agendfy-color-selection);
   box-shadow: inset 0 0 0 2px var(--agendfy-color-accent);
 }
 
 .react-agendfy-calendar-day-selected {
-  background-color: var(--agendfy-color-accent-soft);
+  background-color: var(--agendfy-color-selection);
   box-shadow: inset 0 0 0 1px var(--agendfy-color-accent);
 }
 
 .react-agendfy-calendar-day-empty {
   background-color: var(--agendfy-color-surface-2);
   border-inline-end: 1px solid var(--agendfy-color-border);
-  min-height: 120px;
+  min-height: var(--agendfy-month-cell-min-height);
 }
 
 .react-agendfy-calendar-day-other-month {
@@ -129,16 +129,16 @@
 
 /* ---- event chips ---- */
 .react-agendfy-event-item {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  border-radius: var(--agendfy-radius-sm);
+  font-size: var(--agendfy-event-font-size);
+  font-weight: var(--agendfy-event-font-weight);
+  border-radius: var(--agendfy-event-radius);
   padding: 0.125rem var(--agendfy-radius-sm);
   color: var(--agendfy-color-event-fg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  box-shadow: var(--agendfy-shadow-sm);
+  box-shadow: var(--agendfy-event-shadow);
   transition: transform var(--agendfy-transition-duration)
       var(--agendfy-transition-timing),
     box-shadow var(--agendfy-transition-duration)
@@ -216,7 +216,7 @@
   }
 
   .react-agendfy-calendar-day {
-    min-height: 80px;
+    min-height: var(--agendfy-month-cell-min-height-compact);
     padding: 4px;
   }
 }
@@ -231,8 +231,8 @@
   background-color: var(--agendfy-color-surface);
   color: var(--agendfy-color-text);
   border: 1px solid var(--agendfy-color-border);
-  border-radius: var(--agendfy-radius-md);
-  box-shadow: var(--agendfy-shadow-lg);
+  border-radius: var(--agendfy-popover-radius);
+  box-shadow: var(--agendfy-popover-shadow);
   cursor: default;
 }
 

@@ -3,6 +3,7 @@ import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useS
 import {
   addMinutes,
   differenceInMinutes,
+  format,
   isValid,
   startOfDay,
   setHours,
@@ -21,6 +22,8 @@ import DragPreview from "../../Components/DragPreview";
 import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getBusinessHoursIntervalsForDate } from "../../Utils/businessHours";
 import { getDayRules } from "../../Utils/calendarRange";
+import { getSlotHeight, slotHeightStyle } from "../../Utils/slotHeight";
+import { cx, useDayCellClassNames } from "../../context/ClassNamesContext";
 
 const DayView: React.FC<DayViewProps> = ({
   events,
@@ -152,6 +155,14 @@ const DayView: React.FC<DayViewProps> = ({
   // Moves the current-time line once a minute.
   useMinuteTick(config?.nowIndicator !== false);
 
+  const isToday = isSameDay(currentDate, new TZDate(new Date(), config?.timeZone));
+  const extraClassNames = useDayCellClassNames({
+    date: currentDate,
+    view: config?.defaultView ?? "day",
+    isToday,
+    isDisabled,
+  });
+
   // Early return AFTER all hooks so hook order stays stable (rules-of-hooks).
   if (isNaN(numberOfSlots) || numberOfSlots <= 0) {
     return (
@@ -163,7 +174,15 @@ const DayView: React.FC<DayViewProps> = ({
 
   const redLineOffset =
     config?.nowIndicator !== false
-      ? nowLineOffset(currentDate, parsedSlotMin, parsedSlotMax, config?.slotDuration || 30, config?.timeZone)
+      ? nowLineOffset(
+          currentDate,
+          parsedSlotMin,
+          parsedSlotMax,
+          config?.slotDuration || 30,
+          config?.timeZone,
+          new Date(),
+          getSlotHeight(config)
+        )
       : null;
 
   return (
@@ -180,8 +199,11 @@ const DayView: React.FC<DayViewProps> = ({
     >
       <div
         ref={containerRef}
-        className="react-agendfy-dayview-container"
-        style={{ position: 'relative', zIndex: 0 }}
+        className={cx("react-agendfy-dayview-container", extraClassNames)}
+        style={{ position: 'relative', zIndex: 0, ...slotHeightStyle(config) }}
+        data-date={format(currentDate, "yyyy-MM-dd")}
+        data-today={isToday || undefined}
+        data-disabled={isDisabled || undefined}
       >
         {slots.map(({ index, slotTime, events: slotEvents }) => {
           const slotMs = new Date(slotTime).getTime();

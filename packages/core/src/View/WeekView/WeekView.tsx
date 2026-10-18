@@ -25,6 +25,8 @@ import DragPreview from "../../Components/DragPreview";
 import { formatSlotLabel, showsSlotLabel, weekNumberOf } from "../../Utils/displayOptions";
 import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
+import { getSlotHeight, slotHeightStyle } from "../../Utils/slotHeight";
+import { cx, publicEventId, useEventClassNamesResolver } from "../../context/ClassNamesContext";
 
 const WeekView = ({
   events,
@@ -88,9 +90,11 @@ const WeekView = ({
   }, [timeSlots, currentDate, config, startHour, slotDuration]);
 
   const redLineOffset = useMemo(
-    () => calculateRedLineOffset(currentDate, startHour, slotDuration, config?.timeZone),
-    [currentDate, startHour, slotDuration, config?.timeZone]
+    () => calculateRedLineOffset(currentDate, startHour, slotDuration, config?.timeZone, getSlotHeight(config)),
+    [currentDate, startHour, slotDuration, config?.timeZone, config?.slotHeight]
   );
+
+  const eventClassNamesFor = useEventClassNamesResolver();
 
   const allDayEventsByDay = useMemo(() => {
     const mapping: { [key: number]: EventProps[] } = {};
@@ -103,7 +107,15 @@ const WeekView = ({
         if (!isBannerEvent(event, config?.timeZone)) return false;
         const eventStart = ensureDate(event.start, config?.timeZone);
         const eventEnd = ensureDate(event.end, config?.timeZone);
-        return dayDate >= startOfDay(eventStart) && dayDate <= endOfDay(eventEnd);
+        // The end is exclusive (FullCalendar/iCal): an all-day event ending
+        // at 00:00 on the 22nd covers the 21st only.
+        // Computed in the CALENDAR time zone (a plain Date would use the
+        // host's, shifting the day when the two differ).
+        const lastMoment =
+          eventEnd.getTime() > eventStart.getTime()
+            ? new TZDate(eventEnd.getTime() - 1, config?.timeZone)
+            : eventEnd;
+        return dayDate >= startOfDay(eventStart) && dayDate <= endOfDay(lastMoment);
       });
     });
     return mapping;
@@ -288,6 +300,7 @@ const WeekView = ({
       <div
         ref={containerRef}
         className="react-agendfy-weekview-container"
+        style={slotHeightStyle(config)}
         role="grid"
         aria-label={`${format(addDays(currentWeekStart, daysOfWeek[0] ?? 0), "d MMM yyyy")} - ${format(addDays(currentWeekStart, daysOfWeek[daysOfWeek.length - 1] ?? 6), "d MMM yyyy")}`}
       >
@@ -305,7 +318,11 @@ const WeekView = ({
                   <div
                     key={event.id}
                     style={{ backgroundColor: event.color }}
-                    className="react-agendfy-weekview-all-day-event"
+                    className={cx(
+                      "react-agendfy-weekview-all-day-event",
+                      eventClassNamesFor(event, config?.defaultView ?? "week")
+                    )}
+                    data-event-id={publicEventId(event)}
                   >
                     {event.title || config?.untitled_event || "Event"}
                   </div>

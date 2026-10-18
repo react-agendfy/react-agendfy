@@ -2,44 +2,10 @@ import React from 'react';
 import { format, addDays, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { EventProps, ListViewProps } from '../types/types';
 import { TZDate } from '@date-fns/tz';
-import { getLocale } from '../Utils/locate';
 import { formatMessage } from '../i18n';
 import { getDayRules } from '../Utils/calendarRange';
-import { useEventContent } from '../context/EventContentContext';
-import { formatEventTime } from '../Utils/displayOptions';
-
-const AgendaEvent: React.FC<{
-  event: EventProps;
-  config: ListViewProps['config'];
-  onEventClick?: (event: EventProps) => void;
-}> = ({ event, config, onEventClick }) => {
-  const customContent = useEventContent(event, 'agenda', { config });
-  const startLabel = formatEventTime(parseISO(event.start.toString()), config);
-  const endLabel = formatEventTime(parseISO(event.end.toString()), config);
-  return (
-    <div
-      className="react-agendfy-agendaview-event"
-      style={{ borderLeftColor: event.color }}
-      onClick={() => onEventClick?.(event)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onEventClick?.(event);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label={`${event.title}, ${startLabel} - ${endLabel}`}
-    >
-      {customContent ?? (
-        <>
-          <div className="react-agendfy-agendaview-event-time">{startLabel}</div>
-          <div className="react-agendfy-agendaview-event-title">{event.title}</div>
-        </>
-      )}
-    </div>
-  );
-};
+import EventRow from '../Components/EventRow';
+import DayHeading from '../Components/DayHeading';
 
 const AgendaView: React.FC<ListViewProps> = ({
   events,
@@ -97,12 +63,28 @@ const AgendaView: React.FC<ListViewProps> = ({
     <div className="react-agendfy-agendaview-container">
       {daysWithEvents.map(dayKey => (
         <div key={dayKey} className="react-agendfy-agendaview-day">
-          <h3 className="react-agendfy-agendaview-day-header">
-            {format(parseISO(dayKey), 'EEEE, dd MMMM yyyy', { locale: getLocale(config?.lang ?? 'en') })}
-          </h3>
+          {/* dayKey is a day in the calendar time zone: rebuild it there (at
+              noon, so no offset can move it to the next/previous day). */}
+          <DayHeading
+            day={(() => {
+              const [y, m, d] = dayKey.split('-').map(Number);
+              return new TZDate(y, m - 1, d, 12, 0, config?.timeZone);
+            })()}
+            config={config}
+            as="h3"
+          />
+          <div className="react-agendfy-agendaview-day-events">
           {eventsByDay[dayKey].map(event => (
-            <AgendaEvent key={event.id} event={event} config={config} onEventClick={onEventClick} />
+            <EventRow
+              key={event.id}
+              event={event}
+              config={config}
+              view="agenda"
+              onEventClick={onEventClick}
+              className="react-agendfy-agendaview-event"
+            />
           ))}
+          </div>
         </div>
       ))}
     </div>

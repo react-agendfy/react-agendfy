@@ -14,6 +14,7 @@ import {
 } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 import { ListEvent } from "./Components/ListEvent";
+import DayHeading from "../../Components/DayHeading";
 import { EventProps, ListViewProps } from "../../types/types";
 import { getLocale } from "../../Utils/locate";
 import { getDayRules, resolveWeekStartsOn } from "../../Utils/calendarRange";
@@ -51,11 +52,7 @@ const RowComponent = ({
       className="react-agendfy-listview-day-container"
     >
       <div className="react-agendfy-listview-day-header-wrapper">
-        <h2 className="react-agendfy-listview-day-header">
-          {format(new TZDate(day, config?.timeZone), "EEEE, dd MMMM", {
-            locale: getLocale(config?.lang),
-          })}
-        </h2>
+        <DayHeading day={day} config={config} />
       </div>
       <div className="react-agendfy-listview-day-events">
         {dayEvents.map((event: EventProps, idx: number) => (
@@ -120,6 +117,12 @@ defaultRowHeight: 10
         grouped[dayKey].push(event);
       }
     });
+
+    // Chronological within each day, all-day events first.
+    const startMs = (e: EventProps) => parseISO(e.start.toString()).getTime();
+    Object.values(grouped).forEach((list) =>
+      list.sort((a, b) => Number(Boolean(b.allDay)) - Number(Boolean(a.allDay)) || startMs(a) - startMs(b))
+    );
 
     return grouped;
   }, [days, events, config?.timeZone]);

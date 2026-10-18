@@ -1,6 +1,7 @@
 import { differenceInMinutes, format } from "date-fns";
 import { EventProps } from "../types/types";
 import { ensureDate } from "../Utils/DateTrannforms";
+import { getSlotHeight } from "./slotHeight";
 
 export function computePositionedEvents(
   slotEvents: EventProps[],
@@ -43,7 +44,7 @@ export function computePositionedEvents(
         left: `${(idx * 100) / total}%`,
         width: `${100 / total}%`,
         height: `${
-          (differenceInMinutes(ensureDate(event.end), ensureDate(event.start)) / config?.slotDuration) * 40
+          (differenceInMinutes(ensureDate(event.end), ensureDate(event.start)) / config?.slotDuration) * getSlotHeight(config)
         }px`,
       },
     }));

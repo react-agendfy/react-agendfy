@@ -77,8 +77,8 @@ describe('multiday row-bar geometry', () => {
   test('start piece: rounded at start AND end (its stretch reaches the event end)', () => {
     const { container } = renderPiece({ isStart: true, cellDate: new Date('2026-08-13T00:00:00.000Z') });
     const c = chip(container);
-    expect(c.style.borderStartStartRadius).toBe('var(--agendfy-radius-sm)');
-    expect(c.style.borderStartEndRadius).toBe('var(--agendfy-radius-sm)');
+    expect(c.style.borderStartStartRadius).toBe('var(--agendfy-event-radius)');
+    expect(c.style.borderStartEndRadius).toBe('var(--agendfy-event-radius)');
   });
 
   test('covered middle piece is invisible, non-stretched and hidden from AT', () => {
@@ -112,7 +112,7 @@ describe('multiday row-bar geometry', () => {
     const c = chip(container);
     expect(c.style.backgroundColor).not.toBe('transparent'); // visible bar
     expect(c.style.borderStartStartRadius).toBe('0'); // continues from previous row
-    expect(c.style.borderStartEndRadius).toBe('var(--agendfy-radius-sm)'); // reaches event end
+    expect(c.style.borderStartEndRadius).toBe('var(--agendfy-event-radius)'); // reaches event end
   });
 
   test('an end at exactly midnight does not bleed the bar into the next day', () => {

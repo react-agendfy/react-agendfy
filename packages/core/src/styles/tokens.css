@@ -54,6 +54,55 @@
   --ev-travel: var(--agendfy-violet-500);
   --ev-free: var(--agendfy-green-500);
 
+  /* typography scale */
+  --agendfy-font-size-xs: 0.75rem;
+  --agendfy-font-size-sm: 0.875rem;
+  --agendfy-font-size-base: 1rem;
+  --agendfy-font-size-lg: 1.125rem;
+  --agendfy-font-size-xl: 1.25rem;
+
+  /* time grid (week/day). --agendfy-slot-height is written by the views
+     from config.slotHeight (default 40) — set the config, not this var. */
+  --agendfy-slot-height: 40px;
+  --agendfy-time-gutter-width: 4rem;
+  --agendfy-column-header-height: 3rem;
+  --agendfy-grid-line-hour: 1px solid var(--agendfy-color-border);
+  --agendfy-grid-line-minor: 1px dashed var(--agendfy-color-border-strong);
+  --agendfy-now-line-width: 2px;
+  --agendfy-business-hours-bg: var(--agendfy-color-accent-soft);
+  --agendfy-business-hours-opacity: 0.45;
+
+  /* month grid */
+  --agendfy-month-cell-min-height: 120px;
+  --agendfy-month-cell-min-height-compact: 80px; /* ≤ 640px */
+
+  /* events */
+  --agendfy-event-radius: var(--agendfy-radius-sm);
+  --agendfy-event-font-size: var(--agendfy-font-size-xs); /* month chips */
+  --agendfy-event-font-weight: 600; /* month chips */
+  --agendfy-event-shadow: var(--agendfy-shadow-sm); /* month chips */
+  --agendfy-color-event-default: #3490dc; /* month chip without event.color */
+  --agendfy-color-event-default-fg: #ffffff;
+  --agendfy-resize-handle-color: rgba(0, 0, 0, 0.25);
+  --agendfy-resize-handle-hover-color: rgba(0, 0, 0, 0.4);
+
+  /* states */
+  --agendfy-color-selection: var(--agendfy-color-accent-soft); /* range select + drop target */
+  --agendfy-color-accent-fg: #ffffff; /* text on the accent ("Today" pill) */
+  --agendfy-disabled-stripe: var(--agendfy-color-surface-2);
+  --agendfy-disabled-opacity: 0.55;
+
+  /* header toolbar */
+  --agendfy-button-radius: var(--agendfy-radius-md);
+  --agendfy-button-bg: var(--agendfy-color-surface-2);
+  --agendfy-button-fg: var(--agendfy-color-text-muted);
+  --agendfy-button-active-bg: var(--agendfy-color-accent);
+  --agendfy-button-active-fg: var(--agendfy-color-event-fg);
+
+  /* popovers / dropdowns ("+N more", filter, export) */
+  --agendfy-popover-radius: var(--agendfy-radius-md);
+  --agendfy-popover-shadow: var(--agendfy-shadow-lg);
+
   /* ---------------------------------------------------------------
      L2 — semantic tokens (LIGHT — default)
      --------------------------------------------------------------- */
@@ -247,24 +296,25 @@
   --margin-mr-0_25: var(--agendfy-space-1);
 
   /* typography */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
+  --font-size-xs: var(--agendfy-font-size-xs);
+  --font-size-sm: var(--agendfy-font-size-sm);
+  --font-size-base: var(--agendfy-font-size-base);
+  --font-size-lg: var(--agendfy-font-size-lg);
+  --font-size-xl: var(--agendfy-font-size-xl);
   --line-height: 1.2;
 
-  /* layout */
-  --dayview-timeslot-height: 2.5rem;
+  /* layout — deprecated: the slot height comes from config.slotHeight
+     (mirrored to --agendfy-slot-height); this alias is no longer read. */
+  --dayview-timeslot-height: var(--agendfy-slot-height);
 
   /* base event sizing */
   --baseevent-padding-small: var(--agendfy-space-1);
-  --baseevent-border-radius-small: var(--agendfy-radius-sm);
+  --baseevent-border-radius-small: var(--agendfy-event-radius);
   --baseevent-padding-medium: 0rem;
-  --baseevent-border-radius-medium: var(--agendfy-radius-sm);
+  --baseevent-border-radius-medium: var(--agendfy-event-radius);
   --baseevent-padding-large: var(--agendfy-space-3);
   --baseevent-padding-min: 0rem;
-  --baseevent-border-radius-large: var(--agendfy-radius-sm);
+  --baseevent-border-radius-large: var(--agendfy-event-radius);
   --baseevent-time-font-size-small: 0.65rem;
   --baseevent-time-font-size-medium: 0.75rem;
   --baseevent-time-font-size-large: 0.85rem;

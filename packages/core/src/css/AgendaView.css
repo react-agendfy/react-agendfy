@@ -6,46 +6,11 @@
 }
 
 .react-agendfy-agendaview-day {
-  margin-bottom: var(--agendfy-space-5);
+  margin-bottom: var(--agendfy-space-4);
 }
 
-.react-agendfy-agendaview-day-header {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--agendfy-color-text);
-  margin-bottom: var(--agendfy-space-3);
-  border-bottom: 2px solid var(--agendfy-color-border);
-  padding-bottom: var(--agendfy-space-2);
-}
-
-.react-agendfy-agendaview-event {
+/* Rows: see css/EventRow.css (shared with the list view). */
+.react-agendfy-agendaview-day-events {
   display: flex;
-  align-items: center;
-  background-color: var(--agendfy-color-surface);
-  padding: var(--agendfy-space-3);
-  border-radius: var(--agendfy-radius-md);
-  border-inline-start: 5px solid;
-  margin-bottom: var(--agendfy-space-2);
-  box-shadow: var(--agendfy-shadow-sm);
-  cursor: pointer;
-  transition: background-color var(--agendfy-transition-duration)
-      var(--agendfy-transition-timing),
-    box-shadow var(--agendfy-transition-duration)
-      var(--agendfy-transition-timing);
-}
-
-.react-agendfy-agendaview-event:hover {
-  background-color: var(--agendfy-color-surface-hover);
-  box-shadow: var(--agendfy-shadow-md);
-}
-
-.react-agendfy-agendaview-event-time {
-  font-weight: 700;
-  color: var(--agendfy-color-text-muted);
-  margin-inline-end: var(--agendfy-space-4);
-  min-width: 80px;
-}
-
-.react-agendfy-agendaview-event-title {
-  color: var(--agendfy-color-text);
+  flex-direction: column;
 }
