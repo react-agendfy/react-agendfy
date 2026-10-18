@@ -1,5 +1,12 @@
 # @react-agendfy/example-basic
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies [9535f78]
+  - @react-agendfy/core@2.1.1
+
 ## 1.0.2
 
 ### Patch Changes

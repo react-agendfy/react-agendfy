@@ -1,5 +1,11 @@
 # @react-agendfy/core
 
+## 2.1.1
+
+### Patch Changes
+
+- 9535f78: Week/Day views: the current-time line now draws above timed events instead of underneath them.
+
 ## 2.1.0
 
 ### Minor Changes
