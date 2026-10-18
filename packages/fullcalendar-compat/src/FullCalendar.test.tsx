@@ -101,6 +101,12 @@ describe("FullCalendar compat", () => {
     expect(await screen.findByText("Consulta Ana")).toBeInTheDocument();
     expect(api.getEventById("1")?.title).toBe("Consulta Ana");
     expect(api.getEvents()).toHaveLength(1);
+    // Common FullCalendar calls that must not throw.
+    expect(() => {
+      api.unselect();
+      api.select("2026-03-11");
+      api.updateSize();
+    }).not.toThrow();
   });
 
   it("passes info.revert() to eventDrop and puts the event back when called", async () => {

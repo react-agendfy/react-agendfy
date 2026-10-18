@@ -92,8 +92,9 @@ Update your `events` instead.
 | `changeView(name, date?)`, `view` (`type`, `activeStart`, `activeEnd`, `title`) | ✅ |
 | `getEvents()`, `getEventById()` | ✅ |
 | `refetchEvents()` | ✅ |
-| `updateSize()`, `destroy()` | ✅ (no-ops) |
-| `addEvent`, `removeAllEvents`, `select`, `unselect`, `setOption` | ⛔ |
+| `updateSize()`, `destroy()`, `unselect()` | ✅ (no-ops) |
+| `select()` | 🟡 accepted, no effect |
+| `addEvent`, `removeAllEvents`, `setOption` | ⛔ |
 
 ## Styling
 

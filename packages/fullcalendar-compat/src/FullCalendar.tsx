@@ -324,6 +324,8 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
           setReload((n) => n + 1);
           agendfyApi.current?.refetchEvents();
         },
+        unselect: () => {},
+        select: () => {},
         updateSize: () => {},
         destroy: () => {},
       }),

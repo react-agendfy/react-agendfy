@@ -204,6 +204,10 @@ export interface CalendarApi {
   getEvents(): EventApi[];
   getEventById(id: string): EventApi | null;
   refetchEvents(): void;
+  /** Kept for compatibility; the selection clears itself, so it is a no-op. */
+  unselect(): void;
+  /** Kept for compatibility; programmatic selection is not supported (no-op). */
+  select(start?: DateInput, end?: DateInput): void;
   /** Kept for compatibility; layout is responsive so it is a no-op. */
   updateSize(): void;
   /** Kept for compatibility; nothing to tear down. */
