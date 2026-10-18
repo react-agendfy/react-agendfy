@@ -1,0 +1,13 @@
+// Cloudflare Worker "demo": the public demo (examples/basic), served as
+// static assets. Explicit config because the repo root is a yarn workspace:
+// without it, `wrangler deploy` refuses to auto-detect the application.
+// The build (`yarn build` at the root) writes the demo to ./dist.
+{
+  "name": "demo",
+  "compatibility_date": "2026-10-18",
+  "assets": {
+    "directory": "./dist",
+    // The demo is a single-page app: unknown paths serve index.html.
+    "not_found_handling": "single-page-application"
+  }
+}
