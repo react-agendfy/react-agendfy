@@ -205,4 +205,49 @@ describe("FullCalendar compat", () => {
     );
     expect(await screen.findByTestId("custom")).toHaveTextContent("10:00 - 11:00 Consulta Ana");
   });
+
+  it("applies eventClassNames from a function, with the EventApi", async () => {
+    const seen: string[] = [];
+    const { container } = render(
+      <FullCalendar
+        initialView="dayGridMonth"
+        initialDate="2026-03-11"
+        timeZone="UTC"
+        events={events}
+        eventClassNames={(arg) => {
+          seen.push(`${arg.event.id}:${arg.event.extendedProps.status}:${arg.view.type}`);
+          return ["status-" + arg.event.extendedProps.status, arg.isPast ? "is-past" : "is-upcoming"];
+        }}
+      />
+    );
+    await screen.findAllByText("Consulta Ana");
+    const el = container.querySelector('[data-event-id="1"]');
+    expect(el).toHaveClass("status-confirmed");
+    expect(seen).toContain("1:confirmed:dayGridMonth");
+  });
+
+  it("accepts eventClassNames as a plain string", async () => {
+    const { container } = render(
+      <FullCalendar initialView="dayGridMonth" initialDate="2026-03-11" timeZone="UTC" events={events} eventClassNames="clinic-event" />
+    );
+    await screen.findAllByText("Consulta Ana");
+    expect(container.querySelector('[data-event-id="1"]')).toHaveClass("clinic-event");
+  });
+
+  it("applies dayCellClassNames to month cells", async () => {
+    const { container } = render(
+      <FullCalendar
+        initialView="dayGridMonth"
+        initialDate="2026-03-11"
+        timeZone="UTC"
+        events={events}
+        dayCellClassNames={(arg) => (arg.date.getUTCDay() === 3 ? "wednesday" : [])}
+      />
+    );
+    await screen.findAllByText("Consulta Ana");
+    const cells = Array.from(container.querySelectorAll("[data-date]"));
+    const wednesday = cells.find((c) => c.getAttribute("data-date") === "2026-03-11");
+    expect(wednesday).toHaveClass("wednesday");
+    expect(cells.filter((c) => c.classList.contains("wednesday")).length).toBeGreaterThanOrEqual(4);
+  });
 });

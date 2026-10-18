@@ -12,6 +12,8 @@ import type {
   CalendarApi as AgendfyApi,
   DateRangeSelection,
   DatesSetInfo,
+  DayCellClassNamesArg as AgendfyDayCellArg,
+  EventClassNamesArg as AgendfyEventClassArg,
   EventContentArg as AgendfyContentArg,
   EventProps,
 } from "@react-agendfy/core";
@@ -19,6 +21,7 @@ import { createEventApi, formatIsoInZone } from "./eventApi";
 import { toAgendfyConfig, toAgendfyEvents, toAgendfyView, toFcView } from "./convert";
 import type {
   CalendarApi,
+  ClassNamesGenerator,
   DateInput,
   EventInput,
   EventSourceFunc,
@@ -297,6 +300,43 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
       }
     : undefined;
 
+  /* --- eventClassNames / dayCellClassNames ------------------------------------ */
+  // FullCalendar's ClassNamesGenerator: a string, a list, or a function.
+  const resolveClassNames = <Arg,>(generator: ClassNamesGenerator<Arg> | undefined, arg: () => Arg) =>
+    generator === undefined ? undefined : typeof generator === "function" ? generator(arg()) : generator;
+
+  const eventClassNames = props.eventClassNames
+    ? (arg: AgendfyEventClassArg) =>
+        resolveClassNames(props.eventClassNames, () => {
+          const now = Date.now();
+          const event = api(arg.event);
+          return {
+            event,
+            view: viewRef.current,
+            isPast: (event.end ?? event.start ?? new Date(0)).getTime() <= now,
+            isFuture: (event.start ?? new Date(0)).getTime() > now,
+          };
+        })
+    : undefined;
+
+  const dayCellClassNames = props.dayCellClassNames
+    ? (arg: AgendfyDayCellArg) =>
+        resolveClassNames(props.dayCellClassNames, () => {
+          // Calendar days compared in the calendar's zone ("YYYY-MM-DD").
+          const day = formatIsoInZone(arg.date, timeZone, true);
+          const today = formatIsoInZone(new Date(), timeZone, true);
+          return {
+            date: arg.date,
+            view: viewRef.current,
+            isToday: arg.isToday,
+            isPast: day < today,
+            isFuture: day > today,
+            isOther: Boolean(arg.isOtherMonth),
+            isDisabled: arg.isDisabled,
+          };
+        })
+    : undefined;
+
   /* --- getApi() ------------------------------------------------------------ */
   useImperativeHandle(
     ref,
@@ -358,6 +398,8 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
         onEventUpdate={canMove ? changeHandler("drop") : undefined}
         onEventResize={canResize ? changeHandler("resize") : undefined}
         eventContent={eventContent}
+        eventClassNames={eventClassNames}
+        dayCellClassNames={dayCellClassNames}
         plugins={props.agendfyPlugins}
       />
     </div>

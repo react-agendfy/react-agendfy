@@ -175,6 +175,37 @@ export interface EventContentArg {
   view: ViewApi;
 }
 
+/** Argument for `eventClassNames` (FullCalendar's EventContentArg subset). */
+export interface EventClassNamesArg {
+  event: EventApi;
+  view: ViewApi;
+  /** The event has ended. */
+  isPast: boolean;
+  /** The event has not started yet. */
+  isFuture: boolean;
+}
+
+/** Argument for `dayCellClassNames` (FullCalendar's DayCellContentArg subset). */
+export interface DayCellClassNamesArg {
+  date: Date;
+  view: ViewApi;
+  isToday: boolean;
+  /** The day is before today. */
+  isPast: boolean;
+  /** The day is after today. */
+  isFuture: boolean;
+  /** Month view: the day belongs to the previous/next month. */
+  isOther: boolean;
+  /** Outside `validRange` (not in FullCalendar). */
+  isDisabled: boolean;
+}
+
+/** FullCalendar's ClassNamesGenerator: a class string, a list, or a function returning either. */
+export type ClassNamesGenerator<Arg> =
+  | string
+  | string[]
+  | ((arg: Arg) => string | string[] | null | undefined);
+
 /** ReactNode, or FullCalendar's `{ html }` (rendered as HTML). */
 export type CustomContent = ReactNode | { html: string };
 
@@ -262,6 +293,10 @@ export interface FullCalendarProps {
   eventResize?: (arg: EventResizeDoneArg) => void;
   datesSet?: (arg: DatesSetArg) => void;
   eventContent?: (arg: EventContentArg) => CustomContent;
+  /** Extra classes on every event element (week/day blocks, month chips, list rows). */
+  eventClassNames?: ClassNamesGenerator<EventClassNamesArg>;
+  /** Extra classes on month cells and week/day columns. */
+  dayCellClassNames?: ClassNamesGenerator<DayCellClassNamesArg>;
   loading?: (isLoading: boolean) => void;
 
   /**
@@ -281,7 +316,6 @@ export interface IgnoredFullCalendarOptions {
   aspectRatio?: unknown;
   buttonText?: unknown;
   customButtons?: unknown;
-  dayCellClassNames?: unknown;
   dayCellContent?: unknown;
   dayCellDidMount?: unknown;
   dayHeaderFormat?: unknown;
@@ -293,7 +327,6 @@ export interface IgnoredFullCalendarOptions {
   eventAdd?: unknown;
   eventAllow?: unknown;
   eventChange?: unknown;
-  eventClassNames?: unknown;
   eventDidMount?: unknown;
   eventDisplay?: unknown;
   eventMouseEnter?: unknown;

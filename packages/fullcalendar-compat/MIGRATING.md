@@ -43,7 +43,8 @@ on, even where react-agendfy itself defaults differently.
 | `selectMirror` | ⛔ | The selection is always highlighted. |
 | `height`, `contentHeight` | ✅ | `"auto"`, a number or any CSS length. `aspectRatio` is ignored. |
 | `eventOverlap`, `selectOverlap`, `eventAllow`, `selectAllow` | ⛔ | Validate in `eventDrop`/`select` and call `info.revert()`. |
-| `navLinks`, `stickyHeaderDates`, `expandRows`, `eventDisplay`, `droppable`, `dayCellDidMount`, `eventDidMount`, `eventClassNames`, `customButtons`, `views` | ⛔ | Accepted, no effect. |
+| `eventClassNames`, `dayCellClassNames` | ✅ | A string, a list, or a function. Event arg: `event`, `view`, `isPast`, `isFuture`. Day arg: `date`, `view`, `isToday`, `isPast`, `isFuture`, `isOther`, `isDisabled`. |
+| `navLinks`, `stickyHeaderDates`, `expandRows`, `eventDisplay`, `droppable`, `dayCellDidMount`, `eventDidMount`, `customButtons`, `views` | ⛔ | Accepted, no effect. |
 
 ## Events
 
