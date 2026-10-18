@@ -1,5 +1,14 @@
 # @react-agendfy/fullcalendar-compat
 
+## 1.0.1
+
+### Patch Changes
+
+- 75fcd7b: `getApi()` now has `unselect()` and `select()`, which do nothing (the
+  selection clears itself). Code that calls
+  `calendarRef.current.getApi().unselect()` after a `select` callback (a
+  common FullCalendar pattern) threw a TypeError.
+
 ## 1.0.0
 
 ### Minor Changes

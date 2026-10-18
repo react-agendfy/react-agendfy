@@ -1,6 +1,6 @@
 {
   "name": "@react-agendfy/fullcalendar-compat",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Drop-in replacement for @fullcalendar/react on top of react-agendfy: same props, callbacks (info objects, EventApi, revert) and getApi().",
   "license": "MIT",
   "type": "module",
