@@ -9,7 +9,7 @@ import {
 } from "@react-agendfy/core";
 import exportsPlugin from "@react-agendfy/plugin-export-reports";
 import { createQuickAddPlugin, go4aiAdapter, httpAdapter } from "@react-agendfy/ai";
-import { ArrowRightLeft, BookOpen, Github, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, RotateCcw, Sparkles, Sun } from "lucide-react";
+import { ArrowRightLeft, BookOpen, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, RotateCcw, Sparkles, Sun } from "lucide-react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Sidebar, { type DemoOptions, type PendingItem } from "./components/Sidebar";
 import EventModal, { type EventDraft } from "./components/EventModal";
@@ -18,6 +18,7 @@ import { renderEventContent } from "./components/EventContent";
 import timelinePlugins from "@react-agendfy/plugin-timeline";
 import ganttPlugins, { isTask } from "@react-agendfy/gantt";
 import { categoryColor, createDemoEvents, resources, type CategoryId } from "./demoEvents";
+import GithubIcon from "./components/GithubIcon";
 import GanttPage from "./GanttPage";
 import { accentPresets } from "./themes";
 import { addDaysKey, dayKey, fromZoned, zonedParts } from "./lib/time";
@@ -493,7 +494,7 @@ export default function App() {
             rel="noreferrer"
             aria-label="GitHub"
           >
-            <Github size={17} />
+            <GithubIcon size={17} />
           </a>
         </header>
 
