@@ -6,6 +6,7 @@ import { CalendarProvider } from "../context/CalendarContext";
 import useCalendarState from "../hooks/useCalendarState";
 import { EventContentProvider } from "../context/EventContentContext";
 import { ClassNamesProvider } from "../context/ClassNamesContext";
+import { InteractionProvider } from "../context/InteractionContext";
 
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
@@ -245,6 +246,8 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
       <div className="react-agendfy-layout-content">
         <ClassNamesProvider eventClassNames={eventClassNames} dayCellClassNames={dayCellClassNames}>
         <EventContentProvider eventContent={eventContent} plugins={eventRenderingPlugins}>
+          {/* One DndContext for every view (RFC 001, layer 2). */}
+          <InteractionProvider>
           {/* Views are lazy chunks: the boundary keeps SSR (renderToString)
               and the first client render from throwing while they load. */}
           <Suspense
@@ -256,6 +259,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           >
             {renderViewComponent()}
           </Suspense>
+          </InteractionProvider>
         </EventContentProvider>
         </ClassNamesProvider>
       </div>

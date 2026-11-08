@@ -1,6 +1,9 @@
 // MonthView.tsx
-import React, { useMemo, useCallback, useState } from 'react';
-import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import React, { useMemo, useCallback, useRef, useState } from 'react';
+import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { ViewDndScope, type DragSnapshot, type ViewDragOptions } from '../../context/InteractionContext';
+import { useDropVerdict } from '../../hooks/useDropVerdict';
+import { DragPreviewFrame } from '../../Components/DragPreview';
 import { addDays, endOfWeek, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
 import { ensureDate } from '../../Utils/DateTrannforms';
@@ -13,6 +16,13 @@ import { EventItem } from './Components/EventItem';
 import { CalendarDay } from './Components/CalendarDay';
 import { normalizeEvents } from '../../Utils/calendarHelpers';
 import { useGridNavigation } from '../../hooks/useGridNavigation';
+
+// Drags start after 5px so a click on an event chip stays a click.
+const MONTH_DRAG: ViewDragOptions = {
+  activationConstraint: { distance: 5 },
+  instructions:
+    'To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new day, then press space or enter again to drop, or press escape to cancel.',
+};
 
 const MonthView: React.FC<MonthViewProps> = ({
   events = [],
@@ -32,10 +42,6 @@ const MonthView: React.FC<MonthViewProps> = ({
   const [selStart, setSelStart] = useState<Date | null>(null);
   const [selEnd, setSelEnd] = useState<Date | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor)
-  );
 const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.timeZone)), [currentDate, config?.timeZone]);
   const tz = config?.timeZone;
   const locale = getLocale(config?.lang);
@@ -65,24 +71,30 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
   const columnCount = weeks[0]?.length || 7;
   const gridColumns = { gridTemplateColumns: `repeat(${columnCount}, 1fr)` };
 
-  const handleDragStart = (e: any) => setActiveEvent(e.active.data.current.event);
-  const handleDragEnd = (e: any) => {
-    setActiveEvent(null);
-    const { active, over, delta } = e;
-    if (!active || !over) return;
+  // One day cell per arrow key (measured at drag start).
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const keyboardStepRef = useRef<{ x: number; y: number } | null>(null);
+  const { verdict: dropVerdict, check: checkDrop, clear: clearDrop } = useDropVerdict();
 
-    const event = active.data.current.event as EventProps;
+  const handleDragStart = (e: DragStartEvent) => {
+    const cell = containerRef.current?.querySelector('.react-agendfy-calendar-day')?.getBoundingClientRect();
+    keyboardStepRef.current = cell?.width ? { x: cell.width, y: cell.height } : null;
+    clearDrop();
+    setActiveEvent((e.active.data.current?.event as EventProps) ?? null);
+  };
 
-    if (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5) {
-      onEventClick?.(event);
-      return;
-    }
+  /** The event moved to the day under the drag, or null (same day, disabled, nowhere). */
+  const resolveDrop = (e: DragSnapshot): { dragged: EventProps; updated: EventProps } | null => {
+    const { active, over } = e;
+    if (!active || !over) return null;
+    const event = active.data.current?.event as EventProps | undefined;
+    if (!event) return null;
 
     const targetDate = new Date(over.id);
-    if (dayRules.isDisabled(targetDate)) return;
+    if (dayRules.isDisabled(targetDate)) return null;
     const origStart = ensureDate(event.start, tz);
 
-    if (isSameDay(targetDate, origStart)) return;
+    if (isSameDay(targetDate, origStart)) return null;
 
     const hours = origStart.getHours(), mins = origStart.getMinutes();
     targetDate.setHours(hours, mins);
@@ -90,11 +102,36 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     const duration = ensureDate(event.end, tz).getTime() - origStart.getTime();
     const newEnd = new Date(targetDate.getTime() + duration);
 
-    onEventUpdate?.({
-      ...event,
-      start: targetDate.toISOString(),
-      end: newEnd.toISOString(),
-    });
+    return {
+      dragged: event,
+      updated: { ...event, start: targetDate.toISOString(), end: newEnd.toISOString() },
+    };
+  };
+
+  // Live validation: the preview turns invalid over days the rules refuse.
+  const handleDragMove = (e: DragMoveEvent | DragOverEvent) => {
+    const result = resolveDrop(e);
+    checkDrop(result?.updated ?? null, result?.dragged);
+  };
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveEvent(null);
+    clearDrop();
+    const { active, over, delta } = e;
+    if (!active || !over) return;
+
+    if (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5) {
+      onEventClick?.(active.data.current?.event as EventProps);
+      return;
+    }
+
+    const result = resolveDrop(e);
+    if (result) onEventUpdate?.(result.updated);
+  };
+
+  const handleDragCancel = () => {
+    setActiveEvent(null);
+    clearDrop();
   };
 
   const handleEventResize = (status: 'start' | 'stop', event?: EventProps) => {
@@ -139,22 +176,23 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
   });
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      accessibility={{
-        screenReaderInstructions: {
-          draggable:
-            'To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new day, then press space or enter again to drop, or press escape to cancel.',
-        },
+    <ViewDndScope
+      handlers={{
+        onDragStart: handleDragStart,
+        onDragMove: handleDragMove,
+        onDragOver: handleDragMove,
+        onDragEnd: handleDragEnd,
+        onDragCancel: handleDragCancel,
+        keyboardStep: () => keyboardStepRef.current,
       }}
+      options={MONTH_DRAG}
     >
       {showResourceView && resources.length > 0 && (
         <ResourceView resources={resources} events={expandedEvents} currentDate={currentDate} />
       )}
 
       <div
+        ref={containerRef}
         className="react-agendfy-monthview-container"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -206,9 +244,13 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
       </div>
 
       <DragOverlay>
-        {activeEvent && <EventItem event={activeEvent} isPreview isStart isEnd={false} config={config} dayWidth={150} />}
+        {activeEvent && (
+          <DragPreviewFrame invalid={dropVerdict}>
+            <EventItem event={activeEvent} isPreview isStart isEnd={false} config={config} dayWidth={150} />
+          </DragPreviewFrame>
+        )}
       </DragOverlay>
-    </DndContext>
+    </ViewDndScope>
   );
 };
 

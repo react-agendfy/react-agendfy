@@ -128,8 +128,9 @@ The calendar targets WCAG 2.1 AA:
 
 - Month/week grids use proper grid semantics with a roving tabindex — arrow
   keys move between cells, `Enter`/`Space` activate.
-- Events are keyboard-focusable and operable; drag and drop works through the
-  keyboard (dnd-kit `KeyboardSensor`) as well as the pointer.
+- Events are keyboard-focusable and operable (one tab stop per event). Enter
+  opens an event; Space picks it up, the arrow keys move it by one slot or
+  day, Space drops it and Escape cancels.
 - Navigation buttons carry accessible labels (localized via i18n keys
   `back`, `next`, `go_to_today`).
 - Visible focus rings via `--agendfy-focus-ring`; `prefers-reduced-motion`

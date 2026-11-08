@@ -249,6 +249,11 @@ Every move and resize goes through one pipeline: **validate → apply →
 `onEventUpdate`/`onEventResize` → history**. A callback that returns a
 rejected Promise still reverts the change.
 
+The rules also run **while dragging**: over a drop they would refuse, the
+drag preview gets `.react-agendfy-drag-preview--invalid` (red outline,
+`--agendfy-drop-invalid-color`) and a `data-invalid-reason` attribute
+(`overlap`, `constraint`, …), with pointer and keyboard drags alike.
+
 | Config key | Type | Description |
 | --- | --- | --- |
 | `eventOverlap` | `boolean \| (still, moving) => boolean` | `false` refuses changes that intersect another event. Events on disjoint resources never overlap. An event's own `overlap` field wins. Default `true`. |
@@ -353,6 +358,7 @@ Tokens live in `src/styles/tokens.css`, in three layers:
 | `--agendfy-event-font-size` / `-font-weight` / `-shadow` | `xs` / `600` / `shadow-sm` | Month event chips. |
 | `--agendfy-color-event-default` / `-default-fg` | `#3490dc` / `#ffffff` | Month chip without `event.color`. |
 | `--agendfy-resize-handle-color` / `-hover-color` | `rgba(0,0,0,.25)` / `rgba(0,0,0,.4)` | Month resize grip. |
+| `--agendfy-drop-invalid-color` | `--agendfy-color-now` | Outline of the drag preview over a drop the rules refuse. |
 | `--agendfy-color-accent-fg` | `#ffffff` | Text on the accent ("Today" pill in list/agenda). |
 | `--agendfy-button-radius` / `-bg` / `-fg` | `radius-md` / `surface-2` / `text-muted` | Header button groups. |
 | `--agendfy-button-active-bg` / `-active-fg` | `var(--agendfy-color-accent)` / `var(--agendfy-color-event-fg)` | Active view button. |
@@ -504,8 +510,10 @@ Text direction resolves automatically from the language (`ar`, `he`, `fa`,
 
 - Month/week grids expose grid semantics with a **roving tabindex**: arrow keys
   move the focused cell, `Enter`/`Space` activate.
-- Events are keyboard-focusable and operable; drag and drop is available
-  through the keyboard (dnd-kit `KeyboardSensor`) as well as the pointer.
+- Events are keyboard-focusable and operable, with one tab stop per event.
+  Enter opens an event; Space picks it up, the arrow keys move it by one
+  slot (↑↓) or one day (←→, and every arrow in the month view), Space
+  drops it and Escape cancels.
 - Header navigation buttons have localized accessible labels (`back`, `next`,
   `go_to_today`).
 - Focus-visible styling uses `--agendfy-focus-ring`; `prefers-reduced-motion`

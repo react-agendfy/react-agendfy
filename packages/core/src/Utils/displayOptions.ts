@@ -1,6 +1,6 @@
 import { TZDate } from "@date-fns/tz";
 import { format, getISOWeek, getWeek } from "date-fns";
-import type { Config } from "../types/types";
+import type { Config, EventProps } from "../types/types";
 import { getLocale } from "./locate";
 import { resolveWeekStartsOn } from "./calendarRange";
 
@@ -74,3 +74,7 @@ export const weekNumberOf = (date: Date, config?: DisplayConfig): number => {
     firstWeekContainsDate: locale.options?.firstWeekContainsDate ?? 1,
   });
 };
+
+/** Accessible name of an event: "Title, 10:00 - 11:00". */
+export const eventAriaLabel = (event: EventProps, config?: DisplayConfig) =>
+  `${event.title}, ${formatEventTime(event.start, config)} - ${formatEventTime(event.end, config)}`;

@@ -85,6 +85,8 @@
   --agendfy-color-event-default-fg: #ffffff;
   --agendfy-resize-handle-color: rgba(0, 0, 0, 0.25);
   --agendfy-resize-handle-hover-color: rgba(0, 0, 0, 0.4);
+  /* drag preview over a drop the rules refuse (eventOverlap, eventConstraint…) */
+  --agendfy-drop-invalid-color: var(--agendfy-color-now);
 
   /* states */
   --agendfy-color-selection: var(--agendfy-color-accent-soft); /* range select + drop target */

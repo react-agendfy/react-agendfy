@@ -8,6 +8,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { Calendar } from "../index";
 import type { CalendarApi, ChangeRejectedInfo, DateRangeSelection, EventChange, EventProps } from "../types/types";
 import type { CalendarPlugin } from "../types/plugins";
+import { useDropVerdict } from "../hooks/useDropVerdict";
 
 /** Props the calendar passes to a custom view (the subset these tests use). */
 interface ViewProps {
@@ -374,3 +375,59 @@ describe("ViewPlugin.range / step", () => {
     );
   });
 });
+
+describe("live drop validation (useDropVerdict)", () => {
+  /** A view that "hovers" event a over 14:00/12:00 and shows the live verdict. */
+  const HoverView = ({ events }: ViewProps) => {
+    const a = events.find((e) => e.id === "a")!;
+    const { verdict, check, clear } = useDropVerdict();
+    return (
+      <div>
+        <span data-testid="verdict">{verdict ? verdict.reason : "ok"}</span>
+        <button onClick={() => check({ ...a, start: iso(14), end: iso(15) }, a)}>hover-14</button>
+        <button onClick={() => check({ ...a, start: iso(12), end: iso(13) }, a)}>hover-12</button>
+        <button onClick={() => check(null)}>hover-nowhere</button>
+        <button onClick={clear}>end</button>
+      </div>
+    );
+  };
+
+  it("reports the rule that would refuse the drop, without applying or calling back", async () => {
+    const onEventUpdate = jest.fn();
+    const onChangeRejected = jest.fn();
+    render(
+      <Calendar
+        events={[ev("a", 10, 11), ev("b", 14, 15)]}
+        currentDate={MARCH_11}
+        onEventUpdate={onEventUpdate}
+        onChangeRejected={onChangeRejected}
+        plugins={[{ key: "h", type: "view", viewName: "hover", component: HoverView } as CalendarPlugin]}
+        config={{ ...base, defaultView: "hover" as never, eventOverlap: false }}
+      />
+    );
+    const verdict = () => screen.getByTestId("verdict").textContent;
+    fireEvent.click(await screen.findByText("hover-14"));
+    expect(verdict()).toBe("overlap");
+    fireEvent.click(screen.getByText("hover-12"));
+    expect(verdict()).toBe("ok");
+    fireEvent.click(screen.getByText("hover-14"));
+    fireEvent.click(screen.getByText("hover-nowhere"));
+    expect(verdict()).toBe("ok");
+    fireEvent.click(screen.getByText("hover-14"));
+    fireEvent.click(screen.getByText("end"));
+    expect(verdict()).toBe("ok");
+    expect(onEventUpdate).not.toHaveBeenCalled();
+    expect(onChangeRejected).not.toHaveBeenCalled();
+  });
+
+  it("a standalone view (no calendar) never rejects", () => {
+    const Probe = () => {
+      const { verdict, check } = useDropVerdict();
+      return <button onClick={() => check(ev("a", 1, 2))}>{verdict ? "rejected" : "ok"}</button>;
+    };
+    render(<Probe />);
+    fireEvent.click(screen.getByText("ok"));
+    expect(screen.getByRole("button").textContent).toBe("ok");
+  });
+});
+

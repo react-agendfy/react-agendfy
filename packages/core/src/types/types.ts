@@ -329,6 +329,12 @@ export interface BaseEventProps {
   isDraggable?: boolean;
   customClassName?: string;
   parsedSlotMax?: number;
+  /**
+   * The event element is the focus/keyboard target (role, tabindex, keys).
+   * False when a wrapper owns focus (week view: the draggable wrapper).
+   * Default true.
+   */
+  focusable?: boolean;
 }
 
 export interface PositionStyle {

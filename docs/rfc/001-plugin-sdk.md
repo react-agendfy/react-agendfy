@@ -1,6 +1,6 @@
 # RFC 001 — Change pipeline, plugin SDK and time axis
 
-- **Status:** accepted; phase 1 (core 2.2) implemented on `feat/core-change-pipeline`
+- **Status:** accepted; phase 1 (core 2.2) implemented on `feat/core-change-pipeline`; phase 2 steps 1–2 on `feat/core-plugin-sdk`
 - **Date:** 2026-11-08
 - **Affects:** `@react-agendfy/core`, `@react-agendfy/plugin-timeline`, `@react-agendfy/fullcalendar-compat`, future `@react-agendfy/gantt`
 
@@ -128,6 +128,18 @@ useDropZone(ref, { resolve: (pt) => ({ start, resourceIds }) | null });
 ```
 
 `createGridDragSnap` becomes axis-generic (`axis: "x" | "y"`).
+
+**Status (core 2.3, steps 1–2 done):** the shared `InteractionProvider`
+and live validation are in. Lessons that shaped the implementation:
+
+- dnd-kit reports a new droppable in `onDragOver`; `onDragMove` still carries
+  the previous one. Views validate on both.
+- Keyboard drags are counted in units (one arrow = one slot/column/day,
+  `gridSnap.step`), not pixels: the keyboard sensor scrolls the container
+  instead of moving past its middle, and its pixel coordinates then lost or
+  doubled steps depending on key speed.
+- The week view event wrapper is the only focus target (Enter opens, Space
+  picks up); the inner `BaseEvent` takes `focusable={false}`.
 
 **Risk:** this touches drag. `WeekView.drag.test`, the scroll-aware snap and
 the delta-based click detection (DayView: `delta.y` only, by design) must stay

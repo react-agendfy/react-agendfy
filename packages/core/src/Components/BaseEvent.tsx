@@ -23,6 +23,7 @@ const BaseEvent = ({
   dayDate,
   isDraggable = true,
   customClassName = "",
+  focusable = true,
 }: BaseEventProps) => {
   const dragId = isMultiDay ? event.originalEventId || event.id : event.id;
   // Hooks must be called unconditionally (Rules of Hooks). Gate the drag behavior
@@ -124,10 +125,11 @@ const BaseEvent = ({
       )}
       data-event-id={publicEventId(event)}
       title={tooltipContent}
-      role="button"
-      tabIndex={0}
-      aria-label={`${displayTitle}, ${startLabel} - ${endLabel}`}
+      role={focusable ? "button" : undefined}
+      tabIndex={focusable ? 0 : undefined}
+      aria-label={focusable ? `${displayTitle}, ${startLabel} - ${endLabel}` : undefined}
       onKeyDown={(e: React.KeyboardEvent) => {
+        if (!focusable) return;
         if (e.key === "Enter") {
           // Enter activates the event (click); Space is left to dnd-kit's
           // KeyboardSensor so keyboard drags stay available on draggables.

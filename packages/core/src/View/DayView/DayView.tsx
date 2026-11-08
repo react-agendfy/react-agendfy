@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
@@ -24,6 +24,13 @@ import { getBusinessHoursIntervalsForDate } from "../../Utils/businessHours";
 import { getDayRules } from "../../Utils/calendarRange";
 import { getSlotHeight, slotHeightStyle } from "../../Utils/slotHeight";
 import { cx, useDayCellClassNames } from "../../context/ClassNamesContext";
+import { ViewDndScope, type DragSnapshot, type ViewDragOptions } from "../../context/InteractionContext";
+import { useDropVerdict } from "../../hooks/useDropVerdict";
+
+const DAY_DRAG: ViewDragOptions = {
+  instructions:
+    "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
+};
 
 const DayView: React.FC<DayViewProps> = ({
   events,
@@ -43,17 +50,19 @@ const DayView: React.FC<DayViewProps> = ({
   const numberOfSlots =
     Math.floor(((parsedSlotMax - parsedSlotMin) * 60) / (config?.slotDuration || 30));
 
-  // Explicit sensors: PointerSensor preserves pointer click/drag behavior,
-  // KeyboardSensor enables keyboard-initiated drags. Declared before any
-  // early return so the hook order stays stable.
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
-
   // Same drag preview as the week view: a DragOverlay snapped to slots.
   const containerRef = useRef<HTMLDivElement | null>(null);
   const gridSnap = useMemo(() => createGridDragSnap(), []);
   const [activeDrag, setActiveDrag] = useState<EventProps | null>(null);
+  // One slot per arrow key (measured at drag start); single column, no x.
+  const keyboardStepRef = useRef<{ x: number; y: number } | null>(null);
+  // Latest drag event, to revalidate after a key press.
+  const lastDragRef = useRef<DragSnapshot | null>(null);
+  const { verdict: dropVerdict, check: checkDrop, clear: clearDrop } = useDropVerdict();
   const handleDragStart = useCallback(
-    ({ active }: any) => {
+    (event: DragStartEvent) => {
+      lastDragRef.current = event;
+      const { active } = event;
       const slot = containerRef.current?.querySelector(".react-agendfy-timeslot-container");
       const dragged = events.find((ev: EventProps) => ev.id === active?.id) ?? null;
       const step = config?.slotDuration || 30;
@@ -68,26 +77,28 @@ const DayView: React.FC<DayViewProps> = ({
           maxSlots: Math.floor(((parsedSlotMax - parsedSlotMin) * 60 - fromGridStart - length) / step),
         };
       }
-      gridSnap.begin(containerRef.current, slot?.getBoundingClientRect().height ?? 0, 0, bounds);
+      const slotPx = slot?.getBoundingClientRect().height ?? 0;
+      keyboardStepRef.current = slotPx ? { x: 0, y: slotPx } : null;
+      gridSnap.begin(containerRef.current, slotPx, 0, bounds);
+      clearDrop();
       setActiveDrag(dragged);
     },
-    [events, gridSnap, config?.timeZone, config?.slotDuration, parsedSlotMin, parsedSlotMax]
+    [events, gridSnap, config?.timeZone, config?.slotDuration, parsedSlotMin, parsedSlotMax, clearDrop]
   );
 
-  const handleDragEnd = useCallback(
-    (event: any) => {
+  /** Where the dragged event lands for this drag state (null: nowhere). */
+  const resolveDrop = useCallback(
+    (event: DragSnapshot): { dragged: EventProps; updated: EventProps } | null => {
       const snapped = gridSnap.result();
-      gridSnap.end();
-      setActiveDrag(null);
-      const { active, over, delta } = event;
-      if (!active?.id || !over?.id) return;
-      if (getDayRules(config).isDisabled(new Date(over.id))) return;
+      const { active, over } = event;
+      if (!active?.id || !over?.id) return null;
+      if (getDayRules(config).isDisabled(new Date(over.id))) return null;
 
-      const baseTime = new TZDate(over.id, config?.timeZone || 'UTC');
-      if (!isValid(baseTime)) return;
+      const baseTime = new TZDate(String(over.id), config?.timeZone || 'UTC');
+      if (!isValid(baseTime)) return null;
 
       const draggedEvent = events.find((ev: EventProps) => ev.id === active.id);
-      if (!draggedEvent) return;
+      if (!draggedEvent) return null;
 
       const originalStart = ensureDate(draggedEvent.start, config?.timeZone);
       const duration = differenceInMinutes(
@@ -101,23 +112,64 @@ const DayView: React.FC<DayViewProps> = ({
         ? addMinutes(originalStart, snapped.slots * (config?.slotDuration || 30))
         : baseTime;
 
-      const updatedEvent = {
-        ...draggedEvent,
-        start: new Date(newStart.getTime()).toISOString(),
-        end: new Date(addMinutes(newStart, duration).getTime()).toISOString(),
+      return {
+        dragged: draggedEvent,
+        updated: {
+          ...draggedEvent,
+          start: new Date(newStart.getTime()).toISOString(),
+          end: new Date(addMinutes(newStart, duration).getTime()).toISOString(),
+        },
       };
+    },
+    [events, config, gridSnap]
+  );
 
-      if (Math.abs(delta.y) < 1 && onEventClick) {
-        onEventClick(updatedEvent);
+  // Live validation: the preview turns invalid where the drop would be refused.
+  const handleDragMove = useCallback(
+    (event: DragMoveEvent | DragOverEvent | DragSnapshot) => {
+      lastDragRef.current = event;
+      const result = resolveDrop(event);
+      checkDrop(result?.updated ?? null, result?.dragged);
+    },
+    [resolveDrop, checkDrop]
+  );
+
+  // Keyboard drags move in whole slots (single column: ←→ do nothing).
+  const handleKeyboardStep = useCallback(
+    (_dx: number, dy: number) => {
+      gridSnap.step(dy, 0);
+      if (lastDragRef.current) handleDragMove(lastDragRef.current);
+    },
+    [gridSnap, handleDragMove]
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const result = resolveDrop(event);
+      gridSnap.end();
+      setActiveDrag(null);
+      clearDrop();
+      if (!result) return;
+
+      // Single column: only a vertical move is a drag (see the RFC note on
+      // DayView's delta.y click detection).
+      if (Math.abs(event.delta.y) < 1 && onEventClick) {
+        onEventClick(result.updated);
         return;
       }
 
       if (onEventUpdate) {
-        onEventUpdate(updatedEvent);
+        onEventUpdate(result.updated);
       }
     },
-    [events, config, onEventClick, onEventUpdate, gridSnap]
+    [resolveDrop, gridSnap, clearDrop, onEventClick, onEventUpdate]
   );
+
+  const handleDragCancel = useCallback(() => {
+    gridSnap.end();
+    setActiveDrag(null);
+    clearDrop();
+  }, [gridSnap, clearDrop]);
 
   const businessIntervals = useMemo(
     () =>
@@ -186,16 +238,17 @@ const DayView: React.FC<DayViewProps> = ({
       : null;
 
   return (
-    <DndContext
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      sensors={sensors}
-      accessibility={{
-        screenReaderInstructions: {
-          draggable:
-            "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
-        },
+    <ViewDndScope
+      handlers={{
+        onDragStart: handleDragStart,
+        onDragMove: handleDragMove,
+        onDragOver: handleDragMove,
+        onDragEnd: handleDragEnd,
+        onDragCancel: handleDragCancel,
+        keyboardStep: () => keyboardStepRef.current,
+        onKeyboardStep: handleKeyboardStep,
       }}
+      options={DAY_DRAG}
     >
       <div
         ref={containerRef}
@@ -238,9 +291,9 @@ const DayView: React.FC<DayViewProps> = ({
         )}
       </div>
       <DragOverlay modifiers={[gridSnap.modifier]} dropAnimation={null} zIndex={1000}>
-        {activeDrag && <DragPreview event={activeDrag} config={config} />}
+        {activeDrag && <DragPreview event={activeDrag} config={config} invalid={dropVerdict} />}
       </DragOverlay>
-    </DndContext>
+    </ViewDndScope>
   );
 };
 

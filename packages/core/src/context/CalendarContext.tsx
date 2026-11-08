@@ -189,6 +189,8 @@ export interface CalendarContextValue {
   // change pipeline (RFC 001)
   /** Validates, applies, calls back and records a move/resize. */
   commitChange: (change: EventChange) => ChangeVerdict;
+  /** Validation only, no side effects (drag previews). */
+  previewChange: (change: EventChange) => ChangeVerdict;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -487,25 +489,29 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     [timeZone]
   );
 
+  const previewChange = useCallback(
+    (change: EventChange): ChangeVerdict => {
+      // Dropping in place, or replaying history, is always fine.
+      if (change.source === "history") return true;
+      if (change.before && sameSchedule(change.before, change.event)) return true;
+      return validateChange(change, { config: localeConfig, eventsInRange }, middlewarePlugins);
+    },
+    [localeConfig, eventsInRange, middlewarePlugins]
+  );
+
   const runChange = useCallback(
     (change: EventChange, onReverted?: () => void): ChangeVerdict => {
       const unchanged = !!change.before && sameSchedule(change.before, change.event);
 
-      if (change.source !== "history" && !unchanged) {
-        const verdict = validateChange(
+      const verdict = previewChange(change);
+      if (verdict !== true) {
+        onChangeRejected?.({
           change,
-          { config: localeConfig, eventsInRange },
-          middlewarePlugins
-        );
-        if (verdict !== true) {
-          onChangeRejected?.({
-            change,
-            reason: verdict.reason,
-            message: verdict.message,
-            conflicts: verdict.conflicts,
-          });
-          return verdict;
-        }
+          reason: verdict.reason,
+          message: verdict.message,
+          conflicts: verdict.conflicts,
+        });
+        return verdict;
       }
 
       dispatch({ type: "UPDATE_EVENT", payload: change.event });
@@ -531,7 +537,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       }
       return true;
     },
-    [localeConfig, eventsInRange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize]
+    [previewChange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize]
   );
 
   const commitChange = useCallback((change: EventChange) => runChange(change), [runChange]);
@@ -915,6 +921,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     onSlotClick,
     visibleRange,
     commitChange,
+    previewChange,
     undo,
     redo,
     canUndo: history.canUndo(),

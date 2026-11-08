@@ -55,3 +55,21 @@
     font-size: var(--baseevent-time-font-size-large);
   }
 }
+
+/* Drag preview over a drop that would be refused (live validation). */
+.react-agendfy-drag-preview--invalid {
+  cursor: not-allowed;
+}
+
+.react-agendfy-drag-preview--invalid > * {
+  outline: 2px solid var(--agendfy-drop-invalid-color);
+  outline-offset: -2px;
+  opacity: 0.75;
+  filter: grayscale(0.5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .react-agendfy-drag-preview > * {
+    transition: opacity 120ms ease, filter 120ms ease;
+  }
+}
