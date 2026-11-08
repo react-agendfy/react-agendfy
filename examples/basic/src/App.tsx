@@ -9,14 +9,16 @@ import {
 } from "@react-agendfy/core";
 import exportsPlugin from "@react-agendfy/plugin-export-reports";
 import { createQuickAddPlugin, go4aiAdapter, httpAdapter } from "@react-agendfy/ai";
-import { ArrowRightLeft, BookOpen, Github, Menu, Moon, Package, RotateCcw, Sparkles, Sun } from "lucide-react";
+import { ArrowRightLeft, BookOpen, Github, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, RotateCcw, Sparkles, Sun } from "lucide-react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Sidebar, { type DemoOptions, type PendingItem } from "./components/Sidebar";
 import EventModal, { type EventDraft } from "./components/EventModal";
 import AIDrawer from "./components/AIDrawer";
 import { renderEventContent } from "./components/EventContent";
 import timelinePlugins from "@react-agendfy/plugin-timeline";
+import ganttPlugins, { isTask } from "@react-agendfy/gantt";
 import { categoryColor, createDemoEvents, resources, type CategoryId } from "./demoEvents";
+import GanttPage from "./GanttPage";
 import { accentPresets } from "./themes";
 import { addDaysKey, dayKey, fromZoned, zonedParts } from "./lib/time";
 import corePkg from "../../../packages/core/package.json";
@@ -46,6 +48,7 @@ const aiAdapter = devBrowserKey
 // v3: events use resourceIds (the library's resource model).
 const EVENTS_KEY = "agendfy-demo-events-v3";
 const OPTIONS_KEY = "agendfy-demo-options-v2";
+const SIDEBAR_KEY = "agendfy-demo-sidebar-collapsed";
 const THEME_KEY = "agendfy-demo-theme";
 
 const read = <T,>(key: string, fallback: T): T => {
@@ -131,9 +134,35 @@ export default function App() {
     });
   }, []);
 
+  // Two pages: the calendar demo (#/) and the Gantt on its own (#/gantt).
+  const pageFromHash = () => (window.location.hash === "#/gantt" ? "gantt" : "calendar");
+  const [page, setPage] = useState<"calendar" | "gantt">(pageFromHash);
+  useEffect(() => {
+    const onHash = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   const [hiddenCategories, setHidden] = useState<Set<CategoryId>>(new Set());
   const [activeResources, setActiveResources] = useState<string[]>([]);
+  // Small screens: the sidebar is a drawer (open). Wide screens: it can be
+  // hidden to give the calendar the whole width (collapsed, remembered).
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const isDrawer = () => window.matchMedia("(max-width: 900px)").matches;
+  const toggleSidebar = () => {
+    if (isDrawer()) return setSidebarOpen((o) => !o);
+    setSidebarCollapsed((c) => {
+      write(SIDEBAR_KEY, !c);
+      return !c;
+    });
+  };
   const [aiOpen, setAiOpen] = useState(false);
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const [range, setRange] = useState<DatesSetInfo | null>(null);
@@ -158,6 +187,16 @@ export default function App() {
       eventTimeFormat: options.hour12 ? "h:mm a" : "HH:mm",
       slotLabelFormat: options.hour12 ? "h a" : "HH:mm",
       defaultView: (window.innerWidth < 700 ? "agenda" : "week") as "agenda" | "week",
+      // Related views share one button with a menu.
+      headerViews: [
+        "month",
+        "week",
+        "day",
+        { label: "List", views: ["list", "agenda"] },
+        { label: "Resources", views: ["resourceDay", "resourceWeek"] },
+        { label: "Timeline", views: ["timelineDay", "timelineWeek", "timelineMonth"] },
+        "gantt",
+      ],
       slotDuration: 30,
       slotMin: "07:00",
       slotMax: "21:00",
@@ -175,14 +214,18 @@ export default function App() {
   );
 
   /* --- filtering (categories + resources) ---------------------------------- */
+  // Project tasks only show in the Gantt: in the other views they would fill
+  // the all-day row.
+  const inGantt = range?.view === "gantt";
   const visibleEvents = useMemo(
     () =>
       events.filter(
         (e) =>
+          (inGantt || !isTask(e)) &&
           !hiddenCategories.has(e.category) &&
           (activeResources.length === 0 || (e.resourceIds ?? []).some((id: string) => activeResources.includes(id)))
       ),
-    [events, hiddenCategories, activeResources]
+    [events, hiddenCategories, activeResources, inGantt]
   );
 
   /* --- create / edit --------------------------------------------------------- */
@@ -293,15 +336,9 @@ export default function App() {
         notify("Recurring events move as a series: open it to edit");
         return Promise.reject(new Error("recurring"));
       }
-      // The calendar hands back the event in our own shape: times, and
-      // resourceIds when it moved to another resource (Team view).
-      editEvents((prev) =>
-        prev.map((e) =>
-          e.id === ev.id
-            ? { ...e, start: ev.start, end: ev.end, allDay: ev.allDay ?? e.allDay, resourceIds: ev.resourceIds ?? e.resourceIds }
-            : e
-        )
-      );
+      // The calendar hands back the event in our own shape, with what
+      // changed: times, resourceIds, or other fields (a task's progress).
+      editEvents((prev) => prev.map((e) => (e.id === ev.id ? { ...e, ...ev } : e)));
     },
     [editEvents, notify]
   );
@@ -358,6 +395,8 @@ export default function App() {
       ...(exportsPlugin as unknown as CalendarPlugin[]),
       // Resources down the side, time across: timelineDay/Week/Month.
       ...timelinePlugins,
+      // The project's tasks as a Gantt; moving a task pushes its successors.
+      ...ganttPlugins,
     ],
     [editEvents]
   );
@@ -384,14 +423,23 @@ export default function App() {
       <AgendfyDndProvider>
       <div className="app" style={shellAccent as React.CSSProperties}>
         <header className="topbar">
+          {page === "calendar" && (
           <button
             className="btn btn-ghost btn-icon topbar-menu"
-            onClick={() => setSidebarOpen((o) => !o)}
-            aria-label="Toggle controls"
-            aria-expanded={sidebarOpen}
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+            title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+            aria-controls="demo-sidebar"
+            aria-expanded={isDrawer() ? sidebarOpen : !sidebarCollapsed}
           >
-            <Menu size={18} />
+            <Menu size={18} className="topbar-menu-drawer" />
+            {sidebarCollapsed ? (
+              <PanelLeftOpen size={18} className="topbar-menu-panel" />
+            ) : (
+              <PanelLeftClose size={18} className="topbar-menu-panel" />
+            )}
           </button>
+          )}
           <a className="brand" href="https://github.com/react-agendfy/react-agendfy" target="_blank" rel="noreferrer">
             <span className="brand-mark" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -402,6 +450,14 @@ export default function App() {
             React Agendfy
             <span className="brand-version">v{corePkg.version}</span>
           </a>
+          <nav className="page-switch" aria-label="Demo pages">
+            <a href="#/" aria-current={page === "calendar" ? "page" : undefined}>
+              Calendar
+            </a>
+            <a href="#/gantt" aria-current={page === "gantt" ? "page" : undefined}>
+              Gantt only
+            </a>
+          </nav>
           <nav className="topbar-links" aria-label="Project">
             <a href="https://github.com/react-agendfy/react-agendfy#readme" target="_blank" rel="noreferrer">
               <BookOpen size={15} /> Docs
@@ -418,9 +474,11 @@ export default function App() {
             </a>
           </nav>
           <span className="topbar-spacer" />
-          <button className="btn btn-ghost" onClick={resetDemo} title="Fresh demo events around today">
-            <RotateCcw size={15} /> <span className="hide-sm">Reset</span>
-          </button>
+          {page === "calendar" && (
+            <button className="btn btn-ghost" onClick={resetDemo} title="Fresh demo events around today">
+              <RotateCcw size={15} /> <span className="hide-sm">Reset</span>
+            </button>
+          )}
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
@@ -439,7 +497,12 @@ export default function App() {
           </a>
         </header>
 
-        <div className="workspace">
+        {page === "gantt" ? (
+          <div className="workspace is-collapsed">
+            <GanttPage theme={theme} lang={options.lang} timeZone={tz} tokens={tokens} notify={notify} />
+          </div>
+        ) : (
+        <div className={`workspace${sidebarCollapsed ? " is-collapsed" : ""}`}>
           {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
           <Sidebar
             pending={pending}
@@ -517,10 +580,13 @@ export default function App() {
             </section>
           </main>
         </div>
+        )}
 
+        {page === "calendar" && (
         <button className="fab" onClick={() => setAiOpen(true)} aria-label="Open AI assistant">
           <Sparkles size={18} /> <span>Ask AI</span>
         </button>
+        )}
 
         <AIDrawer
           open={aiOpen}
