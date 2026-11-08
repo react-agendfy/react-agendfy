@@ -30,7 +30,6 @@ export default defineConfig({
       '@dnd-kit/utilities',
       'date-fns',
       're-resizable',
-      'react-window',
       'rrule'
     ]
   },

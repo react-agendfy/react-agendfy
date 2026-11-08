@@ -164,8 +164,8 @@ the shape you gave them.
 | `month` | Month grid with multi-day spanning events, overflow badge (`+N hidden events`), drag to move, range selection. |
 | `week` | 7-day time grid with slots (`slotDuration`), drag/resize, business-hours highlight, current-time line. |
 | `day` | Single-day time grid, same interactions as week. |
-| `list` | Chronological list of events for the period. |
-| `agenda` | Upcoming events grouped by day. |
+| `list` | Events grouped by day for `listRange` (`day`, `week` or `month`). A multi-day event that started earlier shows on the period's first day. Not virtualized, so find-in-page, printing and screen readers reach every event. |
+| `agenda` | The list over the next 7 days from the navigated date (its own classes and empty message). |
 | `resourceDay` | One column per resource for the day: all-day row, overlap layout, drag between resources, resize, each resource's business hours. Offered in the header when there are `resources`. |
 | `resourceWeek` | The same for the week: a column per resource and day (`datesAboveResources` to group by date). Only the columns in view are rendered. |
 

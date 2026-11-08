@@ -2830,7 +2830,6 @@ __metadata:
     re-resizable: "npm:^6.11.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
-    react-window: "npm:^2.2.1"
     rrule: "npm:^2.8.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.7.3"
@@ -8723,16 +8722,6 @@ __metadata:
   version: 0.17.0
   resolution: "react-refresh@npm:0.17.0"
   checksum: 10c0/002cba940384c9930008c0bce26cac97a9d5682bc623112c2268ba0c155127d9c178a9a5cc2212d560088d60dfd503edd808669a25f9b377f316a32361d0b23c
-  languageName: node
-  linkType: hard
-
-"react-window@npm:^2.2.1":
-  version: 2.2.1
-  resolution: "react-window@npm:2.2.1"
-  peerDependencies:
-    react: ^18.0.0 || ^19.0.0
-    react-dom: ^18.0.0 || ^19.0.0
-  checksum: 10c0/176f80e933539064cc2abc885d9f3b604e58b44328262343fa29fd00ae4605e21874b08d3fadb4b8b4f0be00e82b7c24606455a24f2f9c452001a339f9ffcf0a
   languageName: node
   linkType: hard
 

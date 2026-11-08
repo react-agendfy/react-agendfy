@@ -12,7 +12,6 @@ import { CustomViewDnd } from "../Components/CustomViewDnd";
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
 const DayView = lazy(() => import("./DayView/DayView"));
-const AgendaView = lazy(() => import("./AgendaView"));
 const ListView = lazy(() => import("./ListView/ListView"));
 const ResourceTimeGrid = lazy(() => import("./ResourceTimeGrid/ResourceTimeGrid"));
 
@@ -230,8 +229,10 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           />
         );
       case "agenda":
+        // The list view over the next 7 days.
         return (
-          <AgendaView
+          <ListView
+            variant="agenda"
             events={visibleEvents}
             onEventClick={onEventClick}
             currentDate={currentDate}

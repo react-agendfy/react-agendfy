@@ -109,4 +109,39 @@ describe("ListView Component", () => {
     const titles = screen.getAllByText(/^(Late|Early|Holiday)$/).map((el) => el.textContent);
     expect(titles).toEqual(["Holiday", "Early", "Late"]);
   });
+
+  test("a multi-day event that started before the period shows on its first day", () => {
+    const running: EventProps[] = [
+      { id: "trip", title: "Trip", start: "2022-12-30T00:00:00Z", end: "2023-01-03T00:00:00Z", allDay: true },
+    ];
+    render(<ListView events={running} currentDate={new Date("2023-01-10T12:00:00Z")} config={{ ...defaultConfig, listRange: "month" }} />);
+    expect(screen.getByText("Sunday, January 1")).toBeInTheDocument();
+    expect(screen.getByText("Trip")).toBeInTheDocument();
+  });
+
+  test("listRange: only the day or week of the navigated date", () => {
+    const { rerender } = render(<ListView events={mockEvents} currentDate={new Date("2023-01-15T12:00:00Z")} config={{ ...defaultConfig, listRange: "day" }} />);
+    expect(screen.getByText("Event 1")).toBeInTheDocument();
+    expect(screen.queryByText("Event 2")).toBeNull();
+    rerender(<ListView events={mockEvents} currentDate={new Date("2023-01-15T12:00:00Z")} config={{ ...defaultConfig, listRange: "week", weekStartsOn: 1 }} />);
+    // Week Mon 9 – Sun 15: Monday the 16th is out.
+    expect(screen.queryByText("Event 2")).toBeNull();
+  });
+
+  test("agenda variant: the next 7 days from the date, with its own empty message", () => {
+    const week: EventProps[] = [
+      { id: "d0", title: "Day 0", start: "2023-01-15T09:00:00Z", end: "2023-01-15T10:00:00Z" },
+      { id: "d6", title: "Day 6", start: "2023-01-21T09:00:00Z", end: "2023-01-21T10:00:00Z" },
+      { id: "d7", title: "Day 7", start: "2023-01-22T09:00:00Z", end: "2023-01-22T10:00:00Z" },
+    ];
+    const { container, rerender } = render(
+      <ListView variant="agenda" events={week} currentDate={new Date("2023-01-15T12:00:00Z")} config={defaultConfig} />
+    );
+    expect(container.querySelector(".react-agendfy-agendaview-container")).not.toBeNull();
+    expect(screen.getByText("Day 0")).toBeInTheDocument();
+    expect(screen.getByText("Day 6")).toBeInTheDocument();
+    expect(screen.queryByText("Day 7")).toBeNull();
+    rerender(<ListView variant="agenda" events={[]} currentDate={new Date("2023-01-15T12:00:00Z")} config={defaultConfig} />);
+    expect(screen.getByText("There are no events for the next 7 days.")).toBeInTheDocument();
+  });
 });
