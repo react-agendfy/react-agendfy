@@ -61,6 +61,7 @@ import { findOverlapConflicts, satisfiesConstraint, validateChange } from './Uti
 import { ExternalDraggable, type ExternalDraggableProps } from './Components/ExternalDraggable';
 import { useCalendarView, type CalendarViewApi, type SchedulePatch } from './hooks/useCalendarView';
 import { useDropZone, useEventDraggable, type DropZoneTarget } from './hooks/useViewDrag';
+import { eventResourceIds } from './Utils/resources';
 import { InteractionProvider as AgendfyDndProvider } from './context/InteractionContext';
 import { ToastProvider } from "./Components/Toast/Toast"; 
 import CalendarComponent from "./View/Calendar";
@@ -90,6 +91,7 @@ export {
   useCalendarView,
   useEventDraggable,
   useDropZone,
+  eventResourceIds,
 };
 export type {
   CalendarApi,

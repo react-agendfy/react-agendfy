@@ -13,7 +13,7 @@ import type { ChangeContext, MiddlewarePlugin } from "../types/plugins";
 import { ensureDate } from "./DateTrannforms";
 import { getBusinessHoursIntervalsForDate } from "./businessHours";
 import { resolveValidRange } from "./calendarRange";
-import { defaultResource } from "./calendarHelpers";
+import { eventResourceIds } from "./resources";
 
 /*
  * Validation step of the change pipeline (RFC 001, layer 1). Pure and
@@ -37,21 +37,9 @@ export const eventSpan = (event: EventProps): { start: number; end: number } => 
   return { start, end: isNaN(end) || end < start ? start : end };
 };
 
-/**
- * Resource ids of an event: `resourceIds`, `resourceId` and the legacy
- * `resources` objects (the resource filter's source), minus the placeholder
- * `normalizeEvents` adds to events without resources.
- */
 const resourceKeys = (event: EventProps): Set<string> | null => {
-  const ids = new Set<string>();
-  event.resourceIds?.forEach((id) => ids.add(String(id)));
-  if (event.resourceId !== undefined && event.resourceId !== null) ids.add(String(event.resourceId));
-  if (Array.isArray(event.resources)) {
-    for (const r of event.resources as { id?: string | number }[]) {
-      if (r && r !== defaultResource && r.id !== undefined) ids.add(String(r.id));
-    }
-  }
-  return ids.size ? ids : null;
+  const ids = eventResourceIds(event);
+  return ids.length ? new Set(ids) : null;
 };
 
 /** Events with resources on both sides only meet when they share one. */

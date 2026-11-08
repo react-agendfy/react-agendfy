@@ -258,7 +258,7 @@ export default function Sidebar(props: SidebarProps) {
               <li key={item.id}>
                 <ExternalDraggable
                   id={item.id}
-                  event={{ title: item.title, color: categoryColor(item.category), category: item.category }}
+                  event={{ title: item.title, color: categoryColor(item.category), category: item.category, resourceIds: [] }}
                   duration={item.minutes}
                   startTime="09:00"
                   data={item}

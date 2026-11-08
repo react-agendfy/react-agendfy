@@ -31,6 +31,7 @@ import {
 import { getLocale } from "../Utils/locate";
 import { formatMessage, getMessages, getTextDirection } from "../i18n";
 import { normalizeEvents } from "../Utils/calendarHelpers";
+import { toPublicEvent } from "../Utils/resources";
 import { getFilteredEventsList, updateEventsList } from "../Utils/CalendarUtils";
 import { downloadBlob } from "../Utils/pluginUtils";
 import { useToast } from "../Components/Toast/Toast";
@@ -441,8 +442,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
 
   /* --- derived event pipeline -------------------------------------------- */
   const normalizedEvents = useMemo(
-    () => normalizeEvents(mergedEvents),
-    [mergedEvents]
+    // resourceIds/resourceId resolved against the `resources` prop (icons,
+    // tooltips, resource filter).
+    () => normalizeEvents(mergedEvents, resources),
+    [mergedEvents, resources]
   );
 
   const filteredEvents = useMemo(
@@ -497,12 +500,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   const [, bumpHistory] = useReducer((n: number) => n + 1, 0);
 
   /** The event as it is now: a stored event, else a rendered occurrence. */
-  const findCurrent = useCallback(
-    (id: EventProps["id"]) =>
-      eventsRef.current.find((e) => e.id === id) ??
-      visibleEventsRef.current.find((e) => e.id === id),
-    []
-  );
+  const findCurrent = useCallback((id: EventProps["id"]) => {
+    const found = eventsRef.current.find((e) => e.id === id) ?? visibleEventsRef.current.find((e) => e.id === id);
+    return found && toPublicEvent(found);
+  }, []);
 
   const eventsInRange = useCallback(
     (start: Date, end: Date) => {
@@ -544,8 +545,9 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       // A received event is new: added, and removed again on revert. It is
       // not recorded (undoing it would need a remove callback).
       const isReceive = change.kind === "receive";
-      const event = change.event;
-      const before = change.before;
+      // The host gets its own shape back: no resources the calendar derived.
+      const event = toPublicEvent(change.event);
+      const before = change.before && toPublicEvent(change.before);
       dispatch({ type: isReceive ? "ADD_EVENT" : "UPDATE_EVENT", payload: event });
       const entryId =
         change.kind !== "receive" && change.source === "user" && before && !unchanged
@@ -780,6 +782,11 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ]
   );
 
+  const publicEventClick = useMemo(
+    () => (onEventClick ? (event: EventProps) => onEventClick(toPublicEvent(event)) : undefined),
+    [onEventClick]
+  );
+
   const gotoDate = useCallback(
     (date: Date | string) =>
       setCurrentDate(clampToValidRange(date instanceof Date ? date : new Date(date), dayRules.validRange)),
@@ -994,7 +1001,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     themePlugins,
     isDataSourceLoading,
     dataSourceError,
-    onEventClick,
+    onEventClick: publicEventClick,
     onDayClick,
     onSlotClick,
     visibleRange,

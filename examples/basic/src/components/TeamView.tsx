@@ -1,11 +1,11 @@
 import React from "react";
 import {
+  eventResourceIds,
   useCalendarView,
   useDropZone,
   useEventDraggable,
   type CalendarPlugin,
   type EventProps,
-  type Resource,
 } from "@react-agendfy/core";
 import { addDaysKey, dayKey, fromZoned } from "../lib/time";
 
@@ -18,12 +18,6 @@ import { addDaysKey, dayKey, fromZoned } from "../lib/time";
 
 const SLOT_MINUTES = 30;
 const SLOT_PX = 24;
-
-const resourceIdsOf = (event: EventProps): string[] => {
-  if (event.resourceIds?.length) return event.resourceIds.map(String);
-  if (event.resourceId !== undefined && event.resourceId !== null) return [String(event.resourceId)];
-  return (event.resources ?? []).map((r: Resource) => String(r.id)).filter((id: string) => id !== "default");
-};
 
 const hm = (minutes: number) =>
   `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
@@ -106,7 +100,7 @@ function TeamView() {
               />
             ))}
             {cal.events
-              .filter((e) => resourceIdsOf(e).includes(String(r.id)))
+              .filter((e) => eventResourceIds(e).includes(String(r.id)))
               .map((e) => {
                 const box = placed(e);
                 return box ? <TeamEvent key={e.id} event={e} {...box} /> : null;

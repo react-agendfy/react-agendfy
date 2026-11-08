@@ -3,7 +3,7 @@ import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent
 import { TZDate } from "@date-fns/tz";
 import { addDays } from "date-fns";
 import type { Config, EventProps, Resource } from "../types/types";
-import { defaultResource } from "../Utils/calendarHelpers";
+import { usesLegacyResources } from "../Utils/resources";
 import { ViewDndScope, type DragSnapshot, type DropResolution, type ViewDragOptions } from "../context/InteractionContext";
 import { useDropVerdict } from "../hooks/useDropVerdict";
 import type { DropZoneTarget } from "../hooks/useViewDrag";
@@ -42,8 +42,7 @@ const assignResources = (event: EventProps, ids: (string | number)[], all: Resou
     const { resourceId: _single, ...rest } = event;
     next = { ...rest, resourceIds: [...ids] } as EventProps;
   }
-  const legacy = Array.isArray(event.resources) && event.resources.some((r: unknown) => r && r !== defaultResource);
-  if (legacy) next.resources = ids.map((id) => all.find((r) => String(r.id) === String(id)) ?? { id });
+  if (usesLegacyResources(event)) next.resources = ids.map((id) => all.find((r) => String(r.id) === String(id)) ?? { id });
   return next;
 };
 

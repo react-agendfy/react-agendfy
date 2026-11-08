@@ -43,7 +43,8 @@ const aiAdapter = devBrowserKey
 /* -------------------------------------------------------------------------- */
 /* Persistence (per-visitor conveniences only)                                 */
 /* -------------------------------------------------------------------------- */
-const EVENTS_KEY = "agendfy-demo-events-v2";
+// v3: events use resourceIds (the library's resource model).
+const EVENTS_KEY = "agendfy-demo-events-v3";
 const OPTIONS_KEY = "agendfy-demo-options-v2";
 const THEME_KEY = "agendfy-demo-theme";
 
@@ -179,7 +180,7 @@ export default function App() {
       events.filter(
         (e) =>
           !hiddenCategories.has(e.category) &&
-          (activeResources.length === 0 || (e.resources ?? []).some((r: any) => activeResources.includes(String(r.id))))
+          (activeResources.length === 0 || (e.resourceIds ?? []).some((id: string) => activeResources.includes(id)))
       ),
     [events, hiddenCategories, activeResources]
   );
@@ -187,7 +188,7 @@ export default function App() {
   /* --- create / edit --------------------------------------------------------- */
   const openNew = useCallback(
     (start: Date | string, end: Date | string, allDay = false) =>
-      setDraft({ start, end, allDay, category: "meeting", resources: [] }),
+      setDraft({ start, end, allDay, category: "meeting", resourceIds: [] }),
     []
   );
   const newAtNextHour = () => {
@@ -266,25 +267,12 @@ export default function App() {
         notify("Recurring events move as a series: open it to edit");
         return Promise.reject(new Error("recurring"));
       }
-      // A move between resources (Team view) sets resourceId/resourceIds, and
-      // undo hands back the original `resources`; the demo stores objects.
-      const movedTo: (string | number)[] | null =
-        ev.resourceIds ??
-        (ev.resourceId !== undefined
-          ? [ev.resourceId]
-          : Array.isArray(ev.resources)
-            ? ev.resources.map((r: { id: string | number }) => r.id).filter((id: string | number) => id !== "default")
-            : null);
+      // The calendar hands back the event in our own shape: times, and
+      // resourceIds when it moved to another resource (Team view).
       editEvents((prev) =>
         prev.map((e) =>
           e.id === ev.id
-            ? {
-                ...e,
-                start: ev.start,
-                end: ev.end,
-                allDay: ev.allDay ?? e.allDay,
-                ...(movedTo && { resources: resources.filter((r) => movedTo.map(String).includes(r.id)) }),
-              }
+            ? { ...e, start: ev.start, end: ev.end, allDay: ev.allDay ?? e.allDay, resourceIds: ev.resourceIds ?? e.resourceIds }
             : e
         )
       );
@@ -321,12 +309,8 @@ export default function App() {
   const onEventReceive = useCallback(
     (event: any, data?: unknown) => {
       const item = data as PendingItem;
-      // Dropped on a Team view column: that resource.
-      const ids = event.resourceIds ?? (event.resourceId !== undefined ? [event.resourceId] : []);
-      editEvents((prev) => [
-        ...prev,
-        { ...event, id: newId(), resources: resources.filter((r) => ids.map(String).includes(r.id)) },
-      ]);
+      // Dropped on a Team view column, `event.resourceIds` is that resource.
+      editEvents((prev) => [...prev, { ...event, id: newId() }]);
       setPending((list) => list.filter((p) => p.id !== item.id));
       notify(`Scheduled “${item.title}”`);
     },

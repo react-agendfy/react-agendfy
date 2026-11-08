@@ -1,33 +1,12 @@
 import { EventProps } from "../types/types";
+import { eventResourceIds } from "./resources";
 
-export const defaultResource = {
-    id: "default",
-    name: "Geral",
-  };
+// The resource model lives in ./resources; re-exported for older imports.
+export { defaultResource, normalizeEvents } from "./resources";
 
-  export function normalizeEvents(events: EventProps[]): EventProps[] {
-    return events.map((event) => {
-      if (!event.resources || event.resources.length === 0) {
-        return { ...event, resources: [defaultResource] };
-      }
-      return event;
-    });
-  }
-
-  export function filterEvents(
-    events: EventProps[],
-    localFilteredResources: (string | number)[]
-  ): EventProps[] {
-    return events.filter((event) => {
-      if (!event.resources) {
-        return localFilteredResources.length === 0;
-      }
-      return (
-        localFilteredResources.length === 0 ||
-        event.resources.some((resource: { id: string | number }) =>
-          localFilteredResources.includes(resource.id)
-        )
-      );
-    });
-  }
-  
+/** Events on any of `localFilteredResources` (all events when the filter is empty). */
+export function filterEvents(events: EventProps[], localFilteredResources: (string | number)[]): EventProps[] {
+  if (localFilteredResources.length === 0) return events;
+  const wanted = new Set(localFilteredResources.map(String));
+  return events.filter((event) => eventResourceIds(event).some((id) => wanted.has(id)));
+}

@@ -14,7 +14,7 @@ export interface EventDraft {
   category?: CategoryId;
   location?: string;
   attendees?: string[];
-  resources?: { id: string; name: string }[];
+  resourceIds?: string[];
   notes?: string;
   recurrence?: string;
   /** Opened from an occurrence of a recurring series. */
@@ -70,7 +70,7 @@ export default function EventModal({ draft, timeZone, onClose, onSave, onDelete 
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      resources: resources.filter((r) => form.resources.includes(r.id)),
+      resourceIds: form.resourceIds,
       notes: form.notes.trim() || undefined,
     };
     if (isSeries) {
@@ -232,12 +232,12 @@ export default function EventModal({ draft, timeZone, onClose, onSave, onDelete 
                   type="button"
                   key={r.id}
                   className="chip"
-                  aria-pressed={form.resources.includes(r.id)}
+                  aria-pressed={form.resourceIds.includes(r.id)}
                   onClick={() =>
                     set({
-                      resources: form.resources.includes(r.id)
-                        ? form.resources.filter((x) => x !== r.id)
-                        : [...form.resources, r.id],
+                      resourceIds: form.resourceIds.includes(r.id)
+                        ? form.resourceIds.filter((x) => x !== r.id)
+                        : [...form.resourceIds, r.id],
                     })
                   }
                 >
@@ -295,7 +295,7 @@ function toForm(draft: EventDraft | null, timeZone: string) {
       endTime: "",
       location: "",
       attendees: "",
-      resources: [] as string[],
+      resourceIds: [] as string[],
       notes: "",
     };
   }
@@ -312,7 +312,7 @@ function toForm(draft: EventDraft | null, timeZone: string) {
     endTime: e.time,
     location: draft.location ?? "",
     attendees: (draft.attendees ?? []).join(", "),
-    resources: (draft.resources ?? []).map((r) => String(r.id)),
+    resourceIds: (draft.resourceIds ?? []).map(String),
     notes: draft.notes ?? "",
   };
 }

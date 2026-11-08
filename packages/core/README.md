@@ -143,8 +143,15 @@ interface Resource {
 ```
 
 Assign a resource with `resourceId` (or several with `resourceIds`) on the
-event. The `filteredResources` prop and the resource-filter plugin narrow the
-visible events by resource.
+event; the names and icons shown on events and tooltips come from the
+`resources` prop. The `filteredResources` prop and the resource-filter plugin
+narrow the visible events by resource, and the overlap rules compare
+resources. `eventResourceIds(event)` returns an event's resource ids (useful
+in custom views).
+
+Events that carry resource *objects* in `event.resources` still work, but
+`resourceId`/`resourceIds` is the model: callbacks hand your events back in
+the shape you gave them.
 
 ## Views
 
@@ -280,8 +287,8 @@ const teamView: CalendarPlugin = {
 
 `useDropZone(id, { date, allDay?, resourceIds? })`: with `allDay` the
 event becomes all-day (external items use their `startTime`). A move
-between resources updates the field the event already uses: `resourceId`,
-`resourceIds`, or legacy `resources` objects. Drags start after 5px, so a
+between resources updates the field the event already uses (`resourceId`
+or `resourceIds`). Drags start after 5px, so a
 plain click stays a click. The demo's Team view
 (`examples/basic/src/components/TeamView.tsx`) is a complete example.
 

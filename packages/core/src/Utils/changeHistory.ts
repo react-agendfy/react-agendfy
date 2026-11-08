@@ -1,5 +1,5 @@
 import type { EventProps } from "../types/types";
-import { defaultResource } from "./calendarHelpers";
+import { eventResourceIds } from "./resources";
 
 /*
  * Undo/redo stacks of the change pipeline (RFC 001, layer 1). An entry keeps
@@ -39,18 +39,13 @@ const sameValue = (a: unknown, b: unknown): boolean => {
 };
 
 /** True when `a` and `b` agree on every field a move/resize can change. */
-/** Real resource objects: the placeholder normalizeEvents adds means "none". */
-const realResources = (value: unknown) =>
-  Array.isArray(value) ? value.filter((r) => r && r !== defaultResource) : [];
-
 export const sameSchedule = (a: EventProps, b: EventProps): boolean =>
-  HISTORY_FIELDS.every((field) =>
-    field === "allDay"
-      ? !!a.allDay === !!b.allDay
-      : field === "resources"
-        ? sameValue(realResources(a.resources), realResources(b.resources))
-        : sameValue(a[field], b[field])
-  );
+  sameValue(a.start, b.start) &&
+  sameValue(a.end, b.end) &&
+  !!a.allDay === !!b.allDay &&
+  // Resources by id, whichever field holds them (resourceIds, resourceId,
+  // legacy resources objects).
+  sameValue(eventResourceIds(a), eventResourceIds(b));
 
 /** `target` with the schedule fields of `source` (absent fields are removed). */
 export const withSchedule = (target: EventProps, source: EventProps): EventProps => {
