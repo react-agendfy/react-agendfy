@@ -1,6 +1,7 @@
-import type { Config, EventProps, RecurrenceInput } from "@react-agendfy/core";
+import type { Config, EventConstraintRule, EventProps, RecurrenceInput } from "@react-agendfy/core";
 import type {
   BusinessHoursInput,
+  ConstraintInput,
   DateInput,
   DurationInput,
   EventInput,
@@ -134,6 +135,36 @@ const toBusinessHours = (input: FullCalendarProps["businessHours"]): Config["bus
 const toDateValue = (value?: DateInput): string | Date | undefined =>
   value === undefined ? undefined : typeof value === "number" ? new Date(value) : value;
 
+/**
+ * FullCalendar constraint → agendfy rule. A groupId cannot be expressed in
+ * the core: it comes back as `groupId` and is enforced by the compat's own
+ * middleware plugin.
+ */
+export const toConstraint = (
+  input?: ConstraintInput
+): { rule?: EventConstraintRule; groupId?: string } => {
+  if (input === undefined || input === null) return {};
+  if (input === "businessHours") return { rule: "businessHours" };
+  if (typeof input === "string") return { groupId: input };
+  if (!Array.isArray(input) && ("start" in input || "end" in input)) {
+    const range = input as { start?: DateInput; end?: DateInput };
+    return {
+      rule: {
+        ...(range.start !== undefined && { start: toDateValue(range.start) }),
+        ...(range.end !== undefined && { end: toDateValue(range.end) }),
+      },
+    };
+  }
+  const list = (Array.isArray(input) ? input : [input]) as BusinessHoursInput[];
+  return {
+    rule: list.map((b) => ({
+      daysOfWeek: b.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6],
+      startTime: durationToClock(b.startTime) ?? "00:00",
+      endTime: durationToClock(b.endTime) ?? "24:00",
+    })),
+  };
+};
+
 /** FullCalendar options → agendfy config. Only keys that were given are set. */
 export const toAgendfyConfig = (props: FullCalendarProps, view: AgendfyView): Partial<Config> => {
   const config: Partial<Config> = {
@@ -181,6 +212,10 @@ export const toAgendfyConfig = (props: FullCalendarProps, view: AgendfyView): Pa
   set("eventStartEditable", props.eventStartEditable);
   set("eventDurationEditable", props.eventDurationEditable);
   set("selectable", props.selectable ?? false);
+  // Function forms of eventOverlap/eventAllow/selectAllow are wired by the
+  // component (they need EventApi objects).
+  if (typeof props.eventOverlap === "boolean") set("eventOverlap", props.eventOverlap);
+  set("eventConstraint", toConstraint(props.eventConstraint).rule);
   set("headerViews", headerViewsFrom(props.headerToolbar));
   if (props.headerToolbar === false) set("showHeader", false);
   return config;
@@ -194,6 +229,7 @@ const STANDARD_KEYS = new Set([
   "id", "groupId", "title", "start", "end", "allDay", "duration", "rrule", "exdate",
   "color", "backgroundColor", "borderColor", "textColor", "url", "display", "editable",
   "extendedProps", "startTime", "endTime", "daysOfWeek", "startRecur", "endRecur",
+  "overlap", "constraint",
 ]);
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -254,6 +290,12 @@ export const toAgendfyEvent = (input: EventInput, sourceColor?: string): EventPr
       editable: input.editable,
     },
   };
+  if (typeof input.overlap === "boolean") event.overlap = input.overlap;
+  if (input.constraint !== undefined) {
+    const { rule, groupId } = toConstraint(input.constraint as ConstraintInput);
+    if (rule) event.constraint = rule;
+    if (groupId) event.fc.constraintGroupId = groupId;
+  }
   if (rrule) {
     if (typeof rrule === "object") {
       const { dtstart: _dtstart, ...rest } = rrule as unknown as Record<string, unknown>;

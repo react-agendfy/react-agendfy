@@ -44,6 +44,10 @@ export interface EventInput {
   url?: string;
   display?: string;
   editable?: boolean;
+  /** Overrides `eventOverlap` for this event. */
+  overlap?: boolean;
+  /** Overrides `eventConstraint` for this event. */
+  constraint?: ConstraintInput;
   extendedProps?: Record<string, unknown>;
   /** Any other key becomes an extendedProp (FullCalendar behaviour). */
   [key: string]: unknown;
@@ -215,6 +219,29 @@ export interface BusinessHoursInput {
   endTime?: string;
 }
 
+/**
+ * `eventConstraint` / event `constraint`: "businessHours", a groupId, a date
+ * range, or business-hours-like objects.
+ */
+export type ConstraintInput =
+  | "businessHours"
+  | string
+  | { start?: DateInput; end?: DateInput }
+  | BusinessHoursInput
+  | BusinessHoursInput[];
+
+/** First argument of `eventAllow` (FullCalendar's DateSpan). */
+export interface DropInfo {
+  start: Date;
+  end: Date;
+  startStr: string;
+  endStr: string;
+  allDay: boolean;
+}
+
+/** Argument of `selectAllow`. */
+export type SelectInfo = DropInfo;
+
 export interface ToolbarInput {
   left?: string;
   center?: string;
@@ -280,6 +307,16 @@ export interface FullCalendarProps {
   eventDurationEditable?: boolean;
   selectable?: boolean;
   selectMirror?: boolean;
+  /** `false` forbids overlaps; a function decides per pair. */
+  eventOverlap?: boolean | ((stillEvent: EventApi, movingEvent: EventApi | null) => boolean);
+  /** Where events may be dropped. */
+  eventConstraint?: ConstraintInput;
+  /** Last word on a drop or resize. */
+  eventAllow?: (dropInfo: DropInfo, draggedEvent: EventApi | null) => boolean;
+  /** Whether a selection is allowed. */
+  selectAllow?: (selectInfo: SelectInfo) => boolean;
+  /** `false` forbids selections over events; a function decides per event. */
+  selectOverlap?: boolean | ((event: EventApi) => boolean);
   /** "light" | "dark" — agendfy theme (not in FullCalendar). */
   themeSystem?: string;
 
@@ -325,14 +362,12 @@ export interface IgnoredFullCalendarOptions {
   droppable?: unknown;
   drop?: unknown;
   eventAdd?: unknown;
-  eventAllow?: unknown;
   eventChange?: unknown;
   eventDidMount?: unknown;
   eventDisplay?: unknown;
   eventMouseEnter?: unknown;
   eventMouseLeave?: unknown;
   eventOrder?: unknown;
-  eventOverlap?: unknown;
   eventReceive?: unknown;
   eventRemove?: unknown;
   eventWillUnmount?: unknown;
@@ -345,8 +380,6 @@ export interface IgnoredFullCalendarOptions {
   navLinks?: unknown;
   progressiveEventRendering?: unknown;
   scrollTime?: unknown;
-  selectAllow?: unknown;
-  selectOverlap?: unknown;
   stickyHeaderDates?: unknown;
   titleFormat?: unknown;
   unselect?: unknown;

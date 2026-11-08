@@ -42,7 +42,11 @@ on, even where react-agendfy itself defaults differently.
 | `editable`, `eventStartEditable`, `eventDurationEditable`, `selectable` | ✅ | Per-event `editable` is not supported. |
 | `selectMirror` | ⛔ | The selection is always highlighted. |
 | `height`, `contentHeight` | ✅ | `"auto"`, a number or any CSS length. `aspectRatio` is ignored. |
-| `eventOverlap`, `selectOverlap`, `eventAllow`, `selectAllow` | ⛔ | Validate in `eventDrop`/`select` and call `info.revert()`. |
+| `eventOverlap` | 🟡 | `false` or a function `(stillEvent, movingEvent)` that gets `EventApi`s. A refused drop never fires `eventDrop`. Difference: when both events carry resources (`resourceId`/`resourceIds`), events on different resources never overlap, even outside resource views. |
+| `eventConstraint` | ✅ | `"businessHours"` (uses `businessHours`; no constraint when `businessHours` is off), a groupId, a `{ start, end }` range, or business-hours-like objects (`{ startTime, endTime, daysOfWeek }` or a list). |
+| `eventAllow` | 🟡 | Gets `(dropInfo, draggedEvent)`. `dropInfo` has `start`, `end`, `startStr`, `endStr` and `allDay`, but no `resource`. |
+| `selectAllow` | ✅ | Gets `{ start, end, startStr, endStr, allDay }`, with the same exclusive all-day end as `select`. |
+| `selectOverlap` | ✅ | `false`, or a function that gets each `EventApi` under the selection. |
 | `eventClassNames`, `dayCellClassNames` | ✅ | A string, a list, or a function. Event arg: `event`, `view`, `isPast`, `isFuture`. Day arg: `date`, `view`, `isToday`, `isPast`, `isFuture`, `isOther`, `isDisabled`. |
 | `navLinks`, `stickyHeaderDates`, `expandRows`, `eventDisplay`, `droppable`, `dayCellDidMount`, `eventDidMount`, `customButtons`, `views` | ⛔ | Accepted, no effect. |
 
@@ -55,6 +59,7 @@ on, even where react-agendfy itself defaults differently.
 | `id`, `title`, `start`, `end`, `allDay`, `color`/`backgroundColor` | ✅ | `"YYYY-MM-DD"` means all-day. A missing `end` defaults to +1h, or +1 day for all-day events. |
 | `extendedProps`, plus unknown keys moved into it | ✅ | |
 | `rrule` (string or object), `exdate`, `duration` | ✅ | Built in. Occurrences keep the series `id`. |
+| `overlap`, `constraint` | ✅ | Override `eventOverlap` / `eventConstraint` for one event. Same forms as the options. |
 | `groupId`, `url`, `display`, `textColor`, `borderColor` | 🟡 | Exposed on `EventApi`, but not used for rendering. `display: "background"` is not supported. |
 | `startTime`/`endTime`/`daysOfWeek` (simple recurrence) | ⛔ | Use `rrule`. |
 
