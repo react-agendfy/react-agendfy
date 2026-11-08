@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Calendar, expandRecurrences } from "@react-agendfy/core";
+import { Calendar, eventResourceIds, expandRecurrences } from "@react-agendfy/core";
 import type {
   CalendarApi as AgendfyApi,
   CalendarPlugin,
@@ -21,7 +21,7 @@ import type {
   EventProps,
 } from "@react-agendfy/core";
 import { createEventApi, formatIsoInZone } from "./eventApi";
-import { toAgendfyConfig, toAgendfyEvents, toAgendfyView, toConstraint, toFcView } from "./convert";
+import { toAgendfyConfig, toAgendfyEvents, toAgendfyResources, toAgendfyView, toConstraint, toFcView } from "./convert";
 import type {
   CalendarApi,
   ClassNamesGenerator,
@@ -32,6 +32,7 @@ import type {
   EventSourceInput,
   FullCalendarComponentProps,
   FullCalendarProps,
+  ResourceApi,
   ViewApi,
 } from "./types";
 
@@ -79,6 +80,7 @@ const OPTION_KEYS = [
   "slotLabelFormat", "eventTimeFormat", "allDaySlot", "nowIndicator", "weekNumbers",
   "weekNumberCalculation", "dayMaxEvents", "fixedWeekCount", "editable", "eventStartEditable",
   "eventDurationEditable", "selectable", "eventOverlap", "eventConstraint", "selectOverlap",
+  "datesAboveResources",
 ] as const;
 
 const spanOf = (event: EventProps) => ({
@@ -277,6 +279,21 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
   const eventsRef = useRef(currentEvents);
   eventsRef.current = currentEvents;
 
+  /* --- resources ----------------------------------------------------------- */
+  const resources = useMemo(() => toAgendfyResources(props.resources), [props.resources]);
+  const resourceApi = (id: string): ResourceApi => {
+    const find = (list: typeof resources): (typeof resources)[number] | undefined => {
+      for (const r of list) {
+        if (String(r.id) === id) return r;
+        const child = r.children && find(r.children);
+        if (child) return child;
+      }
+      return undefined;
+    };
+    const r = find(resources);
+    return { id, title: String(r?.title ?? id), extendedProps: (r?.extendedProps as Record<string, unknown>) ?? {} };
+  };
+
   /* --- callbacks ----------------------------------------------------------- */
   const api = useCallback((event: EventProps) => createEventApi(event, timeZone), [timeZone]);
 
@@ -311,7 +328,18 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
       const event = api(changed);
       const key = String(before.id);
       const previousChange = changesRef.current.get(key);
-      changesRef.current.set(key, { ...before, start: changed.start, end: changed.end });
+      changesRef.current.set(key, {
+        ...before,
+        start: changed.start,
+        end: changed.end,
+        resourceId: changed.resourceId,
+        resourceIds: changed.resourceIds,
+      });
+      // Resource views: the resource left and the one reached, when they changed.
+      const was = eventResourceIds(before);
+      const now = eventResourceIds(changed);
+      const left = was.find((id) => !now.includes(id));
+      const reached = now.find((id) => !was.includes(id));
       const common = {
         event,
         oldEvent,
@@ -326,7 +354,12 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
         view: viewRef.current,
       };
       if (kind === "drop") {
-        props.eventDrop?.({ ...common, delta: deltaOf(oldEvent.start, event.start) });
+        props.eventDrop?.({
+          ...common,
+          delta: deltaOf(oldEvent.start, event.start),
+          oldResource: left !== undefined ? resourceApi(left) : null,
+          newResource: reached !== undefined ? resourceApi(reached) : null,
+        });
       } else {
         props.eventResize?.({
           ...common,
@@ -345,11 +378,12 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
     props.select?.({ ...selectInfoOf(selection as DateRangeSelection), jsEvent: null, view: viewRef.current });
   };
 
-  const dateClick = (date: Date, allDay: boolean) =>
+  const dateClick = (date: Date, allDay: boolean, resourceId?: string | number) =>
     props.dateClick?.({
       date,
       dateStr: formatIsoInZone(date, timeZone, allDay),
       allDay,
+      ...(resourceId !== undefined && { resource: resourceApi(String(resourceId)) }),
       dayEl: null,
       jsEvent: null,
       view: viewRef.current,
@@ -479,6 +513,7 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
     <div className="fc-compat" style={style}>
       <Calendar
         events={events}
+        resources={resources}
         config={config}
         theme={theme}
         currentDate={initialDate}
@@ -487,7 +522,7 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
         onEventClick={(event) =>
           props.eventClick?.({ event: api(event), el: null, jsEvent: null, view: viewRef.current })
         }
-        onSlotClick={props.dateClick ? (date) => dateClick(date, false) : undefined}
+        onSlotClick={props.dateClick ? (date, info) => dateClick(date, false, info?.resourceId) : undefined}
         onDayClick={props.dateClick ? (date) => dateClick(date, true) : undefined}
         onDateRangeSelect={props.selectable ? handleSelect : undefined}
         onEventUpdate={canMove ? changeHandler("drop") : undefined}

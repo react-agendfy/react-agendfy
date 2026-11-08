@@ -53,6 +53,25 @@ export interface EventInput {
   [key: string]: unknown;
 }
 
+/** FullCalendar premium ResourceInput (array form). */
+export interface ResourceInput {
+  id: string | number;
+  title?: string;
+  children?: ResourceInput[];
+  /** The resource's own business hours. */
+  businessHours?: BusinessHoursInput | BusinessHoursInput[];
+  extendedProps?: Record<string, unknown>;
+  /** Any other key becomes an extendedProp. */
+  [key: string]: unknown;
+}
+
+/** Read-only ResourceApi. */
+export interface ResourceApi {
+  id: string;
+  title: string;
+  extendedProps: Record<string, unknown>;
+}
+
 export interface FetchInfo {
   start: Date;
   end: Date;
@@ -117,6 +136,8 @@ export interface DateClickArg {
   date: Date;
   dateStr: string;
   allDay: boolean;
+  /** Resource views: the column's resource. */
+  resource?: ResourceApi;
   dayEl: HTMLElement | null;
   jsEvent: MouseEvent | null;
   view: ViewApi;
@@ -143,6 +164,10 @@ export interface EventDropArg {
   event: EventApi;
   oldEvent: EventApi;
   delta: Delta;
+  /** Resource views: the resource the event was dropped on, when it changed. */
+  newResource?: ResourceApi | null;
+  /** …and the one it left. */
+  oldResource?: ResourceApi | null;
   revert: () => void;
   relatedEvents: EventApi[];
   el: HTMLElement | null;
@@ -322,6 +347,10 @@ export interface FullCalendarProps {
 
   events?: EventSourceInput;
   eventSources?: EventSourceInput[];
+  /** Resources (array form) for resourceTimeGridDay/Week. */
+  resources?: ResourceInput[];
+  /** resourceTimeGridWeek: dates above resources. */
+  datesAboveResources?: boolean;
 
   eventClick?: (arg: EventClickArg) => void;
   dateClick?: (arg: DateClickArg) => void;

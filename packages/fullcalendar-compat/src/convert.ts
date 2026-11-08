@@ -1,6 +1,8 @@
 import type { Config, EventConstraintRule, EventProps, RecurrenceInput } from "@react-agendfy/core";
+import type { Resource, WeeklyInterval } from "@react-agendfy/core";
 import type {
   BusinessHoursInput,
+  ResourceInput,
   ConstraintInput,
   DateInput,
   DurationInput,
@@ -26,6 +28,8 @@ const VIEW_MAP: Record<string, AgendfyView> = {
   listWeek: { view: "list", listRange: "week" },
   listMonth: { view: "list", listRange: "month" },
   listYear: { view: "list", listRange: "month" },
+  resourceTimeGridDay: { view: "resourceDay" },
+  resourceTimeGridWeek: { view: "resourceWeek" },
 };
 
 /** FullCalendar view name → agendfy view (+ list span). Unknown names pass through. */
@@ -41,6 +45,10 @@ export const toFcView = (view: string, listRange: "day" | "week" | "month" = "we
       return "timeGridWeek";
     case "day":
       return "timeGridDay";
+    case "resourceDay":
+      return "resourceTimeGridDay";
+    case "resourceWeek":
+      return "resourceTimeGridWeek";
     case "list":
       return listRange === "day" ? "listDay" : listRange === "month" ? "listMonth" : "listWeek";
     default:
@@ -165,6 +173,30 @@ export const toConstraint = (
   };
 };
 
+const toWeeklyIntervals = (input: BusinessHoursInput | BusinessHoursInput[]): WeeklyInterval[] =>
+  (Array.isArray(input) ? input : [input]).map((b) => ({
+    daysOfWeek: b.daysOfWeek ?? [1, 2, 3, 4, 5],
+    startTime: durationToClock(b.startTime) ?? "09:00",
+    endTime: durationToClock(b.endTime) ?? "17:00",
+  }));
+
+const RESOURCE_KEYS = new Set(["id", "title", "children", "businessHours", "extendedProps"]);
+
+/** FullCalendar ResourceInput[] → agendfy resources (other keys go to extendedProps). */
+export const toAgendfyResources = (inputs: ResourceInput[] = []): Resource[] =>
+  inputs.map((input) => {
+    const extendedProps: Record<string, unknown> = { ...(input.extendedProps ?? {}) };
+    for (const [key, value] of Object.entries(input)) if (!RESOURCE_KEYS.has(key)) extendedProps[key] = value;
+    return {
+      ...extendedProps,
+      id: input.id,
+      title: input.title ?? String(input.id),
+      extendedProps,
+      ...(input.children?.length && { children: toAgendfyResources(input.children) }),
+      ...(input.businessHours && { businessHours: toWeeklyIntervals(input.businessHours) }),
+    };
+  });
+
 /** FullCalendar options → agendfy config. Only keys that were given are set. */
 export const toAgendfyConfig = (props: FullCalendarProps, view: AgendfyView): Partial<Config> => {
   const config: Partial<Config> = {
@@ -191,8 +223,8 @@ export const toAgendfyConfig = (props: FullCalendarProps, view: AgendfyView): Pa
       ...(props.validRange.end !== undefined && { end: toDateValue(props.validRange.end) }),
     });
   }
-  const slot = durationToMinutes(props.slotDuration);
-  if (slot) set("slotDuration", slot);
+  // FullCalendar's default slot is 30 minutes (agendfy's is 15).
+  set("slotDuration", durationToMinutes(props.slotDuration) || 30);
   const label = durationToMinutes(props.slotLabelInterval);
   if (label) set("slotLabelInterval", label);
   set("slotMin", durationToClock(props.slotMinTime));
@@ -212,6 +244,7 @@ export const toAgendfyConfig = (props: FullCalendarProps, view: AgendfyView): Pa
   set("eventStartEditable", props.eventStartEditable);
   set("eventDurationEditable", props.eventDurationEditable);
   set("selectable", props.selectable ?? false);
+  set("datesAboveResources", props.datesAboveResources);
   // Function forms of eventOverlap/eventAllow/selectAllow are wired by the
   // component (they need EventApi objects).
   if (typeof props.eventOverlap === "boolean") set("eventOverlap", props.eventOverlap);
