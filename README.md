@@ -228,7 +228,7 @@ examples/basic       Working example app (Vite)
 
 Issues and pull requests are welcome at
 [github.com/react-agendfy/react-agendfy](https://github.com/react-agendfy/react-agendfy).
-Run `yarn install`, then `yarn test` / `yarn lint` inside the package you are
+Run `pnpm install`, then `pnpm test` / `pnpm lint` inside the package you are
 changing. The example app in `examples/basic` is the fastest way to try changes
 end to end.
 

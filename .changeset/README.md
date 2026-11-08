@@ -1,19 +1,20 @@
 # Changesets
 
 This folder is managed by [changesets](https://github.com/changesets/changesets).
-Run `yarn changeset` to record a change, `yarn version` (→ `changeset version`) to
-apply pending changesets and bump versions, and `yarn release` (→ `changeset publish`)
-to publish.
+The repo uses pnpm.
 
-> First-time setup (offline install pending): run `yarn add -D @changesets/cli`.
-> The `changeset` / `version` / `release` scripts are already wired in the root
-> `package.json`, but the CLI dependency still needs to be installed.
+- `pnpm changeset` records a change.
+- `pnpm changeset version` applies the pending changesets and bumps the versions.
+- To publish:
+  1. `pnpm -r publish --access public`. It publishes every package whose
+     version isn't on npm yet, and rewrites `workspace:` ranges to real versions.
+  2. `pnpm changeset tag`, then `git push --follow-tags`.
 
 ## Versioning policy — single source of truth
 
 Every publishable workspace owns its own version field in its `package.json`, and
 that field is the **single source of truth**. Changesets is the only tool allowed to
-mutate those fields (via `yarn version`); do not hand-edit versions.
+mutate those fields (via `pnpm changeset version`); do not hand-edit versions.
 
 - `access: public` — all `@react-agendfy/*` packages publish publicly.
 - `fixed` / `linked` are intentionally empty: packages version independently for now
