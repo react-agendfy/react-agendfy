@@ -86,6 +86,13 @@ import {
  * Note: 'pt' is European Portuguese (date-fns `pt`); Brazilian Portuguese is
  * 'pt-BR' / 'ptBR' (date-fns `ptBR`).
  */
+/**
+ * European Portuguese weeks start on Monday, as they always did here.
+ * date-fns 4.4 switched its `pt` locale to Sunday (CLDR); keep Monday so a
+ * dependency update doesn't move every Portuguese calendar.
+ */
+const ptPT: Locale = { ...pt, options: { ...pt.options, weekStartsOn: 1 } };
+
 const localeMap: Record<string, Locale> = {
   af,
   ar,
@@ -147,8 +154,8 @@ const localeMap: Record<string, Locale> = {
   nl,
   nn,
   pl,
-  pt,
-  ptPT: pt,
+  pt: ptPT,
+  ptPT,
   ptBR,
   ro,
   ru,
