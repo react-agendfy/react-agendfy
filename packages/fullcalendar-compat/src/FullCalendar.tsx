@@ -7,10 +7,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Calendar } from "@react-agendfy/core";
+import { Calendar, eventResourceIds, expandRecurrences } from "@react-agendfy/core";
 import type {
   CalendarApi as AgendfyApi,
+  CalendarPlugin,
+  Config,
   DateRangeSelection,
+  EventChange,
   DatesSetInfo,
   DayCellClassNamesArg as AgendfyDayCellArg,
   EventClassNamesArg as AgendfyEventClassArg,
@@ -18,16 +21,18 @@ import type {
   EventProps,
 } from "@react-agendfy/core";
 import { createEventApi, formatIsoInZone } from "./eventApi";
-import { toAgendfyConfig, toAgendfyEvents, toAgendfyView, toFcView } from "./convert";
+import { toAgendfyConfig, toAgendfyEvents, toAgendfyResources, toAgendfyView, toConstraint, toFcView } from "./convert";
 import type {
   CalendarApi,
   ClassNamesGenerator,
   DateInput,
+  DropInfo,
   EventInput,
   EventSourceFunc,
   EventSourceInput,
   FullCalendarComponentProps,
   FullCalendarProps,
+  ResourceApi,
   ViewApi,
 } from "./types";
 
@@ -74,8 +79,14 @@ const OPTION_KEYS = [
   "validRange", "businessHours", "slotDuration", "slotLabelInterval", "slotMinTime", "slotMaxTime",
   "slotLabelFormat", "eventTimeFormat", "allDaySlot", "nowIndicator", "weekNumbers",
   "weekNumberCalculation", "dayMaxEvents", "fixedWeekCount", "editable", "eventStartEditable",
-  "eventDurationEditable", "selectable",
+  "eventDurationEditable", "selectable", "eventOverlap", "eventConstraint", "selectOverlap",
+  "datesAboveResources",
 ] as const;
+
+const spanOf = (event: EventProps) => ({
+  start: new Date(event.start).getTime(),
+  end: new Date(event.end).getTime(),
+});
 
 export interface FullCalendarHandle {
   getApi(): CalendarApi;
@@ -89,13 +100,88 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
   const [listRange, setListRange] = useState(initialView.listRange ?? "week");
   const [initialDate] = useState(() => (props.initialDate !== undefined ? toDate(props.initialDate) : undefined));
 
-  const optionsKey = JSON.stringify(OPTION_KEYS.map((k) => (props as FullCalendarProps)[k]));
-  const config = useMemo(
-    () => ({ ...toAgendfyConfig(props, initialView), listRange }),
+  // Callbacks are read through a ref so a new function identity on every
+  // render does not rebuild the config; only their presence does.
+  const propsRef = useRef(props);
+  propsRef.current = props;
+  const zoneRef = useRef("UTC");
+  const optionsKey = JSON.stringify([
+    ...OPTION_KEYS.map((k) => (props as FullCalendarProps)[k]),
+    typeof props.eventOverlap,
+    typeof props.selectOverlap,
+    !!props.eventAllow,
+    !!props.selectAllow,
+  ]);
+  const config = useMemo(() => {
+    const base: Partial<Config> = { ...toAgendfyConfig(props, initialView), listRange };
+    const zone = base.timeZone as string;
+    const toApi = (event: EventProps) => createEventApi(event, zone);
+    if (typeof props.eventOverlap === "function") {
+      base.eventOverlap = (still, moving) =>
+        (propsRef.current.eventOverlap as (s: unknown, m: unknown) => boolean)(toApi(still), toApi(moving));
+    }
+    if (props.eventAllow) {
+      base.eventAllow = (change: EventChange) =>
+        propsRef.current.eventAllow?.(dropInfoOf(change.event, zone), toApi(change.before ?? change.event)) !== false;
+    }
+    if (props.selectAllow || (props.selectOverlap !== undefined && props.selectOverlap !== true)) {
+      base.selectAllow = (selection) => selectionAllowed(selection);
+    }
+    return base;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [optionsKey, listRange]
-  );
+  }, [optionsKey, listRange]);
   const timeZone = config.timeZone as string;
+  zoneRef.current = timeZone;
+
+  /* --- rules: eventAllow / selectAllow / selectOverlap / group constraints --- */
+  // Called by the config's wrappers during a drag or selection (never while
+  // rendering); they read the latest view, events and props through refs.
+  const dropInfoOf = (event: EventProps, zone: string): DropInfo => {
+    const start = new Date(event.start);
+    const end = new Date(event.end);
+    const allDay = !!event.allDay;
+    return {
+      start,
+      end,
+      startStr: formatIsoInZone(start, zone, allDay),
+      endStr: formatIsoInZone(end, zone, allDay),
+      allDay,
+    };
+  };
+  const selectInfoOf = (selection: DateRangeSelection): DropInfo => {
+    const zone = zoneRef.current;
+    const start = new Date(selection.start);
+    let end = new Date(selection.end);
+    // agendfy's month selection ends on the last day; FullCalendar's end is exclusive.
+    const allDay = end.getTime() <= start.getTime() || viewRef.current.type === "dayGridMonth";
+    if (allDay) end = new Date(end.getTime() + DAY);
+    return {
+      start,
+      end,
+      startStr: formatIsoInZone(start, zone, allDay),
+      endStr: formatIsoInZone(end, zone, allDay),
+      allDay,
+    };
+  };
+  const selectionAllowed = (selection: DateRangeSelection): boolean => {
+    if (!selection || !("isMultiDay" in selection)) return true;
+    const info = selectInfoOf(selection);
+    const { selectOverlap, selectAllow } = propsRef.current;
+    if (selectOverlap !== undefined && selectOverlap !== true) {
+      const from = info.start.getTime();
+      const to = info.end.getTime();
+      const hits = expandRecurrences(eventsRef.current(), info.start, info.end, zoneRef.current).filter((e) => {
+        const span = spanOf(e);
+        return span.start < to && from < span.end;
+      });
+      const blocked =
+        selectOverlap === false
+          ? hits.length > 0
+          : hits.some((e) => selectOverlap(createEventApi(e, zoneRef.current)) === false);
+      if (blocked) return false;
+    }
+    return selectAllow ? selectAllow(info) !== false : true;
+  };
 
   /* --- view state (for ViewApi) ----------------------------------------- */
   const [range, setRange] = useState<DatesSetInfo | null>(null);
@@ -193,6 +279,21 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
   const eventsRef = useRef(currentEvents);
   eventsRef.current = currentEvents;
 
+  /* --- resources ----------------------------------------------------------- */
+  const resources = useMemo(() => toAgendfyResources(props.resources), [props.resources]);
+  const resourceApi = (id: string): ResourceApi => {
+    const find = (list: typeof resources): (typeof resources)[number] | undefined => {
+      for (const r of list) {
+        if (String(r.id) === id) return r;
+        const child = r.children && find(r.children);
+        if (child) return child;
+      }
+      return undefined;
+    };
+    const r = find(resources);
+    return { id, title: String(r?.title ?? id), extendedProps: (r?.extendedProps as Record<string, unknown>) ?? {} };
+  };
+
   /* --- callbacks ----------------------------------------------------------- */
   const api = useCallback((event: EventProps) => createEventApi(event, timeZone), [timeZone]);
 
@@ -227,7 +328,18 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
       const event = api(changed);
       const key = String(before.id);
       const previousChange = changesRef.current.get(key);
-      changesRef.current.set(key, { ...before, start: changed.start, end: changed.end });
+      changesRef.current.set(key, {
+        ...before,
+        start: changed.start,
+        end: changed.end,
+        resourceId: changed.resourceId,
+        resourceIds: changed.resourceIds,
+      });
+      // Resource views: the resource left and the one reached, when they changed.
+      const was = eventResourceIds(before);
+      const now = eventResourceIds(changed);
+      const left = was.find((id) => !now.includes(id));
+      const reached = now.find((id) => !was.includes(id));
       const common = {
         event,
         oldEvent,
@@ -242,7 +354,12 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
         view: viewRef.current,
       };
       if (kind === "drop") {
-        props.eventDrop?.({ ...common, delta: deltaOf(oldEvent.start, event.start) });
+        props.eventDrop?.({
+          ...common,
+          delta: deltaOf(oldEvent.start, event.start),
+          oldResource: left !== undefined ? resourceApi(left) : null,
+          newResource: reached !== undefined ? resourceApi(reached) : null,
+        });
       } else {
         props.eventResize?.({
           ...common,
@@ -258,27 +375,15 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
 
   const handleSelect = (selection: EventProps | DateRangeSelection) => {
     if (!("isMultiDay" in selection)) return;
-    const start = new Date(selection.start);
-    let end = new Date(selection.end);
-    // agendfy's month selection ends on the last day; FullCalendar's end is exclusive.
-    const allDay = end.getTime() <= start.getTime() || viewRef.current.type === "dayGridMonth";
-    if (allDay) end = new Date(end.getTime() + DAY);
-    props.select?.({
-      start,
-      end,
-      startStr: formatIsoInZone(start, timeZone, allDay),
-      endStr: formatIsoInZone(end, timeZone, allDay),
-      allDay,
-      jsEvent: null,
-      view: viewRef.current,
-    });
+    props.select?.({ ...selectInfoOf(selection as DateRangeSelection), jsEvent: null, view: viewRef.current });
   };
 
-  const dateClick = (date: Date, allDay: boolean) =>
+  const dateClick = (date: Date, allDay: boolean, resourceId?: string | number) =>
     props.dateClick?.({
       date,
       dateStr: formatIsoInZone(date, timeZone, allDay),
       allDay,
+      ...(resourceId !== undefined && { resource: resourceApi(String(resourceId)) }),
       dayEl: null,
       jsEvent: null,
       view: viewRef.current,
@@ -373,6 +478,30 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
     [api]
   );
 
+  /* --- eventConstraint by groupId (not expressible in the core) ------------- */
+  const globalGroup = toConstraint(props.eventConstraint).groupId;
+  const groupRef = useRef(globalGroup);
+  groupRef.current = globalGroup;
+  const plugins = useMemo<CalendarPlugin[] | undefined>(() => {
+    const groupConstraint: CalendarPlugin = {
+      key: "fc-compat-group-constraint",
+      type: "middleware",
+      validate: (change, { eventsInRange }) => {
+        const moving = change.event;
+        const group = (moving.fc?.constraintGroupId as string | undefined) ?? groupRef.current;
+        if (!group) return true;
+        const span = spanOf(moving);
+        const inside = eventsInRange(new Date(span.start), new Date(span.end)).some((e) => {
+          if (e.id === moving.id || e.fc?.groupId !== group) return false;
+          const host = spanOf(e);
+          return host.start <= span.start && span.end <= host.end;
+        });
+        return inside || { ok: false, reason: "constraint" };
+      },
+    };
+    return [...(props.agendfyPlugins ?? []), groupConstraint];
+  }, [props.agendfyPlugins]);
+
   const height = props.height ?? props.contentHeight;
   const style: React.CSSProperties | undefined =
     height !== undefined && height !== "auto"
@@ -384,6 +513,7 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
     <div className="fc-compat" style={style}>
       <Calendar
         events={events}
+        resources={resources}
         config={config}
         theme={theme}
         currentDate={initialDate}
@@ -392,7 +522,7 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
         onEventClick={(event) =>
           props.eventClick?.({ event: api(event), el: null, jsEvent: null, view: viewRef.current })
         }
-        onSlotClick={props.dateClick ? (date) => dateClick(date, false) : undefined}
+        onSlotClick={props.dateClick ? (date, info) => dateClick(date, false, info?.resourceId) : undefined}
         onDayClick={props.dateClick ? (date) => dateClick(date, true) : undefined}
         onDateRangeSelect={props.selectable ? handleSelect : undefined}
         onEventUpdate={canMove ? changeHandler("drop") : undefined}
@@ -400,7 +530,7 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
         eventContent={eventContent}
         eventClassNames={eventClassNames}
         dayCellClassNames={dayCellClassNames}
-        plugins={props.agendfyPlugins}
+        plugins={plugins}
       />
     </div>
   );

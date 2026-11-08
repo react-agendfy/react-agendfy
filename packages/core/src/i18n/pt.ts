@@ -6,6 +6,8 @@ const pt: CalendarMessages = {
   monthView: "Mês",
   weekView: "Semana",
   dayView: "Dia",
+  resourceDayView: "Recursos (dia)",
+  resourceWeekView: "Recursos (semana)",
   listView: "Lista",
   agenda: "Agenda",
   all_day: "Todo o dia",

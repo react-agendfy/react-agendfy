@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { Config, EventProps } from './types';
+import { ChangeVerdict, Config, EventChange, EventProps, Resource, Weekday } from './types';
 
 export interface EventLike extends EventProps {
   [k: string]: any;
@@ -15,7 +15,7 @@ export type PluginLocation =
 
 export type PluginType =
   | 'filter' | 'search' | 'data-source' | 'view' | 'event-rendering'
-  | 'interaction' | 'theme' | 'export' | 'custom-filter' | 'ui';
+  | 'interaction' | 'theme' | 'export' | 'custom-filter' | 'ui' | 'middleware';
 
 export interface BaseCalendarPlugin {
   key: string;
@@ -31,11 +31,56 @@ export interface BaseCalendarPlugin {
   deactivate?: () => void | Promise<void>;
 }
 
+/** Passed to `ViewPlugin.range`. */
+export interface ViewRangeContext {
+  weekStartsOn: Weekday;
+  timeZone: string;
+  config: Config;
+}
+
 export interface ViewPlugin extends BaseCalendarPlugin {
   type: 'view';
   viewName: string;
   component: FC<any>;
+  /** Button label: a string, or `{ key }` translated with `messages`/config. */
+  label?: string | { key: string };
+  /**
+   * Texts of the view, per language: `{ en: { timeline: "Timeline" }, pt: {…} }`.
+   * Read with `useCalendarView().t(key)`; a key set in `config` wins, and
+   * the lookup falls back to the base language, then English.
+   */
+  messages?: Record<string, Record<string, string>>;
   props?: { label?: string; [key: string]: any };
+  /**
+   * The dates the view shows for `date`, as [start, end) (end exclusive).
+   * Drives recurrence expansion, data-source fetches, `onDatesSet`,
+   * `getView()` and the `validRange` check of prev/next. The component
+   * receives it as the `range` prop. Without it the view is treated as a week.
+   */
+  range?: (date: Date, ctx: ViewRangeContext) => { start: Date; end: Date };
+  /** How far prev/next move. Default one week. */
+  step?: { unit: 'day' | 'week' | 'month'; amount?: number };
+}
+
+/** Passed to `MiddlewarePlugin.validate`. */
+export interface ChangeContext {
+  config: Config;
+  /** The calendar's resources (their own `businessHours` apply to their events). */
+  resources?: Resource[];
+  /** Every event (unfiltered, recurrences expanded) overlapping [start, end). */
+  eventsInRange: (start: Date, end: Date) => EventProps[];
+}
+
+/**
+ * Sees every move/resize: `validate` can refuse it (return `false` or a
+ * rejection with a reason), `onCommit`/`onRevert` observe accepted changes
+ * and changes reverted by a rejected callback promise.
+ */
+export interface MiddlewarePlugin extends BaseCalendarPlugin {
+  type: 'middleware';
+  validate?: (change: EventChange, ctx: ChangeContext) => ChangeVerdict | boolean;
+  onCommit?: (change: EventChange) => void;
+  onRevert?: (change: EventChange) => void;
 }
 
 export interface HeaderControlPlugin extends BaseCalendarPlugin {
@@ -94,4 +139,5 @@ export interface UIPlugin extends BaseCalendarPlugin {
 
 export type CalendarPlugin =
   | ViewPlugin | HeaderControlPlugin | DataSourcePlugin | EventRenderingPlugin
-  | InteractionPlugin | ThemePlugin | ExportPlugin | CustomFilterPlugin | UIPlugin;
+  | InteractionPlugin | ThemePlugin | ExportPlugin | CustomFilterPlugin | UIPlugin
+  | MiddlewarePlugin;

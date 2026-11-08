@@ -13,7 +13,7 @@ import { EventProps } from "../types/types";
 configure({ asyncUtilTimeout: 5000 });
 
 beforeAll(() => {
-  // react-window (list view) measures rows with ResizeObserver; jsdom lacks it.
+  // Views measure their viewport with ResizeObserver; jsdom lacks it.
   (global as any).ResizeObserver ??= class {
     observe() {}
     unobserve() {}

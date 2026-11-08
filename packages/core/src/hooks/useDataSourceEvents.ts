@@ -7,7 +7,9 @@ import { formatMessage } from "../i18n";
 const useDataSourceEvents = (
   dataSourcePlugins: DataSourcePlugin[],
   localeConfig: Partial<Config>,
-  currentDate: Date
+  currentDate: Date,
+  /** A custom view's own range; replaces the ±1 step window around the date. */
+  range?: { start: Date; end: Date }
 ) => {
   const [dataSourceEvents, setDataSourceEvents] = useState<EventProps[]>([]);
   const [isDataSourceLoading, setIsDataSourceLoading] = useState(false);
@@ -43,11 +45,17 @@ const useDataSourceEvents = (
   // Bumped by refetch() (CalendarApi.refetchEvents) to re-run the fetch.
   const [reloadToken, setReloadToken] = useState(0);
   const refetch = useCallback(() => setReloadToken((t) => t + 1), []);
+  const rangeStartMs = range ? range.start.getTime() : null;
+  const rangeEndMs = range ? range.end.getTime() : null;
   useEffect(() => {
+    if (rangeStartMs !== null && rangeEndMs !== null) {
+      fetchEventsFromDataSources(new Date(rangeStartMs), new Date(rangeEndMs));
+      return;
+    }
     const startDate = getNewDate(currentDate, activeView, -1);
     const endDate = getNewDate(currentDate, activeView, 1);
     fetchEventsFromDataSources(startDate, endDate);
-  }, [currentDate, activeView, fetchEventsFromDataSources, reloadToken]);
+  }, [currentDate, activeView, fetchEventsFromDataSources, reloadToken, rangeStartMs, rangeEndMs]);
 
   return { dataSourceEvents, isDataSourceLoading, dataSourceError, refetch };
 };

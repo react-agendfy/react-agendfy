@@ -1,6 +1,6 @@
 // usePluginManagement.ts
 import { useMemo } from "react";
-import { CalendarPlugin, ViewPlugin, HeaderControlPlugin, DataSourcePlugin, EventRenderingPlugin, InteractionPlugin, ThemePlugin, ExportPlugin, CustomFilterPlugin } from '../types/plugins';
+import { CalendarPlugin, ViewPlugin, HeaderControlPlugin, DataSourcePlugin, EventRenderingPlugin, InteractionPlugin, ThemePlugin, ExportPlugin, CustomFilterPlugin, MiddlewarePlugin } from '../types/plugins';
 
 const usePluginManagement = (plugins: CalendarPlugin[]) => {
   const categorizedPlugins = useMemo(() => {
@@ -13,6 +13,7 @@ const usePluginManagement = (plugins: CalendarPlugin[]) => {
     const themePlugins: ThemePlugin[] = [];
     const exportPlugins: ExportPlugin[] = [];
     const customFilterPlugins: CustomFilterPlugin[] = [];
+    const middlewarePlugins: MiddlewarePlugin[] = [];
 
     (plugins || []).forEach(plugin => {
       switch (plugin.type) {
@@ -43,12 +44,15 @@ const usePluginManagement = (plugins: CalendarPlugin[]) => {
         case 'custom-filter':
           customFilterPlugins.push(plugin as CustomFilterPlugin);
           break;
+        case 'middleware':
+          middlewarePlugins.push(plugin as MiddlewarePlugin);
+          break;
         default:
           // console.warn(`Unknown plugin type: ${(plugin as any).type}`);
       }
     });
 
-    return { filterPlugins, searchPlugins, dataSourcePlugins, customViewPlugins, eventRenderingPlugins, interactionPlugins, themePlugins, exportPlugins, customFilterPlugins };
+    return { filterPlugins, searchPlugins, dataSourcePlugins, customViewPlugins, eventRenderingPlugins, interactionPlugins, themePlugins, exportPlugins, customFilterPlugins, middlewarePlugins };
   }, [plugins]);
 
   return categorizedPlugins;

@@ -6,12 +6,14 @@ import { CalendarProvider } from "../context/CalendarContext";
 import useCalendarState from "../hooks/useCalendarState";
 import { EventContentProvider } from "../context/EventContentContext";
 import { ClassNamesProvider } from "../context/ClassNamesContext";
+import { InteractionProvider } from "../context/InteractionContext";
+import { CustomViewDnd } from "../Components/CustomViewDnd";
 
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
 const DayView = lazy(() => import("./DayView/DayView"));
-const AgendaView = lazy(() => import("./AgendaView"));
 const ListView = lazy(() => import("./ListView/ListView"));
+const ResourceTimeGrid = lazy(() => import("./ResourceTimeGrid/ResourceTimeGrid"));
 
 /**
  * Presentational layer. All state, derived data and handlers come from the
@@ -41,6 +43,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
     onSlotClick,
     handleEventUpdate,
     handleEventResize,
+    handleEventReceive,
     handleDateRangeSelect,
     handleViewChange,
     handleExport,
@@ -50,6 +53,9 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
     eventContent,
     eventClassNames,
     dayCellClassNames,
+    visibleRange,
+    undo,
+    redo,
   } = useCalendarState();
 
   const { currentDate, currentView } = state;
@@ -103,10 +109,39 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
   const onResize = (localeConfig.eventDurationEditable ?? editable) ? handleEventResize : undefined;
   const onSelect = localeConfig.selectable !== false ? handleDateRangeSelect : undefined;
 
+  // Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z and Ctrl+Y redo — not while typing.
+  const undoShortcuts = localeConfig.undoShortcuts !== false;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!undoShortcuts || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const target = e.target as HTMLElement;
+      if (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || (key === "y" && !e.metaKey)) {
+        e.preventDefault();
+        redo();
+      }
+    },
+    [undoShortcuts, undo, redo]
+  );
+
   const renderViewComponent = () => {
     const CustomViewComponent = customViews[currentView];
     if (CustomViewComponent) {
+      // Custom views get drag & drop through useEventDraggable/useDropZone
+      // and the rest of the calendar through useCalendarView(); the props
+      // below are kept for views written before that API.
       return (
+        <CustomViewDnd
+          config={localeConfig}
+          resources={resources}
+          onEventUpdate={onMove}
+          onEventReceive={handleEventReceive}
+          onEventClick={onEventClick}
+        >
         <CustomViewComponent
           events={visibleEvents}
           currentDate={currentDate}
@@ -118,10 +153,26 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           onSlotClick={onSlotClick}
           resources={resources}
           filteredResources={state.localFilteredResources}
+          range={visibleRange}
         />
+        </CustomViewDnd>
       );
     }
     switch (currentView) {
+      case "resourceDay":
+      case "resourceWeek":
+        // Built on the same SDK as custom views (useCalendarView, drop zones).
+        return (
+          <CustomViewDnd
+            config={localeConfig}
+            resources={resources}
+            onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
+            onEventClick={onEventClick}
+          >
+            <ResourceTimeGrid span={currentView === "resourceDay" ? "day" : "week"} />
+          </CustomViewDnd>
+        );
       case "week":
         return (
           <WeekView
@@ -129,6 +180,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
             slotMin={localeConfig.slotMin}
             slotMax={localeConfig.slotMax}
             onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
             onEventResize={onResize}
             onEventClick={onEventClick}
             onDayClick={onDayClick}
@@ -146,6 +198,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
             onDayClick={onDayClick}
             currentDate={currentDate}
             onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
             onEventResize={onResize}
             showResourceView={true}
             config={localeConfig}
@@ -159,6 +212,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
             events={visibleEvents}
             currentDate={currentDate}
             onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
             onSlotClick={onSlotClick}
             config={localeConfig}
             onEventClick={onEventClick}
@@ -175,8 +229,10 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           />
         );
       case "agenda":
+        // The list view over the next 7 days.
         return (
-          <AgendaView
+          <ListView
+            variant="agenda"
             events={visibleEvents}
             onEventClick={onEventClick}
             currentDate={currentDate}
@@ -194,6 +250,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
       dir={direction}
       className={`agendfy react-agendfy-layout theme-${theme}${className ? ` ${className}` : ""}`}
       data-view={currentView}
+      onKeyDown={handleKeyDown}
     >
       <div className="visually-hidden" aria-live="polite" aria-atomic="true">
         {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(
@@ -221,6 +278,8 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
       <div className="react-agendfy-layout-content">
         <ClassNamesProvider eventClassNames={eventClassNames} dayCellClassNames={dayCellClassNames}>
         <EventContentProvider eventContent={eventContent} plugins={eventRenderingPlugins}>
+          {/* One DndContext for every view (RFC 001, layer 2). */}
+          <InteractionProvider>
           {/* Views are lazy chunks: the boundary keeps SSR (renderToString)
               and the first client render from throwing while they load. */}
           <Suspense
@@ -232,6 +291,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           >
             {renderViewComponent()}
           </Suspense>
+          </InteractionProvider>
         </EventContentProvider>
         </ClassNamesProvider>
       </div>

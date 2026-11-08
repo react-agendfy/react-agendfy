@@ -8,6 +8,7 @@ import { EventItem } from "./EventItem";
 import { TZDate } from "@date-fns/tz";
 import { computePositionedEvents, layoutPositionStyle } from "../../../Utils/positionedEventsHelper";
 import { formatSlotLabel, showsSlotLabel } from "../../../Utils/displayOptions";
+import { slotOffsetTop } from "../../../Utils/slotHeight";
 
 export const TimeSlot: React.FC<TimeSlotProps> = ({
   index,
@@ -19,6 +20,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   parsedSlotMax,
   config,
   isBusinessHour = false,
+  isNonBusiness = false,
   isDraggable = true,
   isDisabled = false,
   dayLayout,
@@ -32,13 +34,23 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
     }
   }, [onSlotClick, slotTime, config?.timeZone, isDisabled]);
 
+  // A start between slot lines sits that far down the slot (slotOffsetTop).
   const positionedEvents: EventProps[] = useMemo(() => {
-    if (!dayLayout) return computePositionedEvents(slotEvents, config, true, { marginLeft: "0px" });
+    if (!dayLayout) {
+      return computePositionedEvents(slotEvents, config, true, { marginLeft: "0px" }).map((event) => ({
+        ...event,
+        positionStyle: { ...event.positionStyle, top: slotOffsetTop(event, slotTime, config) },
+      }));
+    }
     return (slotEvents || []).map((event) => ({
       ...event,
-      positionStyle: { top: "0", marginLeft: "0px", ...layoutPositionStyle(dayLayout.get(String(event.id))) },
+      positionStyle: {
+        top: slotOffsetTop(event, slotTime, config),
+        marginLeft: "0px",
+        ...layoutPositionStyle(dayLayout.get(String(event.id))),
+      },
     }));
-  }, [slotEvents, config, dayLayout]);
+  }, [slotEvents, config, dayLayout, slotTime]);
 
   return (
     <div
@@ -48,6 +60,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
       aria-disabled={isDisabled || undefined}
     >
       {isBusinessHour && <div className="react-agendfy-business-hours" style={{ inset: 0 }} />}
+      {isNonBusiness && <div className="react-agendfy-non-business" style={{ inset: 0 }} />}
       <span className="react-agendfy-timeslot-label">
         {showsSlotLabel(index * (config?.slotDuration || 30), config)
           ? formatSlotLabel(new TZDate(slotTime, config?.timeZone), config)

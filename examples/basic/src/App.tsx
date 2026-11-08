@@ -1,13 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, type CalendarApi, type CalendarPlugin, type DatesSetInfo } from "@react-agendfy/core";
+import {
+  AgendfyDndProvider,
+  Calendar,
+  type CalendarApi,
+  type CalendarPlugin,
+  type ChangeRejectedInfo,
+  type DatesSetInfo,
+} from "@react-agendfy/core";
 import exportsPlugin from "@react-agendfy/plugin-export-reports";
 import { createQuickAddPlugin, go4aiAdapter, httpAdapter } from "@react-agendfy/ai";
 import { ArrowRightLeft, BookOpen, Github, Menu, Moon, Package, RotateCcw, Sparkles, Sun } from "lucide-react";
 import ErrorBoundary from "./components/ErrorBoundary";
-import Sidebar, { type DemoOptions } from "./components/Sidebar";
+import Sidebar, { type DemoOptions, type PendingItem } from "./components/Sidebar";
 import EventModal, { type EventDraft } from "./components/EventModal";
 import AIDrawer from "./components/AIDrawer";
 import { renderEventContent } from "./components/EventContent";
+import { teamViewPlugin } from "./components/TeamView";
 import { categoryColor, createDemoEvents, resources, type CategoryId } from "./demoEvents";
 import { accentPresets } from "./themes";
 import { addDaysKey, dayKey, fromZoned, zonedParts } from "./lib/time";
@@ -35,7 +43,8 @@ const aiAdapter = devBrowserKey
 /* -------------------------------------------------------------------------- */
 /* Persistence (per-visitor conveniences only)                                 */
 /* -------------------------------------------------------------------------- */
-const EVENTS_KEY = "agendfy-demo-events-v2";
+// v3: events use resourceIds (the library's resource model).
+const EVENTS_KEY = "agendfy-demo-events-v3";
 const OPTIONS_KEY = "agendfy-demo-options-v2";
 const THEME_KEY = "agendfy-demo-theme";
 
@@ -158,8 +167,11 @@ export default function App() {
       },
       alerts: { enabled: false, thresholdMinutes: 2 },
       export: true,
+      // Scheduling rules: refused moves never reach onEventUpdate.
+      eventOverlap: options.noOverlap ? false : undefined,
+      eventConstraint: options.businessOnly ? ("businessHours" as const) : undefined,
     }),
-    [tz, options.lang, options.weekStart, options.weekends, options.weekNumbers, options.hour12]
+    [tz, options.lang, options.weekStart, options.weekends, options.weekNumbers, options.hour12, options.noOverlap, options.businessOnly]
   );
 
   /* --- filtering (categories + resources) ---------------------------------- */
@@ -168,15 +180,15 @@ export default function App() {
       events.filter(
         (e) =>
           !hiddenCategories.has(e.category) &&
-          (activeResources.length === 0 || (e.resources ?? []).some((r: any) => activeResources.includes(String(r.id))))
+          (activeResources.length === 0 || (e.resourceIds ?? []).some((id: string) => activeResources.includes(id)))
       ),
     [events, hiddenCategories, activeResources]
   );
 
   /* --- create / edit --------------------------------------------------------- */
   const openNew = useCallback(
-    (start: Date | string, end: Date | string, allDay = false) =>
-      setDraft({ start, end, allDay, category: "meeting", resources: [] }),
+    (start: Date | string, end: Date | string, allDay = false, resourceIds: string[] = []) =>
+      setDraft({ start, end, allDay, category: "meeting", resourceIds }),
     []
   );
   const newAtNextHour = () => {
@@ -204,7 +216,12 @@ export default function App() {
     },
     [tz, openNew]
   );
-  const onSlotClick = useCallback((slot: Date) => openNew(slot, new Date(slot.getTime() + 3600000)), [openNew]);
+  // In the resource views the slot belongs to a resource: the new event gets it.
+  const onSlotClick = useCallback(
+    (slot: Date, info?: { resourceId?: string | number }) =>
+      openNew(slot, new Date(slot.getTime() + 3600000), false, info?.resourceId !== undefined ? [String(info.resourceId)] : []),
+    [openNew]
+  );
   const onSelect = useCallback(
     (sel: any) => {
       const s = new Date(sel.start);
@@ -222,8 +239,27 @@ export default function App() {
     [range?.view, tz, openNew]
   );
 
+  // One wording for refusals, from a drag or from the event form.
+  const refusal = (reason: string, conflicts?: { title?: string }[]) =>
+    reason === "overlap"
+      ? `Overlaps “${conflicts?.[0]?.title ?? "another event"}”`
+      : reason === "constraint"
+        ? "Outside business hours"
+        : "Not allowed";
+
   const saveEvent = useCallback(
     (ev: any) => {
+      // The form goes through the same rules as a drag (api.validate).
+      if (!ev.__seriesPatch) {
+        const before = ev.id ? events.find((e) => e.id === ev.id) : undefined;
+        const verdict = apiRef.current?.validate(
+          before ? { kind: "move", event: ev, before } : { kind: "receive", event: { ...ev, id: ev.id ?? "new" } }
+        );
+        if (verdict && verdict !== true) {
+          notify(`${refusal(verdict.reason, verdict.conflicts)}: not saved`);
+          return;
+        }
+      }
       if (ev.__seriesPatch) {
         const { __seriesPatch, id, ...patch } = ev;
         editEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
@@ -237,7 +273,9 @@ export default function App() {
       }
       setDraft(null);
     },
-    [editEvents, notify]
+    // `refusal` is a pure helper defined in this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editEvents, notify, events]
   );
   const deleteEvent = useCallback(
     (id: string) => {
@@ -255,9 +293,46 @@ export default function App() {
         notify("Recurring events move as a series: open it to edit");
         return Promise.reject(new Error("recurring"));
       }
+      // The calendar hands back the event in our own shape: times, and
+      // resourceIds when it moved to another resource (Team view).
       editEvents((prev) =>
-        prev.map((e) => (e.id === ev.id ? { ...e, start: ev.start, end: ev.end, allDay: ev.allDay ?? e.allDay } : e))
+        prev.map((e) =>
+          e.id === ev.id
+            ? { ...e, start: ev.start, end: ev.end, allDay: ev.allDay ?? e.allDay, resourceIds: ev.resourceIds ?? e.resourceIds }
+            : e
+        )
       );
+    },
+    [editEvents, notify]
+  );
+
+  const onChangeRejected = useCallback(
+    ({ reason, conflicts }: ChangeRejectedInfo) => notify(`${refusal(reason, conflicts)}: move refused`),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [notify]
+  );
+  const undo = () => {
+    if (apiRef.current?.canUndo()) apiRef.current.undo();
+    else notify("Nothing to undo");
+  };
+  const redo = () => {
+    if (apiRef.current?.canRedo()) apiRef.current.redo();
+    else notify("Nothing to redo");
+  };
+
+  /* --- drag in from "To schedule" (ExternalDraggable) ------------------------ */
+  const [pending, setPending] = useState<PendingItem[]>([
+    { id: "p-1", title: "Follow-up — Ana", minutes: 30, category: "client" },
+    { id: "p-2", title: "Write release notes", minutes: 90, category: "focus" },
+    { id: "p-3", title: "Dentist", minutes: 60, category: "personal" },
+  ]);
+  const onEventReceive = useCallback(
+    (event: any, data?: unknown) => {
+      const item = data as PendingItem;
+      // Dropped on a Team view column, `event.resourceIds` is that resource.
+      editEvents((prev) => [...prev, { ...event, id: newId() }]);
+      setPending((list) => list.filter((p) => p.id !== item.id));
+      notify(`Scheduled “${item.title}”`);
     },
     [editEvents, notify]
   );
@@ -281,6 +356,7 @@ export default function App() {
           editEvents((prev) => [...prev, { category: "meeting", color: categoryColor("meeting"), ...event }]),
       }),
       ...(exportsPlugin as unknown as CalendarPlugin[]),
+      teamViewPlugin,
     ],
     [editEvents]
   );
@@ -303,6 +379,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      {/* One drag context for the sidebar's "To schedule" list and the calendar. */}
+      <AgendfyDndProvider>
       <div className="app" style={shellAccent as React.CSSProperties}>
         <header className="topbar">
           <button
@@ -363,6 +441,7 @@ export default function App() {
         <div className="workspace">
           {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
           <Sidebar
+            pending={pending}
             open={sidebarOpen}
             events={events}
             visibleRange={range}
@@ -395,6 +474,14 @@ export default function App() {
             <div className="main-head">
               <div>
                 <h1 style={{ textTransform: "capitalize" }}>{rangeLabel || "Calendar"}</h1>
+                <div className="history-actions">
+                  <button type="button" className="btn" onClick={undo} aria-label="Undo (Ctrl/⌘+Z)" title="Undo (Ctrl/⌘+Z)">
+                    Undo
+                  </button>
+                  <button type="button" className="btn" onClick={redo} aria-label="Redo (Ctrl/⌘+Shift+Z)" title="Redo (Ctrl/⌘+Shift+Z)">
+                    Redo
+                  </button>
+                </div>
                 <p>
                   Drag, resize, select a range, or type “lunch tomorrow 1pm” in the quick add · {visibleEvents.length}{" "}
                   events{hiddenCategories.size || activeResources.length ? " (filtered)" : ""}
@@ -422,6 +509,8 @@ export default function App() {
                 onDateRangeSelect={onSelect}
                 onEventUpdate={onEventChange}
                 onEventResize={onEventChange}
+                onChangeRejected={onChangeRejected}
+                onEventReceive={onEventReceive}
                 onDatesSet={setRange}
               />
             </section>
@@ -468,6 +557,7 @@ export default function App() {
           </div>
         )}
       </div>
+      </AgendfyDndProvider>
     </ErrorBoundary>
   );
 }

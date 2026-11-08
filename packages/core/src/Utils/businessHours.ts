@@ -43,3 +43,23 @@ export function useBusinessHours(currentDate: Date, businessHoursConfig?: Busine
     return getBusinessHoursIntervalsForDate(currentDate, businessHoursConfig);
   }, [currentDate, businessHoursConfig]);
 }
+
+/**
+ * The gaps between `ranges` inside [0, total): the time that is NOT
+ * business time, in the same unit (minutes from the grid start). Ranges may
+ * overlap or stick out of the window.
+ */
+export function complementRanges(ranges: { from: number; to: number }[], total: number): { from: number; to: number }[] {
+  const sorted = ranges
+    .map((r) => ({ from: Math.max(0, r.from), to: Math.min(total, r.to) }))
+    .filter((r) => r.to > r.from)
+    .sort((a, b) => a.from - b.from);
+  const gaps: { from: number; to: number }[] = [];
+  let cursor = 0;
+  for (const r of sorted) {
+    if (r.from > cursor) gaps.push({ from: cursor, to: r.from });
+    cursor = Math.max(cursor, r.to);
+  }
+  if (cursor < total) gaps.push({ from: cursor, to: total });
+  return gaps;
+}

@@ -9,7 +9,7 @@ import {
   addMinutes,
 } from "date-fns";
 import { WeekTimeSlot } from "./WeekTimeSlot";
-import { useBusinessHours } from "../../../Utils/businessHours";
+import { complementRanges, useBusinessHours } from "../../../Utils/businessHours";
 import { DayColumnProps, EventProps } from "../../../types/types";
 import { TZDate } from "@date-fns/tz";
 import { getLocale } from "../../../Utils/locate";
@@ -154,6 +154,25 @@ export const DayColumn = memo(
           className="react-agendfy-daycolumn-slot-container"
           style={{ minHeight: timeSlots.length * slotHeight }}
         >
+          {/* Time outside business hours is shaded (a day without any — a
+              weekend — entirely). */}
+          {config?.businessHours?.enabled &&
+            complementRanges(
+              businessIntervals.map((interval) => {
+                const gridStart = addMinutes(dayStart, startHour * 60);
+                return {
+                  from: differenceInMinutes(interval.start, gridStart),
+                  to: differenceInMinutes(interval.end, gridStart),
+                };
+              }),
+              totalMinutes
+            ).map((gap) => (
+              <div
+                key={`off-${gap.from}`}
+                className="react-agendfy-non-business"
+                style={{ top: `${gap.from * pixelsPerMinute}px`, height: `${(gap.to - gap.from) * pixelsPerMinute}px` }}
+              />
+            ))}
           {businessIntervals.map((interval, idx) => {
             // Offsets are relative to the grid's first slot (slotMin), not
             // midnight, and clipped to the rendered [slotMin, slotMax] window.

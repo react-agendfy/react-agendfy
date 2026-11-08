@@ -6,6 +6,7 @@ import {
   toAgendfyConfig,
   toAgendfyEvent,
   toAgendfyView,
+  toConstraint,
   toFcView,
   toLang,
 } from "./convert";
@@ -104,5 +105,33 @@ describe("conversions", () => {
     expect(formatIsoInZone(new Date("2026-07-01T09:00:00Z"), "Europe/Lisbon")).toBe("2026-07-01T10:00:00+01:00");
     expect(formatIsoInZone(new Date("2026-07-01T09:00:00Z"), "UTC")).toBe("2026-07-01T09:00:00Z");
     expect(formatIsoInZone(new Date("2026-07-01T23:30:00Z"), "Europe/Lisbon", true)).toBe("2026-07-02");
+  });
+
+  it("converts constraints and per-event overlap/constraint", () => {
+    expect(toConstraint("businessHours")).toEqual({ rule: "businessHours" });
+    expect(toConstraint("available")).toEqual({ groupId: "available" });
+    expect(toConstraint({ start: "2026-03-01", end: "2026-04-01" })).toEqual({
+      rule: { start: "2026-03-01", end: "2026-04-01" },
+    });
+    expect(toConstraint({ startTime: "10:00", endTime: "18:00", daysOfWeek: [1, 2] })).toEqual({
+      rule: [{ startTime: "10:00", endTime: "18:00", daysOfWeek: [1, 2] }],
+    });
+    expect(toConstraint([{ startTime: "09:00" }])).toEqual({
+      rule: [{ startTime: "09:00", endTime: "24:00", daysOfWeek: [0, 1, 2, 3, 4, 5, 6] }],
+    });
+    expect(toConstraint(undefined)).toEqual({});
+
+    const event = toAgendfyEvent({ id: "a", start: "2026-03-11T10:00:00Z", overlap: false, constraint: "available" })!;
+    expect(event.overlap).toBe(false);
+    expect(event.constraint).toBeUndefined();
+    expect(event.fc.constraintGroupId).toBe("available");
+    expect(event.extendedProps).toEqual({});
+    expect(toAgendfyEvent({ id: "b", start: "2026-03-11T10:00:00Z", constraint: "businessHours" })!.constraint).toBe(
+      "businessHours"
+    );
+
+    const config = toAgendfyConfig({ eventOverlap: false, eventConstraint: "businessHours" }, { view: "week" });
+    expect(config.eventOverlap).toBe(false);
+    expect(config.eventConstraint).toBe("businessHours");
   });
 });

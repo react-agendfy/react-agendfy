@@ -50,6 +50,13 @@ export interface GridDragSnap {
   modifier: Modifier;
   /** Snapped grid offset of the last preview position, in slots/columns. */
   result: () => { slots: number; columns: number } | null;
+  /**
+   * Keyboard drag: move by whole slots/columns. From the first call on, the
+   * drag is counted in units and pixel movement is ignored — dnd-kit's
+   * keyboard sensor mixes container scrolling into its coordinates, which
+   * made fast or scrolling key presses land a slot off.
+   */
+  step: (slots: number, columns: number) => void;
   end: () => void;
 }
 
@@ -60,6 +67,7 @@ export const createGridDragSnap = (): GridDragSnap => {
   let origins: { target: ScrollTarget; top: number; left: number }[] = [];
   let last: { slots: number; columns: number } | null = null;
   let limits: GridDragBounds = { minSlots: -Infinity, maxSlots: Infinity };
+  let keyboard: { slots: number; columns: number } | null = null;
 
   const scrollDelta = () =>
     origins.reduce(
@@ -83,15 +91,17 @@ export const createGridDragSnap = (): GridDragSnap => {
     modifier: ({ transform }) => {
       if (!active) return transform;
       const scroll = scrollDelta();
-      const slots = clamp(Math.round((transform.y + scroll.top) / slotPx), limits.minSlots, limits.maxSlots);
-      const columns =
-        columnPx > 0
-          ? clamp(
-              Math.round((transform.x + scroll.left) / columnPx),
-              limits.minColumns ?? -Infinity,
-              limits.maxColumns ?? Infinity
-            )
-          : 0;
+      const { slots, columns } = keyboard ?? {
+        slots: clamp(Math.round((transform.y + scroll.top) / slotPx), limits.minSlots, limits.maxSlots),
+        columns:
+          columnPx > 0
+            ? clamp(
+                Math.round((transform.x + scroll.left) / columnPx),
+                limits.minColumns ?? -Infinity,
+                limits.maxColumns ?? Infinity
+              )
+            : 0,
+      };
       last = { slots, columns };
       return {
         ...transform,
@@ -99,11 +109,23 @@ export const createGridDragSnap = (): GridDragSnap => {
         x: columnPx > 0 ? columns * columnPx - scroll.left : 0,
       };
     },
-    result: () => (active ? last : null),
+    result: () => (active ? keyboard ?? last : null),
+    step(slots, columns) {
+      if (!active) return;
+      const from = keyboard ?? last ?? { slots: 0, columns: 0 };
+      keyboard = {
+        slots: clamp(from.slots + slots, limits.minSlots, limits.maxSlots),
+        columns:
+          columnPx > 0
+            ? clamp(from.columns + columns, limits.minColumns ?? -Infinity, limits.maxColumns ?? Infinity)
+            : 0,
+      };
+    },
     end() {
       active = false;
       origins = [];
       last = null;
+      keyboard = null;
     },
   };
 };

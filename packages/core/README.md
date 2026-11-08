@@ -73,8 +73,11 @@ plugin types, and more — see `src/index.tsx`).
 | `onEventResize` | `(event: EventProps) => void` | Fired after an event is resized. |
 | `onEventClick` | `(event: EventProps) => void` | Fired when an event is clicked/activated. |
 | `onDayClick` | `(day: Date) => void` | Fired when a day cell is clicked (month view). |
-| `onSlotClick` | `(slotTime: Date) => void` | Fired when a time slot is clicked (week/day views). |
+| `onSlotClick` | `(slotTime: Date, info?: { resourceId }) => void` | Fired when a time slot is clicked (week/day views; resource views also pass the column's `resourceId`). |
 | `onDateRangeSelect` | `(selection: EventProps \| DateRangeSelection) => void` | Fired when the user drags across a range of days/slots. |
+| `onChangeRejected` | `(info: ChangeRejectedInfo) => void` | Fired when a move/resize is refused by a [business rule](#business-rules-and-undo); nothing is applied. |
+| `onEventReceive` | `(event, data) => void \| Promise` | An `ExternalDraggable` was dropped — see [Dragging in from outside](#dragging-in-from-outside). |
+| `apiRef` | `Ref<CalendarApi>` | Imperative API: navigation, `getView()`, `refetchEvents()`, `undo()`, `redo()`, `canUndo()`, `canRedo()`, and `validate(change)` to check an event from your own form against the [rules](#business-rules-and-undo). |
 | `currentDate` | `Date` | Declared on the type but **not currently consumed** — the calendar always starts at "now" in `config.timeZone`. |
 | `onDateChange` | `(date: Date) => void` | Declared on the type but **not currently consumed**. |
 | `eventContent` | `(arg: EventContentArg) => ReactNode` | Custom event body in every view — see [Customizing the look](#customizing-the-look). |
@@ -97,7 +100,9 @@ plugin types, and more — see `src/index.tsx`).
 | `slotMax` | `"23:59"` | Last visible time of day. |
 | `slotHeight` | `40` | Height in px of one slot in the week/day grids (see [Customizing the look](#customizing-the-look)). |
 | `lang` | `"en"` | Language tag; selects the bundled message catalog. |
-| `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — highlighted in week/day views. |
+| `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — the time outside them is shaded in the week, day and resource views (a day without any, entirely). A resource's own `businessHours` wins in its columns. |
+| `datesAboveResources` | `false` | `resourceWeek`: group columns by date, then resource (default: by resource, then date). |
+| `resourceColumnMinWidth` | `120` | Minimum width of a resource-view column, px; columns stretch to fill. |
 | `alerts` | `{ enabled: false, thresholdMinutes: 15 }` | Event reminders (toast/browser notification/email). |
 | `export` | `true` | Show the export menu (formats come from export plugins). |
 | `today`, `monthView`, `weekView`, `dayView`, `listView`, `agenda`, `all_day`, `clear_filter`, `filter_resources`, `calendar_export` | English labels | UI strings; normally supplied by the i18n catalog — set them only to override. |
@@ -140,8 +145,17 @@ interface Resource {
 ```
 
 Assign a resource with `resourceId` (or several with `resourceIds`) on the
-event. The `filteredResources` prop and the resource-filter plugin narrow the
-visible events by resource.
+event; the names and icons shown on events and tooltips come from the
+`resources` prop. A resource can have its own `businessHours` (same shape as
+the config intervals): they are shaded in its columns and
+`eventConstraint: "businessHours"` keeps its events inside them. The `filteredResources` prop and the resource-filter plugin
+narrow the visible events by resource, and the overlap rules compare
+resources. `eventResourceIds(event)` returns an event's resource ids (useful
+in custom views).
+
+Events that carry resource *objects* in `event.resources` still work, but
+`resourceId`/`resourceIds` is the model: callbacks hand your events back in
+the shape you gave them.
 
 ## Views
 
@@ -150,8 +164,10 @@ visible events by resource.
 | `month` | Month grid with multi-day spanning events, overflow badge (`+N hidden events`), drag to move, range selection. |
 | `week` | 7-day time grid with slots (`slotDuration`), drag/resize, business-hours highlight, current-time line. |
 | `day` | Single-day time grid, same interactions as week. |
-| `list` | Chronological list of events for the period. |
-| `agenda` | Upcoming events grouped by day. |
+| `list` | Events grouped by day for `listRange` (`day`, `week` or `month`). A multi-day event that started earlier shows on the period's first day. Not virtualized, so find-in-page, printing and screen readers reach every event. |
+| `agenda` | The list over the next 7 days from the navigated date (its own classes and empty message). |
+| `resourceDay` | One column per resource for the day: all-day row, overlap layout, drag between resources, resize, each resource's business hours. Offered in the header when there are `resources`. |
+| `resourceWeek` | The same for the week: a column per resource and day (`datesAboveResources` to group by date). Only the columns in view are rendered. |
 
 Custom views are added with a `view` plugin and appear in the header's view
 switcher automatically.
@@ -163,7 +179,8 @@ A plugin is a plain object (see `src/types/plugins.ts`). Every plugin has a
 
 | Type | Required fields | Injected/used how |
 | --- | --- | --- |
-| `view` | `viewName`, `component` | Rendered as a view; receives `events`, `currentDate`, `config`, callbacks, `resources`. |
+| `view` | `viewName`, `component` | Rendered as a view; receives `events`, `currentDate`, `config`, callbacks, `resources`, `range`. Optional `range(date, ctx)` and `step` — see below. |
+| `middleware` | — | Optional `validate(change, ctx)`, `onCommit(change)`, `onRevert(change)` — see [Business rules and undo](#business-rules-and-undo). |
 | `filter` / `search` | `component`, `location` (`"left"`/`"right"`) | Rendered in the header; receives `events`, `config`, `resources`, `filteredResources`, `onFilterChange`, `onSearch`, `onResourceFilterChange`, plus your `props`. |
 | `data-source` | `fetchEvents(start, end, config)` | Called for the visible range; returned events are merged with yours (your events win on id collisions). |
 | `export` | `formatName`, `label`, `exportFunction`, `mimeType`, `fileExtension` | Adds an entry to the export menu; the returned `Blob`/string is downloaded. |
@@ -219,6 +236,209 @@ const txtExportPlugin: CalendarPlugin = {
 Plugins may also declare optional `activate()` / `deactivate()` lifecycle
 hooks and a `description`.
 
+### Writing a custom view: `useCalendarView`
+
+A view plugin's component can use the calendar through hooks instead of
+props. `useCalendarView()` is the stable API (the calendar context itself is
+private):
+
+| Field | Description |
+| --- | --- |
+| `view`, `date`, `range` | Active view, navigated date, visible `[start, end)`. |
+| `events`, `resources` | Events to render (filtered, recurrences expanded) and resources. |
+| `config`, `timeZone`, `lang`, `direction`, `weekStartsOn` | Resolved settings. |
+| `t(key, vars?, fallback?)` | Text: a `config` key wins, then the plugin's `messages` for the language (exact, base, English). |
+| `formatDate(date, pattern)`, `formatTime(date)`, `timeText(event)` | Formatting in the calendar zone and language. |
+| `isDisabled(date)`, `isHidden(date)`, `businessHoursFor(date)` | Day rules. |
+| `navigate(dir)`, `gotoDate(date)`, `changeView(view)` | Navigation. |
+| `moveEvent(event, patch)`, `resizeEvent(event, patch)`, `validate(change)` | Changes through the [pipeline](#business-rules-and-undo): rules, callbacks, undo. |
+| `undo()`, `redo()`, `canUndo`, `canRedo` | History. |
+| `onEventClick(event)`, `renderEventContent(event)`, `eventClassName(event)` | The host's click handler, `eventContent` and `eventClassNames`. |
+
+**Drag & drop** comes with two hooks. The calendar does the rest: the
+preview, [live validation](#business-rules-and-undo), click versus drag,
+moving between resources, and items dropped from outside
+([`ExternalDraggable`](#dragging-in-from-outside)).
+
+```tsx
+import { useCalendarView, useDropZone, useEventDraggable, type CalendarPlugin } from "@react-agendfy/core";
+
+function Slot({ date, resourceId }) {
+  // The dropped event starts at `date` (keeping its duration) and moves to the resource.
+  const { setNodeRef, isOver } = useDropZone(`${resourceId}-${date.toISOString()}`, { date, resourceIds: [resourceId] });
+  return <div ref={setNodeRef} className={isOver ? "slot over" : "slot"} />;
+}
+
+function Card({ event }) {
+  const cal = useCalendarView();
+  const { setNodeRef, attributes, listeners, isDragging } = useEventDraggable(event);
+  return (
+    <div ref={setNodeRef} {...attributes} {...listeners} onClick={() => cal.onEventClick(event)}>
+      {cal.renderEventContent(event) ?? `${event.title} · ${cal.timeText(event)}`}
+    </div>
+  );
+}
+
+const teamView: CalendarPlugin = {
+  key: "team",
+  type: "view",
+  viewName: "team",
+  label: { key: "team.label" },
+  messages: { en: { "team.label": "Team" }, pt: { "team.label": "Equipa" } },
+  range: (date, { timeZone }) => oneDay(date, timeZone),
+  step: { unit: "day" },
+  component: TeamView,
+};
+```
+
+`useDropZone(id, { date, allDay?, resourceIds? })`: with `allDay` the
+event becomes all-day (external items use their `startTime`). With the
+keyboard, Space picks an event up and the arrow keys move it to the next
+zone in that direction. `useEventDraggable(event, { id, resourceId })` draws
+an event more than once (one copy per resource): dropping one copy on
+another resource swaps just that resource.
+
+For time axes and long lists, `createTimeScale(options)` maps instants to
+pixels by wall clock (a daily window, hidden weekdays, DST days on the same
+grid) and `useVirtualRange({ count, size, viewportRef, axis })` renders only
+the rows or columns in view. The resource views are built with them. A move
+between resources updates the field the event already uses (`resourceId`
+or `resourceIds`). Drags start after 5px, so a
+plain click stays a click. The demo's Team view
+(`examples/basic/src/components/TeamView.tsx`) is a complete example.
+
+The props passed to view components (`events`, `config`, callbacks…) are
+still passed for views written before this API.
+
+### Custom view range
+
+A view plugin can declare the dates it shows. The calendar then expands
+recurrences, fetches data sources, reports `onDatesSet` / `getView()` and
+checks `validRange` for that range, and passes it to the component as
+`range`. `step` sets how far prev/next move (default one week).
+
+```tsx
+const twoWeeks: CalendarPlugin = {
+  key: "two-weeks",
+  type: "view",
+  viewName: "twoWeeks",
+  range: (date, { weekStartsOn }) => {
+    const start = startOfWeek(date, { weekStartsOn });
+    return { start, end: addDays(start, 14) }; // end is exclusive
+  },
+  step: { unit: "week", amount: 2 },
+  component: ({ events, range }) => <TwoWeekGrid events={events} range={range} />,
+};
+```
+
+## Business rules and undo
+
+Every move and resize goes through one pipeline: **validate → apply →
+`onEventUpdate`/`onEventResize` → history**. A callback that returns a
+rejected Promise still reverts the change.
+
+The rules also run **while dragging**: over a drop they would refuse, the
+drag preview gets `.react-agendfy-drag-preview--invalid` (red outline,
+`--agendfy-drop-invalid-color`) and a `data-invalid-reason` attribute
+(`overlap`, `constraint`, …), with pointer and keyboard drags alike.
+
+| Config key | Type | Description |
+| --- | --- | --- |
+| `eventOverlap` | `boolean \| (still, moving) => boolean` | `false` refuses changes that intersect another event. Events on disjoint resources never overlap. An event's own `overlap` field wins. Default `true`. |
+| `eventConstraint` | `"businessHours" \| { start?, end? } \| WeeklyInterval[]` | Where events may go. An event's own `constraint` field wins. All-day events ignore `"businessHours"`. |
+| `eventAllow` | `(change: EventChange) => boolean` | Final say, after the two rules above. |
+| `selectAllow` | `(selection: DateRangeSelection) => boolean` | Refuses a dragged date-range selection. |
+| `historyLimit` | `number` | Undo steps kept. `0` disables history. Default `100`. |
+| `undoShortcuts` | `boolean` | Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z and Ctrl+Y redo while focus is in the calendar (not in inputs). Default `true`. |
+
+```tsx
+<Calendar
+  events={events}
+  config={{ eventOverlap: false, eventConstraint: "businessHours" }}
+  onEventUpdate={save}
+  onChangeRejected={({ reason, conflicts }) =>
+    toast(reason === "overlap" ? `Conflicts with ${conflicts?.[0]?.title}` : "Outside business hours")
+  }
+/>
+```
+
+The rules check drags, resizes and drops. For an event created or edited in
+your own form, call `api.validate({ kind: "receive", event })` (new) or
+`api.validate({ kind: "move", event, before })` (edit) before saving: it
+returns `true` or the rejection, and applies nothing.
+
+Undo and redo replay the change through the same callbacks, so your backend
+persists them like any other edit. They restore only the schedule fields
+(`start`, `end`, `allDay`, `resourceId`, `resourceIds`), never validate (the
+state they restore was already accepted), and an undo the host rejects goes
+back on the stack.
+
+A `middleware` plugin sees every change:
+
+```ts
+const auditPlugin: CalendarPlugin = {
+  key: "audit",
+  type: "middleware",
+  validate: (change, { eventsInRange }) =>
+    eventsInRange(new Date(change.event.start), new Date(change.event.end)).length < 3 ||
+    { ok: false, reason: "capacity", message: "Room is full" },
+  onCommit: (change) => log("committed", change),
+  onRevert: (change) => log("reverted", change),
+};
+```
+
+`validateChange`, `findOverlapConflicts` and `satisfiesConstraint` are
+exported for code that needs the same checks outside a drag (for example, to
+suggest free slots).
+
+## Dragging in from outside
+
+Items outside the calendar (a list of pending appointments, a backlog) can
+be dropped on it. Wrap them and the calendar in one `AgendfyDndProvider`
+so they share a drag context, make each item an `ExternalDraggable`, and
+handle `onEventReceive`:
+
+```tsx
+import { AgendfyDndProvider, Calendar, ExternalDraggable } from "@react-agendfy/core";
+
+<AgendfyDndProvider>
+  <ul>
+    {pending.map((p) => (
+      <li key={p.id}>
+        <ExternalDraggable id={p.id} event={{ title: p.title, color: p.color }} duration={30} data={p}>
+          {p.title}
+        </ExternalDraggable>
+      </li>
+    ))}
+  </ul>
+  <Calendar
+    events={events}
+    onEventReceive={(event, item) => {
+      setEvents((prev) => [...prev, event]);
+      setPending((list) => list.filter((p) => p !== item));
+    }}
+  />
+</AgendfyDndProvider>
+```
+
+| `ExternalDraggable` prop | Description |
+| --- | --- |
+| `id` | Unique among the external items. |
+| `event` | The event to create (`title` required; `color`, resources, any field). `start`/`end` come from the drop. |
+| `duration` | Minutes. Default `60`. |
+| `startTime` | Month view: `"HH:mm"` of the created event. Without it a drop on a day creates an all-day event. |
+| `data` | Returned as the second argument of `onEventReceive`. |
+| `disabled`, `className`, `style` | As usual. The element gets `.react-agendfy-external` (and `--dragging` while dragged). |
+
+- In the week and day views the item lands on the slot under the pointer;
+  in the month view, on the day.
+- The [rules](#business-rules-and-undo) apply, with the same live preview;
+  a refused drop calls `onChangeRejected` with `change.kind === "receive"`.
+- A Promise returned by `onEventReceive` that rejects removes the event
+  again. Received events are not in the undo history.
+- Without `onEventReceive` the calendar accepts no external drops.
+- External items are dragged with the pointer (mouse, touch, pen).
+
 ## Customizing the look
 
 Everything visual is driven by CSS custom properties scoped to the `.agendfy`
@@ -272,6 +492,7 @@ Tokens live in `src/styles/tokens.css`, in three layers:
 | `--agendfy-grid-line-minor` | `1px dashed var(--agendfy-color-border-strong)` | 15-minute lines in week columns. |
 | `--agendfy-now-line-width` | `2px` | Current-time line thickness (color: `--agendfy-color-now`). |
 | `--agendfy-business-hours-bg` / `-opacity` | `var(--agendfy-color-accent-soft)` / `0.45` | Business-hours tint. |
+| `--agendfy-non-business-bg` | 6% of the text colour | Shade of the time outside business hours (a day without any, entirely). |
 | `--agendfy-color-selection` | `var(--agendfy-color-accent-soft)` | Range selection and drop-target background. |
 | `--agendfy-disabled-stripe` / `--agendfy-disabled-opacity` | `var(--agendfy-color-surface-2)` / `0.55` | Days outside `validRange` (striped). |
 | `--agendfy-month-cell-min-height` | `120px` | Month cell height (`-compact`: `80px` at ≤ 640px). |
@@ -279,6 +500,7 @@ Tokens live in `src/styles/tokens.css`, in three layers:
 | `--agendfy-event-font-size` / `-font-weight` / `-shadow` | `xs` / `600` / `shadow-sm` | Month event chips. |
 | `--agendfy-color-event-default` / `-default-fg` | `#3490dc` / `#ffffff` | Month chip without `event.color`. |
 | `--agendfy-resize-handle-color` / `-hover-color` | `rgba(0,0,0,.25)` / `rgba(0,0,0,.4)` | Month resize grip. |
+| `--agendfy-drop-invalid-color` | `--agendfy-color-now` | Outline of the drag preview over a drop the rules refuse. |
 | `--agendfy-color-accent-fg` | `#ffffff` | Text on the accent ("Today" pill in list/agenda). |
 | `--agendfy-button-radius` / `-bg` / `-fg` | `radius-md` / `surface-2` / `text-muted` | Header button groups. |
 | `--agendfy-button-active-bg` / `-active-fg` | `var(--agendfy-color-accent)` / `var(--agendfy-color-event-fg)` | Active view button. |
@@ -430,8 +652,10 @@ Text direction resolves automatically from the language (`ar`, `he`, `fa`,
 
 - Month/week grids expose grid semantics with a **roving tabindex**: arrow keys
   move the focused cell, `Enter`/`Space` activate.
-- Events are keyboard-focusable and operable; drag and drop is available
-  through the keyboard (dnd-kit `KeyboardSensor`) as well as the pointer.
+- Events are keyboard-focusable and operable, with one tab stop per event.
+  Enter opens an event; Space picks it up, the arrow keys move it by one
+  slot (↑↓) or one day (←→, and every arrow in the month view), Space
+  drops it and Escape cancels.
 - Header navigation buttons have localized accessible labels (`back`, `next`,
   `go_to_today`).
 - Focus-visible styling uses `--agendfy-focus-ring`; `prefers-reduced-motion`

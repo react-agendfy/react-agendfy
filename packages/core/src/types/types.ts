@@ -4,7 +4,7 @@ import { CalendarPlugin } from "./plugins";
 import type { EmailAdapter, NotificationServiceConfig } from "./notification";
 
 /** All view identifiers the calendar can render. */
-export type CalendarView = "month" | "week" | "day" | "list" | "agenda";
+export type CalendarView = "month" | "week" | "day" | "list" | "agenda" | "resourceDay" | "resourceWeek";
 
 /** Text direction accepted by the calendar root. "auto" derives from the language. */
 export type CalendarDirection = "ltr" | "rtl" | "auto";
@@ -138,6 +138,13 @@ export interface Config {
   listRange?: "day" | "week" | "month";
   /** Show the all-day row in the week view. Default true. */
   allDaySlot?: boolean;
+  /**
+   * resourceWeek: group columns by date, then resource. Default false
+   * (by resource, then date), like FullCalendar.
+   */
+  datesAboveResources?: boolean;
+  /** Minimum width of a resource-view column, px (they stretch to fill). Default 120. */
+  resourceColumnMinWidth?: number;
   /** Show the current-time line. Default true. */
   nowIndicator?: boolean;
   /**
@@ -163,6 +170,29 @@ export interface Config {
   eventDurationEditable?: boolean;
   /** Date ranges can be selected by dragging over the grid. Default true. */
   selectable?: boolean;
+  /**
+   * Last word on whether a drag or resize is allowed (FullCalendar's
+   * `eventAllow`). Runs after `eventOverlap` and `eventConstraint`.
+   */
+  eventAllow?: (change: EventChange) => boolean;
+  /**
+   * Whether events may overlap. `false` rejects a move/resize that
+   * intersects another event; a function decides per pair. An event's own
+   * `overlap` field wins. Events on disjoint resources never overlap.
+   * Default true.
+   */
+  eventOverlap?: EventOverlapRule;
+  /**
+   * Where events may be dropped: `"businessHours"`, a date range, or a list
+   * of weekly intervals. An event's own `constraint` field wins.
+   */
+  eventConstraint?: EventConstraintRule;
+  /** Whether a dragged date-range selection is allowed (FullCalendar's `selectAllow`). */
+  selectAllow?: (selection: DateRangeSelection) => boolean;
+  /** Max undo steps kept (`api.undo()`, Ctrl/⌘+Z). `0` disables history. Default 100. */
+  historyLimit?: number;
+  /** Ctrl/⌘+Z, Ctrl/⌘+Shift+Z and Ctrl+Y undo/redo while focus is inside the calendar. Default true. */
+  undoShortcuts?: boolean;
   defaultView: CalendarView;
   slotDuration: number;
   slotLabelFormat: string;
@@ -174,6 +204,10 @@ export interface Config {
   weekView: string;
   dayView: string;
   listView: string;
+  /** Label of the resourceDay view. */
+  resourceDayView?: string;
+  /** Label of the resourceWeek view. */
+  resourceWeekView?: string;
   agenda: string;
   all_day: string;
   filter_resources: string;
@@ -253,6 +287,8 @@ export interface LocaleConfig {
 export interface WeekProps  {
   events:EventProps[],
   onEventUpdate?: (event: EventProps) => void;
+  /** An item dragged in from outside the calendar was dropped (ExternalDraggable). */
+  onEventReceive?: (event: EventProps, data?: unknown) => void;
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
@@ -306,6 +342,12 @@ export interface BaseEventProps {
   isDraggable?: boolean;
   customClassName?: string;
   parsedSlotMax?: number;
+  /**
+   * The event element is the focus/keyboard target (role, tabindex, keys).
+   * False when a wrapper owns focus (week view: the draggable wrapper).
+   * Default true.
+   */
+  focusable?: boolean;
 }
 
 export interface PositionStyle {
@@ -331,6 +373,8 @@ export interface MonthViewProps {
   currentDate?: TZDate;
   onEventUpdate?: (updatedEvent: EventProps) => void;
   onEventResize?: (updatedEvent: EventProps) => void;
+  /** An item dragged in from outside the calendar was dropped (ExternalDraggable). */
+  onEventReceive?: (event: EventProps, data?: unknown) => void;
   onDateRangeSelect?: (range: EventProps | DateRangeSelection) => void;
   onDayClick?: (day: Date) => void;
   onEventClick?: (event: EventProps) => void;
@@ -411,6 +455,12 @@ export interface Resource {
   name?: string;
   type?: string;
   children?: Resource[];
+  /**
+   * The resource's own working hours (a doctor's shift, a room's opening
+   * hours). Shaded in the resource views, and `eventConstraint:
+   * "businessHours"` keeps its events inside them. Default: the calendar's.
+   */
+  businessHours?: WeeklyInterval[];
   [key: string]: any;
 }
 
@@ -435,7 +485,74 @@ export interface CalendarApi {
   getView(): { type: string; activeStart: Date; activeEnd: Date };
   /** Re-runs the data-source plugins. */
   refetchEvents(): void;
+  /** Reverts the last accepted move/resize through the same callbacks. */
+  undo(): void;
+  /** Re-applies the last undone change. */
+  redo(): void;
+  canUndo(): boolean;
+  canRedo(): boolean;
+  /**
+   * Checks a change against the rules (eventOverlap, eventConstraint,
+   * eventAllow, middleware) without applying it — e.g. an event created or
+   * edited in your own form: `{ kind: "receive", event }` for a new one,
+   * `{ kind: "move", event, before }` for an edit.
+   */
+  validate(change: Omit<EventChange, "source">): ChangeVerdict;
 }
+
+/** What produced a change: the user (drag, resize, keyboard) or undo/redo. */
+export type ChangeSource = "user" | "history";
+
+/**
+ * A move, a resize, or an item received from outside the calendar
+ * (`ExternalDraggable`), as it flows through validation, callbacks and
+ * history.
+ */
+export interface EventChange {
+  kind: "move" | "resize" | "receive";
+  /** The event with its new times/resources (for "receive": the new event). */
+  event: EventProps;
+  /** The event before the change (undefined for "receive", or when it could not be found). */
+  before?: EventProps;
+  source: ChangeSource;
+  /** "receive": the `data` of the ExternalDraggable. */
+  data?: unknown;
+}
+
+/** Why a change was refused. Built-in reasons: "overlap", "constraint", "not-allowed". */
+export interface ChangeRejection {
+  ok: false;
+  reason: string;
+  message?: string;
+  /** For "overlap": the events the change would collide with. */
+  conflicts?: EventProps[];
+}
+
+export type ChangeVerdict = true | ChangeRejection;
+
+export interface ChangeRejectedInfo {
+  change: EventChange;
+  reason: string;
+  message?: string;
+  conflicts?: EventProps[];
+}
+
+/** `false` forbids overlaps; a function decides for each (still, moving) pair. */
+export type EventOverlapRule = boolean | ((stillEvent: EventProps, movingEvent: EventProps) => boolean);
+
+/** A weekly interval, same shape as a `businessHours` interval. */
+export interface WeeklyInterval {
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * `"businessHours"` — inside one business-hours interval (all-day events are
+ * not constrained); a range — inside [start, end); intervals — inside one of
+ * them.
+ */
+export type EventConstraintRule = "businessHours" | ValidRange | WeeklyInterval[];
 
 /** Selection emitted when a user drags across a date range. */
 export interface DateRangeSelection {
@@ -470,8 +587,22 @@ export interface CalendarProps {
   onEventResize?: (event: EventProps) => void | Promise<unknown>;
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
-  onSlotClick?: (slotTime: Date) => void;
+  /** A time slot was clicked; `info.resourceId` in the resource views. */
+  onSlotClick?: (slotTime: Date, info?: { resourceId?: string | number }) => void;
   onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
+  /**
+   * Called when a move/resize is refused by `eventOverlap`,
+   * `eventConstraint`, `eventAllow` or a middleware plugin. Nothing is
+   * applied and `onEventUpdate`/`onEventResize` are not called.
+   */
+  onChangeRejected?: (info: ChangeRejectedInfo) => void;
+  /**
+   * An `ExternalDraggable` was dropped on the calendar (inside an
+   * `AgendfyDndProvider`). `event` is the new event — add it to `events`.
+   * The rules apply, and a rejected Promise removes it again. Without this
+   * prop the calendar accepts no external drops.
+   */
+  onEventReceive?: (event: EventProps, data?: unknown) => void | Promise<unknown>;
   /** Called with the displayed date on mount and after every navigation. */
   onDateChange?: (date: Date) => void;
   /**
@@ -494,6 +625,8 @@ export interface CalendarProps {
 }
 
 export interface TimeSlotProps {
+  /** Shade the slot as outside business hours. */
+  isNonBusiness?: boolean;
   index: number;
   slotEvents: EventProps[];
   onEventUpdate?: (event: EventProps) => void;
@@ -539,6 +672,8 @@ export interface DayViewProps {
   currentDate: TZDate;
   config: Config;
   onEventUpdate?: (event: EventProps) => void;
+  /** An item dragged in from outside the calendar was dropped (ExternalDraggable). */
+  onEventReceive?: (event: EventProps, data?: unknown) => void;
   onEventClick?: (event: EventProps) => void;
   onSlotClick?: (slotTime: Date) => void;
   onEventResize?: (event: EventProps) => void;

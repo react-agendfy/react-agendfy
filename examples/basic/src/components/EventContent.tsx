@@ -49,7 +49,8 @@ export function renderEventContent({ event, view, timeText }: EventContentArg) {
     );
   }
 
-  if (view === "week" || view === "day") {
+  // Time grids: the week/day views and the resource views (resourceDay/Week).
+  if (view === "week" || view === "day" || view === "resourceDay" || view === "resourceWeek") {
     return (
       <span className="ev ev-block">
         <span className="ev-head">
@@ -63,7 +64,7 @@ export function renderEventContent({ event, view, timeText }: EventContentArg) {
             <MapPin size={11} aria-hidden /> {event.location}
           </span>
         )}
-        {view === "day" && <Avatars people={event.attendees} max={5} />}
+        {(view === "day" || view === "resourceDay") && <Avatars people={event.attendees} max={5} />}
       </span>
     );
   }

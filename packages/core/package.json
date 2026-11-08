@@ -54,7 +54,6 @@
     "date-fns": "^4.1.0",
     "jspdf": "^3.0.3",
     "re-resizable": "^6.11.2",
-    "react-window": "^2.2.1",
     "rrule": "^2.8.1"
   },
   "devDependencies": {

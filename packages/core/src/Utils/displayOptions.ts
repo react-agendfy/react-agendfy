@@ -1,6 +1,6 @@
 import { TZDate } from "@date-fns/tz";
 import { format, getISOWeek, getWeek } from "date-fns";
-import type { Config } from "../types/types";
+import type { Config, EventProps } from "../types/types";
 import { getLocale } from "./locate";
 import { resolveWeekStartsOn } from "./calendarRange";
 
@@ -28,7 +28,7 @@ export const DEFAULT_TIME_FORMAT = "HH:mm";
 export const DEFAULT_DAY_MAX_EVENTS = 3;
 
 /** Formats an instant with a date-fns pattern in the calendar time zone and language. */
-const formatIn = (date: Date | string, pattern: string, config?: DisplayConfig) => {
+export const formatIn = (date: Date | string, pattern: string, config?: DisplayConfig) => {
   const value = typeof date === "string" ? new Date(date) : date;
   const zoned = config?.timeZone ? new TZDate(value, config.timeZone) : value;
   try {
@@ -74,3 +74,7 @@ export const weekNumberOf = (date: Date, config?: DisplayConfig): number => {
     firstWeekContainsDate: locale.options?.firstWeekContainsDate ?? 1,
   });
 };
+
+/** Accessible name of an event: "Title, 10:00 - 11:00". */
+export const eventAriaLabel = (event: EventProps, config?: DisplayConfig) =>
+  `${event.title}, ${formatEventTime(event.start, config)} - ${formatEventTime(event.end, config)}`;

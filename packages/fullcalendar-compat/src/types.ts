@@ -44,9 +44,32 @@ export interface EventInput {
   url?: string;
   display?: string;
   editable?: boolean;
+  /** Overrides `eventOverlap` for this event. */
+  overlap?: boolean;
+  /** Overrides `eventConstraint` for this event. */
+  constraint?: ConstraintInput;
   extendedProps?: Record<string, unknown>;
   /** Any other key becomes an extendedProp (FullCalendar behaviour). */
   [key: string]: unknown;
+}
+
+/** FullCalendar premium ResourceInput (array form). */
+export interface ResourceInput {
+  id: string | number;
+  title?: string;
+  children?: ResourceInput[];
+  /** The resource's own business hours. */
+  businessHours?: BusinessHoursInput | BusinessHoursInput[];
+  extendedProps?: Record<string, unknown>;
+  /** Any other key becomes an extendedProp. */
+  [key: string]: unknown;
+}
+
+/** Read-only ResourceApi. */
+export interface ResourceApi {
+  id: string;
+  title: string;
+  extendedProps: Record<string, unknown>;
 }
 
 export interface FetchInfo {
@@ -113,6 +136,8 @@ export interface DateClickArg {
   date: Date;
   dateStr: string;
   allDay: boolean;
+  /** Resource views: the column's resource. */
+  resource?: ResourceApi;
   dayEl: HTMLElement | null;
   jsEvent: MouseEvent | null;
   view: ViewApi;
@@ -139,6 +164,10 @@ export interface EventDropArg {
   event: EventApi;
   oldEvent: EventApi;
   delta: Delta;
+  /** Resource views: the resource the event was dropped on, when it changed. */
+  newResource?: ResourceApi | null;
+  /** …and the one it left. */
+  oldResource?: ResourceApi | null;
   revert: () => void;
   relatedEvents: EventApi[];
   el: HTMLElement | null;
@@ -215,6 +244,29 @@ export interface BusinessHoursInput {
   endTime?: string;
 }
 
+/**
+ * `eventConstraint` / event `constraint`: "businessHours", a groupId, a date
+ * range, or business-hours-like objects.
+ */
+export type ConstraintInput =
+  | "businessHours"
+  | string
+  | { start?: DateInput; end?: DateInput }
+  | BusinessHoursInput
+  | BusinessHoursInput[];
+
+/** First argument of `eventAllow` (FullCalendar's DateSpan). */
+export interface DropInfo {
+  start: Date;
+  end: Date;
+  startStr: string;
+  endStr: string;
+  allDay: boolean;
+}
+
+/** Argument of `selectAllow`. */
+export type SelectInfo = DropInfo;
+
 export interface ToolbarInput {
   left?: string;
   center?: string;
@@ -280,11 +332,25 @@ export interface FullCalendarProps {
   eventDurationEditable?: boolean;
   selectable?: boolean;
   selectMirror?: boolean;
+  /** `false` forbids overlaps; a function decides per pair. */
+  eventOverlap?: boolean | ((stillEvent: EventApi, movingEvent: EventApi | null) => boolean);
+  /** Where events may be dropped. */
+  eventConstraint?: ConstraintInput;
+  /** Last word on a drop or resize. */
+  eventAllow?: (dropInfo: DropInfo, draggedEvent: EventApi | null) => boolean;
+  /** Whether a selection is allowed. */
+  selectAllow?: (selectInfo: SelectInfo) => boolean;
+  /** `false` forbids selections over events; a function decides per event. */
+  selectOverlap?: boolean | ((event: EventApi) => boolean);
   /** "light" | "dark" — agendfy theme (not in FullCalendar). */
   themeSystem?: string;
 
   events?: EventSourceInput;
   eventSources?: EventSourceInput[];
+  /** Resources (array form) for resourceTimeGridDay/Week. */
+  resources?: ResourceInput[];
+  /** resourceTimeGridWeek: dates above resources. */
+  datesAboveResources?: boolean;
 
   eventClick?: (arg: EventClickArg) => void;
   dateClick?: (arg: DateClickArg) => void;
@@ -325,14 +391,12 @@ export interface IgnoredFullCalendarOptions {
   droppable?: unknown;
   drop?: unknown;
   eventAdd?: unknown;
-  eventAllow?: unknown;
   eventChange?: unknown;
   eventDidMount?: unknown;
   eventDisplay?: unknown;
   eventMouseEnter?: unknown;
   eventMouseLeave?: unknown;
   eventOrder?: unknown;
-  eventOverlap?: unknown;
   eventReceive?: unknown;
   eventRemove?: unknown;
   eventWillUnmount?: unknown;
@@ -345,8 +409,6 @@ export interface IgnoredFullCalendarOptions {
   navLinks?: unknown;
   progressiveEventRendering?: unknown;
   scrollTime?: unknown;
-  selectAllow?: unknown;
-  selectOverlap?: unknown;
   stickyHeaderDates?: unknown;
   titleFormat?: unknown;
   unselect?: unknown;

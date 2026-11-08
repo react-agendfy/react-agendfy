@@ -12,11 +12,14 @@ export interface DemoResource {
   id: string;
   name: string;
   type: string;
+  /** Own working hours (Resource.businessHours): shaded in the resource views. */
+  businessHours?: { daysOfWeek: number[]; startTime: string; endTime: string }[];
 }
 
 export const resources: DemoResource[] = [
   { id: "r1", name: "Atlas room", type: "room" },
-  { id: "r2", name: "John Silva", type: "person" },
+  // Part-time: mornings only, Monday to Friday.
+  { id: "r2", name: "John Silva", type: "person", businessHours: [{ daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "13:00" }] },
   { id: "r3", name: "Projector", type: "equipment" },
   { id: "r4", name: "Company-wide", type: "group" },
 ];
@@ -79,7 +82,6 @@ const rng = (seed: number) => () => {
 
 export function createDemoEvents(now: Date = new Date()) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const byId = (ids: string[]) => resources.filter((r) => ids.includes(r.id));
 
   /** Local date `offset` days from today at h:m. */
   const at = (offset: number, h = 0, m = 0) =>
@@ -100,7 +102,7 @@ export function createDemoEvents(now: Date = new Date()) {
       color: categoryColor(t.category),
       location: t.location,
       attendees: attendeesFor(t.attendees, seed),
-      resources: byId(t.resources),
+      resourceIds: t.resources,
     });
   };
   const allDay = (id: string, offset: number, days: number, title: string, category: CategoryId, location?: string) =>
@@ -114,7 +116,7 @@ export function createDemoEvents(now: Date = new Date()) {
       color: categoryColor(category),
       location,
       attendees: [],
-      resources: byId(["r4"]),
+      resourceIds: ["r4"],
     });
 
   // --- Today: a full, realistic day (with overlaps for the column layout) --
@@ -134,7 +136,7 @@ export function createDemoEvents(now: Date = new Date()) {
     color: categoryColor("client"),
     location: "Boardroom",
     attendees: attendeesFor(4, 5),
-    resources: byId(["r1", "r3"]),
+    resourceIds: ["r1", "r3"],
   });
 
   // --- Every other day in ±DAY_RANGE: denser near today -------------------
@@ -186,7 +188,7 @@ export function createDemoEvents(now: Date = new Date()) {
     recurrence: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=170",
     // One cancelled occurrence, to show exdate.
     exdate: [cancelled.toISOString()],
-    resources: byId(["r1"]),
+    resourceIds: ["r1"],
   });
   const reviewStart = at(-90, 16, 0);
   events.push({
@@ -199,7 +201,7 @@ export function createDemoEvents(now: Date = new Date()) {
     location: "Boardroom",
     attendees: attendeesFor(6, 2),
     recurrence: "FREQ=MONTHLY;BYSETPOS=1;BYDAY=MO;COUNT=8",
-    resources: byId(["r1", "r2"]),
+    resourceIds: ["r1", "r2"],
   });
 
   return events;

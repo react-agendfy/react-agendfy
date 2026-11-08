@@ -1,0 +1,222 @@
+/* resourceDay / resourceWeek: one column per resource (and day). */
+.react-agendfy-rtg {
+  --agendfy-rtg-head-row: 34px;
+  --agendfy-rtg-allday-height: 30px;
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md, 8px);
+  overflow: hidden;
+  background: var(--agendfy-color-surface);
+}
+
+.react-agendfy-rtg-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.react-agendfy-rtg-canvas {
+  position: relative;
+  min-width: 100%;
+}
+
+/* header */
+.react-agendfy-rtg-head {
+  position: relative;
+  height: var(--agendfy-rtg-head-row);
+  border-bottom: 1px solid var(--agendfy-color-border);
+}
+.react-agendfy-rtg-head--grouped {
+  height: calc(var(--agendfy-rtg-head-row) * 2);
+}
+.react-agendfy-rtg-corner,
+.react-agendfy-rtg-allday-label {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  box-sizing: border-box;
+  background: var(--agendfy-color-surface);
+  color: var(--agendfy-color-text-muted);
+  font-size: var(--agendfy-font-size-xs, 12px);
+}
+.react-agendfy-rtg-group,
+.react-agendfy-rtg-col-head {
+  position: absolute;
+  height: var(--agendfy-rtg-head-row);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  border-left: 1px solid var(--agendfy-color-border);
+  font-size: var(--agendfy-font-size-sm, 13px);
+  font-weight: 600;
+}
+.react-agendfy-rtg-group {
+  top: 0;
+  justify-content: flex-start;
+  overflow: visible;
+  border-bottom: 1px solid var(--agendfy-color-border);
+}
+/* The group label stays visible while its columns scroll past. */
+.react-agendfy-rtg-group > span {
+  position: sticky;
+  left: 72px;
+  padding: 0 8px;
+}
+.react-agendfy-rtg-head-row {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--agendfy-rtg-head-row);
+}
+.react-agendfy-rtg-head-row--sub {
+  top: var(--agendfy-rtg-head-row);
+}
+.react-agendfy-rtg-head-row--sub .react-agendfy-rtg-col-head {
+  font-weight: 500;
+  color: var(--agendfy-color-text-muted);
+}
+
+/* all-day row */
+.react-agendfy-rtg-allday {
+  position: relative;
+  min-height: var(--agendfy-rtg-allday-height);
+  border-bottom: 1px solid var(--agendfy-color-border);
+}
+.react-agendfy-rtg-allday-label {
+  min-height: var(--agendfy-rtg-allday-height);
+  position: sticky;
+}
+.react-agendfy-rtg-allday-cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  box-sizing: border-box;
+  border-left: 1px solid var(--agendfy-color-border);
+}
+.react-agendfy-rtg-chip {
+  border-radius: var(--agendfy-event-radius);
+  padding: 1px 6px;
+  font-size: var(--agendfy-font-size-xs, 12px);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: grab;
+}
+
+/* body */
+.react-agendfy-rtg-body {
+  position: relative;
+}
+.react-agendfy-rtg-times {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--agendfy-color-surface);
+}
+.react-agendfy-rtg-time {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: var(--agendfy-font-size-xs, 12px);
+  color: var(--agendfy-color-text-muted);
+}
+.react-agendfy-rtg-time:first-child {
+  transform: none;
+}
+.react-agendfy-rtg-column {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  border-left: 1px solid var(--agendfy-color-border);
+}
+.react-agendfy-rtg-column--day-start,
+.react-agendfy-rtg-col-head--day-start {
+  border-left: 2px solid var(--agendfy-color-border-strong);
+}
+.react-agendfy-rtg-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  border-bottom: var(--agendfy-grid-line-minor);
+}
+.react-agendfy-rtg-slot--over {
+  background: var(--agendfy-color-selection);
+}
+.react-agendfy-rtg-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 250;
+}
+
+/* events */
+.react-agendfy-rtg-event {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-radius: var(--agendfy-event-radius);
+  box-shadow: inset 0 0 0 1px var(--agendfy-color-surface);
+  font-size: var(--agendfy-font-size-xs, 12px);
+  background: var(--agendfy-color-event-default);
+  color: var(--agendfy-color-event-default-fg);
+  cursor: grab;
+}
+.react-agendfy-rtg-event:focus-visible {
+  outline: none;
+  box-shadow: var(--agendfy-focus-ring);
+}
+.react-agendfy-rtg-event--dragging {
+  opacity: 0.35;
+}
+.react-agendfy-rtg-event--invalid {
+  outline: 2px solid var(--agendfy-drop-invalid-color);
+  outline-offset: -2px;
+}
+.react-agendfy-rtg-event-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.react-agendfy-rtg-event-time {
+  opacity: 0.9;
+}
+.react-agendfy-rtg-resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+.react-agendfy-rtg-resize::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 16px;
+  height: 2px;
+  margin-left: -8px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0;
+}
+.react-agendfy-rtg-event:hover .react-agendfy-rtg-resize::after {
+  opacity: 0.5;
+}

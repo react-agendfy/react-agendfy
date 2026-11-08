@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
+import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent } from "@dnd-kit/core";
+import { pointerOrRect } from "../../Utils/collision";
 import {
   format,
   addMinutes,
@@ -27,10 +28,23 @@ import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
 import { getSlotHeight, slotHeightStyle } from "../../Utils/slotHeight";
 import { cx, publicEventId, useEventClassNamesResolver } from "../../context/ClassNamesContext";
+import { ViewDndScope, type DragSnapshot, type DropResolution, type ViewDragOptions } from "../../context/InteractionContext";
+import { eventFromExternal, externalDragData } from "../../Utils/externalDrag";
+import { useDropVerdict } from "../../hooks/useDropVerdict";
+
+
+const NO_EVENTS: EventProps[] = [];
+
+const WEEK_DRAG: ViewDragOptions = {
+  collisionDetection: pointerOrRect,
+  instructions:
+    "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
+};
 
 const WeekView = ({
   events,
   onEventUpdate,
+  onEventReceive,
   onEventClick,
   onEventResize,
   onSlotClick,
@@ -128,9 +142,26 @@ const WeekView = ({
   // One snap state per view: the preview and the drop share its result.
   const gridSnap = useMemo(() => createGridDragSnap(), []);
   const [activeDrag, setActiveDrag] = useState<EventProps | null>(null);
+  // One slot down / one column across per arrow key (measured at drag start).
+  const keyboardStepRef = useRef<{ x: number; y: number } | null>(null);
+  // Latest drag event, to revalidate after a key press (dnd-kit may scroll
+  // instead of moving, which fires no onDragMove).
+  const lastDragRef = useRef<DragSnapshot | null>(null);
+  const { verdict: dropVerdict, check: checkDrop, clear: clearDrop } = useDropVerdict();
 
-  const handleDragStart = useCallback((event: any) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    lastDragRef.current = event;
     const { active } = event;
+    clearDrop();
+    // An item from outside: the preview follows the pointer (no snap — it
+    // has no position in the grid), and the slot under the pointer decides.
+    const external = externalDragData(active);
+    if (external) {
+      keyboardStepRef.current = null;
+      gridSnap.begin(containerRef.current, 0);
+      setActiveDrag(onEventReceive ? eventFromExternal(external, new Date()) : null);
+      return;
+    }
     const dragged = events.find((e: EventProps) => e.id === active?.id);
     const slot = containerRef.current?.querySelector(".react-agendfy-weektimeslot");
     const column = containerRef.current?.querySelector(".react-agendfy-weekview-day-column");
@@ -149,27 +180,32 @@ const WeekView = ({
         maxColumns: fromColumn < 0 ? 0 : daysOfWeek.length - 1 - fromColumn,
       };
     }
-    gridSnap.begin(
-      containerRef.current,
-      slot?.getBoundingClientRect().height ?? 0,
-      column?.getBoundingClientRect().width ?? 0,
-      bounds
-    );
+    const slotPx = slot?.getBoundingClientRect().height ?? 0;
+    const columnPx = column?.getBoundingClientRect().width ?? 0;
+    keyboardStepRef.current = slotPx ? { x: columnPx, y: slotPx } : null;
+    gridSnap.begin(containerRef.current, slotPx, columnPx, bounds);
     if (dragged) setActiveDrag(dragged);
-  }, [events, gridSnap, config?.timeZone, startHour, endHour, slotDuration, daysOfWeek, dayRules.weekStartsOn]);
+  }, [events, gridSnap, config?.timeZone, startHour, endHour, slotDuration, daysOfWeek, dayRules.weekStartsOn, clearDrop, onEventReceive]);
 
-  const handleDragEnd = useCallback((event: any) => {
-    const { active, over, delta } = event;
+  /** Where the dragged event lands for this drag state (null: nowhere). */
+  const resolveDrop = useCallback((event: DragSnapshot): DropResolution | null => {
+    const { active, over } = event;
     const snapped = gridSnap.result();
-    gridSnap.end();
-    setActiveDrag(null);
-    if (!active?.id || !over?.id) return;
+    if (!active?.id || !over?.id) return null;
+
+    const external = externalDragData(active);
+    if (external) {
+      if (!onEventReceive) return null;
+      const start = new Date(over.id);
+      if (!isValid(start) || dayRules.isDisabled(start)) return null;
+      return { updated: eventFromExternal(external, start), external };
+    }
 
     const baseTime = new TZDate(new Date(over.id), config?.timeZone);
-    if (!isValid(baseTime)) return;
+    if (!isValid(baseTime)) return null;
 
     const draggedEvent = events.find((ev: EventProps) => ev.id === active.id);
-    if (!draggedEvent) return;
+    if (!draggedEvent) return null;
 
     const originalStart = new TZDate(ensureDate(draggedEvent.start, config?.timeZone), config?.timeZone);
     const duration = differenceInMinutes(
@@ -191,25 +227,61 @@ const WeekView = ({
       newStartTime = addMinutes(addDays(originalStart, dayDiff), snapped.slots * slotDuration);
     }
 
-    // Consider both axes so a horizontal drag (moving to another day column)
-    // is not misclassified as a click and discarded.
-    if (!delta || (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5)) {
-      onEventClick?.(draggedEvent);
+    // Normalize to canonical UTC ISO ("Z", not "+00:00") — same convention
+    // as the resize path, so event date strings stay uniform library-wide.
+    return {
+      dragged: draggedEvent,
+      updated: {
+        ...draggedEvent,
+        start: new Date(newStartTime.getTime()).toISOString(),
+        end: new Date(addMinutes(newStartTime, duration).getTime()).toISOString(),
+      },
+    };
+  }, [events, config?.timeZone, slotDuration, gridSnap, daysOfWeek, dayRules, onEventReceive]);
+
+  // Live validation: the preview turns invalid where the drop would be refused.
+  const handleDragMove = useCallback((event: DragMoveEvent | DragOverEvent | DragSnapshot) => {
+    lastDragRef.current = event;
+    const result = resolveDrop(event);
+    checkDrop(result?.updated ?? null, result?.dragged, result?.external ? "receive" : "move");
+  }, [resolveDrop, checkDrop]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { delta } = event;
+    const result = resolveDrop(event);
+    gridSnap.end();
+    setActiveDrag(null);
+    clearDrop();
+    if (!result) return;
+
+    if (result.external) {
+      onEventReceive?.(result.updated, result.external.data);
       return;
     }
 
-    // Normalize to canonical UTC ISO ("Z", not "+00:00") — same convention
-    // as the resize path, so event date strings stay uniform library-wide.
-    const updatedEvent = {
-      ...draggedEvent,
-      start: new Date(newStartTime.getTime()).toISOString(),
-      end: new Date(addMinutes(newStartTime, duration).getTime()).toISOString(),
-    };
+    // Consider both axes so a horizontal drag (moving to another day column)
+    // is not misclassified as a click and discarded.
+    if (!delta || (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5)) {
+      if (result.dragged) onEventClick?.(result.dragged);
+      return;
+    }
 
     if (typeof onEventUpdate === "function") {
-      onEventUpdate(updatedEvent);
+      onEventUpdate(result.updated);
     }
-  }, [events, config?.timeZone, onEventClick, onEventUpdate, slotDuration, gridSnap, daysOfWeek, dayRules.weekStartsOn]);
+  }, [resolveDrop, gridSnap, clearDrop, onEventClick, onEventUpdate, onEventReceive]);
+
+  const handleDragCancel = useCallback(() => {
+    gridSnap.end();
+    setActiveDrag(null);
+    clearDrop();
+  }, [gridSnap, clearDrop]);
+
+  // Keyboard drags move in whole slots (↑↓) and columns (←→).
+  const handleKeyboardStep = useCallback((dx: number, dy: number) => {
+    gridSnap.step(dy, dx);
+    if (lastDragRef.current) handleDragMove(lastDragRef.current);
+  }, [gridSnap, handleDragMove]);
 
   const handleSelectionMouseDown = useCallback((slotTime: Date) => {
     if (!slotTime) return;
@@ -248,29 +320,47 @@ const WeekView = ({
     return slotTime >= start && slotTime <= end;
   }, [isSelecting, selectionStart, selectionEnd]);
 
-  const getEvents = useCallback((slotTime: string) => {
-    const slotDate = new TZDate(slotTime, config?.timeZone);
-    const slotDateFormatted = format(slotDate, "yyyy-MM-dd HH:mm");
-    return events.reduce((acc: EventProps[], event: EventProps) => {
+  // Timed events indexed once per render by the slot they start in
+  // ("yyyy-MM-dd HH:mm", calendar zone). Looking every event up again for
+  // each of the ~200 slots of a week built hundreds of thousands of zoned
+  // dates per render (≈2s per drop on a busy week). A start between slot
+  // lines belongs to the slot below it (WeekTimeSlot offsets it), as in the
+  // day view; exact matching used to drop such events (10:15 with 30-min
+  // slots never showed).
+  const eventsBySlot = useMemo(() => {
+    const tz = config?.timeZone;
+    const index = new Map<string, EventProps[]>();
+    const gridStart = startHour * 60;
+    for (const event of events) {
       // Recurring events arrive pre-expanded from the calendar context.
-      if (isBannerEvent(event, config?.timeZone)) return acc;
-      // Clip timed events to this slot's day so a midnight-crossing event
-      // renders as one segment per day (continuation starts at 00:00 and
-      // therefore matches the day's first slot).
-      const segment = clipEventToDay(event, slotDate, config?.timeZone);
-      if (!segment) return acc;
-      if (format(new TZDate(ensureDate(segment.start), config?.timeZone), "yyyy-MM-dd HH:mm") === slotDateFormatted) {
-        acc.push(segment);
+      if (isBannerEvent(event, tz)) continue;
+      const start = ensureDate(event.start, tz);
+      const lastMs = Math.max(ensureDate(event.end, tz).getTime(), start.getTime() + 1);
+      // One segment per day touched: a midnight-crossing event renders as
+      // clipped segments (the continuation starts at 00:00).
+      for (let day = startOfDay(new TZDate(start, tz)); day.getTime() < lastMs; day = addDays(day, 1)) {
+        const segment = clipEventToDay(event, day, tz);
+        if (!segment) continue;
+        const segStart = new TZDate(ensureDate(segment.start), tz);
+        const fromGrid = segStart.getHours() * 60 + segStart.getMinutes() - gridStart;
+        if (fromGrid < 0) continue; // before slotMin: not on the grid
+        const slotMinutes = gridStart + Math.floor(fromGrid / slotDuration) * slotDuration;
+        const key = `${format(segStart, "yyyy-MM-dd")} ${String(Math.floor(slotMinutes / 60)).padStart(2, "0")}:${String(slotMinutes % 60).padStart(2, "0")}`;
+        const bucket = index.get(key);
+        if (bucket) bucket.push(segment);
+        else index.set(key, [segment]);
       }
-      return acc;
-    }, []);
-  }, [events, config?.timeZone]);
+    }
+    return index;
+  }, [events, config?.timeZone, startHour, slotDuration]);
+
+  const getEvents = useCallback(
+    (slotTime: string) =>
+      eventsBySlot.get(format(new TZDate(slotTime, config?.timeZone), "yyyy-MM-dd HH:mm")) ?? NO_EVENTS,
+    [eventsBySlot, config?.timeZone]
+  );
 
   const isDraggable = useMemo(() => typeof onEventUpdate === "function", [onEventUpdate]);
-
-  // Explicit sensors: PointerSensor keeps the existing click-vs-drag delta
-  // detection intact, KeyboardSensor enables keyboard-initiated drags.
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
   if (hasInvalidSlots) {
     return (
@@ -285,17 +375,17 @@ const WeekView = ({
   }
 
   return (
-    <DndContext
-      onDragEnd={handleDragEnd}
-      onDragStart={handleDragStart}
-      collisionDetection={pointerWithin}
-      sensors={sensors}
-      accessibility={{
-        screenReaderInstructions: {
-          draggable:
-            "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
-        },
+    <ViewDndScope
+      handlers={{
+        onDragStart: handleDragStart,
+        onDragMove: handleDragMove,
+        onDragOver: handleDragMove,
+        onDragEnd: handleDragEnd,
+        onDragCancel: handleDragCancel,
+        keyboardStep: () => keyboardStepRef.current,
+        onKeyboardStep: handleKeyboardStep,
       }}
+      options={WEEK_DRAG}
     >
       <div
         ref={containerRef}
@@ -386,9 +476,9 @@ const WeekView = ({
         </div>
       </div>
       <DragOverlay modifiers={[gridSnap.modifier]} dropAnimation={null} zIndex={1000}>
-        {activeDrag && <DragPreview event={activeDrag} config={config} />}
+        {activeDrag && <DragPreview event={activeDrag} config={config} invalid={dropVerdict} />}
       </DragOverlay>
-    </DndContext>
+    </ViewDndScope>
   );
 };
 

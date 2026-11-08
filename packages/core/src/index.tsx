@@ -26,6 +26,14 @@ import {
   ListViewProps,
   MonthViewProps,
   Resource,
+  ChangeRejectedInfo,
+  ChangeRejection,
+  ChangeSource,
+  ChangeVerdict,
+  EventChange,
+  EventConstraintRule,
+  EventOverlapRule,
+  WeeklyInterval,
 } from "./types/types";
 import {
   NotificationServiceConfig,
@@ -38,7 +46,25 @@ import {
   FilterPluginProps,
   SearchPluginProps,
 } from "./types/search";
-import { CalendarPlugin, DataSourcePlugin, EventLike, ExportPlugin, ThemePlugin, ViewPlugin } from "./types/plugins";
+import {
+  CalendarPlugin,
+  ChangeContext,
+  DataSourcePlugin,
+  EventLike,
+  ExportPlugin,
+  MiddlewarePlugin,
+  ThemePlugin,
+  ViewPlugin,
+  ViewRangeContext,
+} from "./types/plugins";
+import { findOverlapConflicts, satisfiesConstraint, validateChange } from './Utils/changeRules';
+import { ExternalDraggable, type ExternalDraggableProps } from './Components/ExternalDraggable';
+import { useCalendarView, type CalendarViewApi, type SchedulePatch } from './hooks/useCalendarView';
+import { useDropZone, useEventDraggable, type DropZoneTarget } from './hooks/useViewDrag';
+import { eventResourceIds } from './Utils/resources';
+import { createTimeScale, type TimeScale, type TimeScaleOptions, type TimeScaleSegment } from './Utils/timeScale';
+import { useVirtualRange, type VirtualItem, type VirtualRange, type VirtualRangeOptions } from './hooks/useVirtualRange';
+import { InteractionProvider as AgendfyDndProvider } from './context/InteractionContext';
 import { ToastProvider } from "./Components/Toast/Toast"; 
 import CalendarComponent from "./View/Calendar";
 import { ensureDate } from "./Utils/DateTrannforms";
@@ -54,7 +80,23 @@ const WrappedCalendar = React.forwardRef<HTMLDivElement, CalendarProps>((props, 
 });
 WrappedCalendar.displayName = 'WrappedCalendar';
 
-export { WrappedCalendar as Calendar, ensureDate, downloadBlob, expandRecurrences };
+export {
+  WrappedCalendar as Calendar,
+  ensureDate,
+  downloadBlob,
+  expandRecurrences,
+  validateChange,
+  findOverlapConflicts,
+  satisfiesConstraint,
+  AgendfyDndProvider,
+  ExternalDraggable,
+  useCalendarView,
+  useEventDraggable,
+  useDropZone,
+  eventResourceIds,
+  createTimeScale,
+  useVirtualRange,
+};
 export type {
   CalendarApi,
   CalendarProps,
@@ -92,4 +134,25 @@ export type {
   ExportPlugin,
   Resource,
   ViewPlugin,
+  ViewRangeContext,
+  ExternalDraggableProps,
+  CalendarViewApi,
+  SchedulePatch,
+  DropZoneTarget,
+  TimeScale,
+  TimeScaleOptions,
+  TimeScaleSegment,
+  VirtualItem,
+  VirtualRange,
+  VirtualRangeOptions,
+  ChangeContext,
+  MiddlewarePlugin,
+  ChangeRejectedInfo,
+  ChangeRejection,
+  ChangeSource,
+  ChangeVerdict,
+  EventChange,
+  EventConstraintRule,
+  EventOverlapRule,
+  WeeklyInterval,
 };

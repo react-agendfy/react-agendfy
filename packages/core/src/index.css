@@ -8,6 +8,7 @@
 @import "./css/ListView.css";
 @import "./css/EventRow.css";
 @import "./css/Resource.css";
+@import "./css/ResourceTimeGrid.css";
 
 /* NOTE: the global `html, body { font-family: 'Roboto' }` rule was removed.
    A library must not restyle the host document body. The calendar font is
@@ -72,4 +73,13 @@
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+/* Time outside business hours (week, day and resource views). */
+.react-agendfy-non-business {
+  position: absolute;
+  inset-inline: 0;
+  background: var(--agendfy-non-business-bg);
+  pointer-events: none;
+  z-index: 0;
 }

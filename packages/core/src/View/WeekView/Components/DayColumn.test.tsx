@@ -27,6 +27,7 @@ jest.mock('./WeekTimeSlot', () => {
 
 
 jest.mock('../../../Utils/businessHours', () => ({
+  ...jest.requireActual('../../../Utils/businessHours'),
   useBusinessHours: jest.fn(() => {
     const day = new Date('2023-01-01T00:00:00Z');
     const { startOfDay, setHours } = require('date-fns');

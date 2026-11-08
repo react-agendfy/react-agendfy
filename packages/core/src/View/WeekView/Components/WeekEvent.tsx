@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {  TZDate } from '@date-fns/tz';
 import { ensureDate } from "../../../Utils/DateTrannforms";
 import BaseEvent from "../../../Components/BaseEvent";
+import { eventAriaLabel } from "../../../Utils/displayOptions";
 import { getSlotHeight } from "../../../Utils/slotHeight";
 import { BaseEventProps } from "../../../types/types";
 
@@ -159,9 +160,25 @@ export const WeekEvent = ({
          end of the day, making extension past midnight (multiday conversion
          in handleResize) physically unreachable. */
     >
-      <div ref={setNodeRef}
-                style={{ width: "100%", height: "100%" }}
-      {...listeners} {...attributes}>
+      {/* The single focus target of the event: Space picks it up (keyboard
+          drag), Enter opens it. The inner BaseEvent is not focusable. */}
+      <div
+        ref={setNodeRef}
+        style={{ width: "100%", height: "100%" }}
+        {...listeners}
+        {...attributes}
+        aria-label={eventAriaLabel(event, config)}
+        onKeyDown={(e) => {
+          const activates = e.key === "Enter" || (e.key === " " && !canDrag);
+          if (activates && !isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            onEventClick?.(event);
+            return;
+          }
+          listeners?.onKeyDown?.(e);
+        }}
+      >
         <div
           onClick={(e) => {
             e.stopPropagation();
@@ -189,6 +206,7 @@ export const WeekEvent = ({
             // layers would translate and the event would drift away from the
             // pointer at 2x speed while dragging.
             isDraggable={false}
+            focusable={false}
             customClassName=""
             parsedSlotMax={endHour}
           />

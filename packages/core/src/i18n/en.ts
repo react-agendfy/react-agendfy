@@ -10,6 +10,8 @@ const en = {
   monthView: "Month",
   weekView: "Week",
   dayView: "Day",
+  resourceDayView: "Resource day",
+  resourceWeekView: "Resource week",
   listView: "List",
   agenda: "Agenda",
   all_day: "All Day",

@@ -14,8 +14,10 @@ import { TZDate } from "@date-fns/tz";
 import {
   CalendarProps,
   CalendarView,
+  ChangeVerdict,
   Config,
   DateRangeSelection,
+  EventChange,
   EventProps,
   ExportOption,
   Resource,
@@ -27,8 +29,9 @@ import {
   ViewPlugin,
 } from "../types/plugins";
 import { getLocale } from "../Utils/locate";
-import { getMessages, getTextDirection } from "../i18n";
+import { formatMessage, getMessages, getTextDirection } from "../i18n";
 import { normalizeEvents } from "../Utils/calendarHelpers";
+import { toPublicEvent } from "../Utils/resources";
 import { getFilteredEventsList, updateEventsList } from "../Utils/CalendarUtils";
 import { downloadBlob } from "../Utils/pluginUtils";
 import { useToast } from "../Components/Toast/Toast";
@@ -39,6 +42,8 @@ import usePluginManagement from "../hooks/usePluginManagement";
 import useDataSourceEvents from "../hooks/useDataSourceEvents";
 import { clampToValidRange, getDayRules, getExpansionWindow, getVisibleRange } from "../Utils/calendarRange";
 import { expandRecurrences } from "../Utils/recurrence";
+import { eventSpan, validateChange } from "../Utils/changeRules";
+import { ChangeHistory, HistoryEntry, sameSchedule, withSchedule } from "../Utils/changeHistory";
 
 export const defaultConfig: Config = {
   timeZone: "America/Sao_Paulo",
@@ -79,9 +84,13 @@ export interface CalendarState {
   currentDate: TZDate;
   events: EventProps[];
   localFilteredResources: string[];
-  pluginFilteredEvents: EventProps[];
-  pluginSearchResults: EventProps[];
-  isSearchActive: boolean;
+  /**
+   * Ids a filter plugin (`onFilterChange`) lets through; null when no plugin
+   * filter is active. Kept across `events` updates.
+   */
+  pluginFilterIds: Set<EventProps["id"]> | null;
+  /** Ids matching the active plugin search (`onSearch`); null when not searching. */
+  pluginSearchIds: Set<EventProps["id"]> | null;
   currentView: string;
 }
 
@@ -89,12 +98,14 @@ export type CalendarAction =
   | { type: "SET_CURRENT_DATE"; payload: TZDate }
   | { type: "SET_VIEW"; payload: string }
   | { type: "UPDATE_EVENT"; payload: EventProps }
+  | { type: "ADD_EVENT"; payload: EventProps }
+  | { type: "REMOVE_EVENT"; payload: EventProps["id"] }
   | { type: "SYNC_EVENTS"; payload: EventProps[] }
   | {
       type: "SET_RESOURCE_FILTER";
       payload: string[] | ((prev: string[]) => string[]);
     }
-  | { type: "SET_PLUGIN_FILTERED_EVENTS"; payload: EventProps[] }
+  | { type: "SET_PLUGIN_FILTER"; payload: Set<EventProps["id"]> | null }
   | { type: "SET_PLUGIN_SEARCH"; payload: { searchTerm: string; results: EventProps[] } };
 
 export function calendarReducer(
@@ -108,14 +119,26 @@ export function calendarReducer(
       return { ...state, currentView: action.payload };
     case "UPDATE_EVENT":
       return { ...state, events: updateEventsList(state.events, action.payload) };
-    case "SYNC_EVENTS":
+    case "ADD_EVENT": {
+      if (state.events.some((e) => e.id === action.payload.id)) {
+        return { ...state, events: updateEventsList(state.events, action.payload) };
+      }
+      // An event the user just dropped shows even under an active plugin
+      // filter or search.
+      const withId = (ids: Set<EventProps["id"]> | null) => (ids ? new Set(ids).add(action.payload.id) : ids);
       return {
         ...state,
-        events: action.payload,
-        pluginFilteredEvents: action.payload,
-        pluginSearchResults: action.payload,
-        isSearchActive: false,
+        events: [...state.events, action.payload],
+        pluginFilterIds: withId(state.pluginFilterIds),
+        pluginSearchIds: withId(state.pluginSearchIds),
       };
+    }
+    case "REMOVE_EVENT":
+      return { ...state, events: state.events.filter((e) => e.id !== action.payload) };
+    case "SYNC_EVENTS":
+      // Plugin filter/search stay as they are: the host saving a drag must
+      // not silently clear them.
+      return { ...state, events: action.payload };
     case "SET_RESOURCE_FILTER":
       return {
         ...state,
@@ -124,13 +147,14 @@ export function calendarReducer(
             ? action.payload(state.localFilteredResources)
             : action.payload,
       };
-    case "SET_PLUGIN_FILTERED_EVENTS":
-      return { ...state, pluginFilteredEvents: action.payload };
+    case "SET_PLUGIN_FILTER":
+      return { ...state, pluginFilterIds: action.payload };
     case "SET_PLUGIN_SEARCH":
       return {
         ...state,
-        pluginSearchResults: action.payload.results,
-        isSearchActive: action.payload.searchTerm.length > 0,
+        pluginSearchIds: action.payload.searchTerm.length > 0
+          ? new Set(action.payload.results.map((e) => e.id))
+          : null,
       };
     default:
       return state;
@@ -177,16 +201,39 @@ export interface CalendarContextValue {
   // user callbacks (pass-through)
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
-  onSlotClick?: (slotTime: Date) => void;
+  onSlotClick?: (slotTime: Date, info?: { resourceId?: string | number }) => void;
+
+  /** Visible range of the active view, [start, end). */
+  visibleRange: { start: Date; end: Date };
+
+  // change pipeline (RFC 001)
+  /** Validates, applies, calls back and records a move/resize. */
+  commitChange: (change: EventChange) => ChangeVerdict;
+  /** Validation only, no side effects (drag previews). */
+  previewChange: (change: EventChange) => ChangeVerdict;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 
   // handlers
   handleEventUpdate: (event: EventProps) => void;
   handleEventResize: (event: EventProps) => void;
+  /** Undefined when the calendar accepts no external drops (no `onEventReceive`). */
+  handleEventReceive?: (event: EventProps, data?: unknown) => void;
   handleDateRangeSelect: (event: EventProps | DateRangeSelection) => void;
   handleViewChange: (view: string) => void;
   handleResourceFilterChange: (selected: string[] | ((prev: string[]) => string[])) => void;
   handleExport: (format: string) => void;
   navigate: (direction: "prev" | "next" | "today") => void;
+  /** Moves to `date` (clamped to `validRange`). */
+  gotoDate: (date: Date | string) => void;
+  /**
+   * Text for `key`: `config[key]`, else the view plugins' `messages` for the
+   * language (exact, base, English), else `fallback` (default: the key).
+   * `{name}` placeholders are filled from `vars`.
+   */
+  t: (key: string, vars?: Record<string, string | number>, fallback?: string) => string;
   /** False when prev/next would leave `validRange`. */
   canNavigateBack: boolean;
   canNavigateForward: boolean;
@@ -221,6 +268,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   onDayClick,
   onSlotClick,
   onDateRangeSelect,
+  onChangeRejected,
+  onEventReceive,
   onDateChange,
   onDatesSet,
   onViewChange,
@@ -244,9 +293,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ),
     events: initialEvents,
     localFilteredResources: filteredResources,
-    pluginFilteredEvents: initialEvents,
-    pluginSearchResults: initialEvents,
-    isSearchActive: false,
+    pluginFilterIds: null,
+    pluginSearchIds: null,
     currentView: config.defaultView || defaultConfig.defaultView,
   }));
 
@@ -293,6 +341,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     interactionPlugins,
     themePlugins,
     exportPlugins,
+    middlewarePlugins,
   } = usePluginManagement(plugins);
 
   // Theme css variables are applied by CalendarView to the calendar's own
@@ -343,6 +392,32 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     config: localeConfig,
   });
 
+  /* --- day rules + the active custom view's own range ------------------- */
+  const dayRules = useMemo(() => getDayRules(localeConfig), [localeConfig]);
+
+  const activeViewPlugin = useMemo(
+    () => customViewPlugins.find((p: ViewPlugin) => p.viewName === state.currentView),
+    [customViewPlugins, state.currentView]
+  );
+  // A view plugin with `range` reports its own [start, end); used for
+  // recurrence expansion, data sources, onDatesSet, getView() and prev/next.
+  const customRangeOf = useMemo(
+    () =>
+      activeViewPlugin?.range
+        ? (date: Date) =>
+            activeViewPlugin.range!(date, {
+              weekStartsOn: dayRules.weekStartsOn,
+              timeZone,
+              config: localeConfig,
+            })
+        : undefined,
+    [activeViewPlugin, dayRules.weekStartsOn, timeZone, localeConfig]
+  );
+  const customRange = useMemo(
+    () => customRangeOf?.(state.currentDate),
+    [customRangeOf, state.currentDate]
+  );
+
   /* --- data-source plugins (phase-0: fetched events merge into pipeline) -- */
   const stableDataSourcePlugins = useMemo(
     () => dataSourcePlugins,
@@ -352,7 +427,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   const { dataSourceEvents, isDataSourceLoading, dataSourceError, refetch: refetchDataSources } =
     // localeConfig carries the ACTIVE view (resolvedConfig only the initial
     // one), so fetch ranges follow view switches.
-    useDataSourceEvents(stableDataSourcePlugins, localeConfig, state.currentDate);
+    useDataSourceEvents(stableDataSourcePlugins, localeConfig, state.currentDate, customRange);
 
   // Merge events fetched by data-source plugins with the user-provided events,
   // without clobbering user events (user events win on id collisions).
@@ -367,8 +442,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
 
   /* --- derived event pipeline -------------------------------------------- */
   const normalizedEvents = useMemo(
-    () => normalizeEvents(mergedEvents),
-    [mergedEvents]
+    // resourceIds/resourceId resolved against the `resources` prop (icons,
+    // tooltips, resource filter).
+    () => normalizeEvents(mergedEvents, resources),
+    [mergedEvents, resources]
   );
 
   const filteredEvents = useMemo(
@@ -376,70 +453,207 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       getFilteredEventsList(
         normalizedEvents,
         state.localFilteredResources,
-        state.pluginFilteredEvents,
-        state.pluginSearchResults,
-        state.isSearchActive
+        state.pluginFilterIds,
+        state.pluginSearchIds
       ),
     [
       normalizedEvents,
       state.localFilteredResources,
-      state.pluginFilteredEvents,
-      state.pluginSearchResults,
-      state.isSearchActive,
+      state.pluginFilterIds,
+      state.pluginSearchIds,
     ]
   );
 
-  /* --- recurrence expansion + day rules --------------------------------- */
-  const dayRules = useMemo(() => getDayRules(localeConfig), [localeConfig]);
-
+  /* --- recurrence expansion ---------------------------------------------- */
   // Expanded once for a window covering every built-in view of the current
-  // date (month grid ± 1 week), so views never deal with rules themselves.
+  // date (month grid ± 1 week), widened to a custom view's own range, so
+  // views never deal with rules themselves.
   const expansionWindow = getExpansionWindow(state.currentDate, dayRules.weekStartsOn);
-  const windowStart = expansionWindow.start.getTime();
-  const windowEnd = expansionWindow.end.getTime();
+  const windowStart = Math.min(
+    expansionWindow.start.getTime(),
+    customRange ? customRange.start.getTime() : Infinity
+  );
+  const windowEnd = Math.max(
+    expansionWindow.end.getTime(),
+    customRange ? customRange.end.getTime() : -Infinity
+  );
   const visibleEvents = useMemo(
     () => expandRecurrences(filteredEvents, new Date(windowStart), new Date(windowEnd), timeZone),
     [filteredEvents, windowStart, windowEnd, timeZone]
   );
 
-  /* --- handlers ----------------------------------------------------------- */
-  // Optimistic update with FullCalendar-style revert: when the host's
-  // callback returns a Promise that rejects (e.g. the server refused the
-  // move), the event goes back to where it was. A void return is unaffected.
+  /* --- change pipeline (RFC 001, layer 1) --------------------------------- */
+  // validate → apply optimistically → host callback (a rejected Promise
+  // reverts, like FullCalendar's info.revert()) → undo history.
   const eventsRef = useRef(state.events);
   eventsRef.current = state.events;
-  const applyWithRevert = useCallback(
-    (changed: EventProps, callback?: (event: EventProps) => void | Promise<unknown>) => {
-      const previous = eventsRef.current.find((e) => e.id === changed.id);
-      dispatch({ type: "UPDATE_EVENT", payload: changed });
-      const result = callback?.(changed);
-      if (result && typeof (result as Promise<unknown>).then === "function") {
-        (result as Promise<unknown>).then(undefined, () => {
-          if (previous) dispatch({ type: "UPDATE_EVENT", payload: previous });
-        });
-      }
+  const visibleEventsRef = useRef(visibleEvents);
+  visibleEventsRef.current = visibleEvents;
+  const normalizedEventsRef = useRef(normalizedEvents);
+  normalizedEventsRef.current = normalizedEvents;
+
+  const historyRef = useRef<ChangeHistory | null>(null);
+  if (!historyRef.current) historyRef.current = new ChangeHistory();
+  const history = historyRef.current;
+  history.limit = localeConfig.historyLimit ?? 100;
+  // Re-render when the stacks change (canUndo/canRedo).
+  const [, bumpHistory] = useReducer((n: number) => n + 1, 0);
+
+  /** The event as it is now: a stored event, else a rendered occurrence. */
+  const findCurrent = useCallback((id: EventProps["id"]) => {
+    const found = eventsRef.current.find((e) => e.id === id) ?? visibleEventsRef.current.find((e) => e.id === id);
+    return found && toPublicEvent(found);
+  }, []);
+
+  const eventsInRange = useCallback(
+    (start: Date, end: Date) => {
+      const from = start.getTime();
+      const to = end.getTime();
+      return expandRecurrences(normalizedEventsRef.current, start, end, timeZone).filter((e) => {
+        const span = eventSpan(e);
+        return span.start < to && from < span.end;
+      });
     },
-    []
+    [timeZone]
   );
 
+  const previewChange = useCallback(
+    (change: EventChange): ChangeVerdict => {
+      // Dropping in place, or replaying history, is always fine.
+      if (change.source === "history") return true;
+      if (change.before && sameSchedule(change.before, change.event)) return true;
+      return validateChange(change, { config: localeConfig, eventsInRange, resources }, middlewarePlugins);
+    },
+    [localeConfig, eventsInRange, middlewarePlugins, resources]
+  );
+
+  const runChange = useCallback(
+    (change: EventChange, onReverted?: () => void): ChangeVerdict => {
+      const unchanged = !!change.before && sameSchedule(change.before, change.event);
+
+      const verdict = previewChange(change);
+      if (verdict !== true) {
+        onChangeRejected?.({
+          change,
+          reason: verdict.reason,
+          message: verdict.message,
+          conflicts: verdict.conflicts,
+        });
+        return verdict;
+      }
+
+      // A received event is new: added, and removed again on revert. It is
+      // not recorded (undoing it would need a remove callback).
+      const isReceive = change.kind === "receive";
+      // The host gets its own shape back: no resources the calendar derived.
+      const event = toPublicEvent(change.event);
+      const before = change.before && toPublicEvent(change.before);
+      dispatch({ type: isReceive ? "ADD_EVENT" : "UPDATE_EVENT", payload: event });
+      const entryId =
+        change.kind !== "receive" && change.source === "user" && before && !unchanged
+          ? history.record(change.kind, before, event)
+          : null;
+      if (entryId !== null) bumpHistory();
+      middlewarePlugins.forEach((p) => p.onCommit?.(change));
+
+      const result = isReceive
+        ? onEventReceive?.(event, change.data)
+        : (change.kind === "resize" ? onEventResize : onEventUpdate)?.(event);
+      if (result && typeof (result as Promise<unknown>).then === "function") {
+        (result as Promise<unknown>).then(undefined, () => {
+          if (isReceive) dispatch({ type: "REMOVE_EVENT", payload: event.id });
+          else if (before) dispatch({ type: "UPDATE_EVENT", payload: before });
+          if (entryId !== null) {
+            history.remove(entryId);
+            bumpHistory();
+          }
+          onReverted?.();
+          middlewarePlugins.forEach((p) => p.onRevert?.(change));
+        });
+      }
+      return true;
+    },
+    [previewChange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize, onEventReceive]
+  );
+
+  const commitChange = useCallback((change: EventChange) => runChange(change), [runChange]);
+
+  /** Re-applies one side of a history entry; puts the entry back if the host refuses. */
+  const replay = useCallback(
+    (entry: HistoryEntry, target: "before" | "after", onDone: () => void, onFailed: () => void) => {
+      const current = findCurrent(entry.after.id) ?? entry[target === "before" ? "after" : "before"];
+      runChange(
+        { kind: entry.kind, event: withSchedule(current, entry[target]), before: current, source: "history" },
+        () => {
+          onFailed();
+          bumpHistory();
+        }
+      );
+      onDone();
+      bumpHistory();
+    },
+    [findCurrent, runChange]
+  );
+
+  const undo = useCallback(() => {
+    const entry = history.takeUndo();
+    if (!entry) return;
+    replay(
+      entry,
+      "before",
+      () => history.pushRedo(entry),
+      () => {
+        history.remove(entry.id);
+        history.pushUndo(entry);
+      }
+    );
+  }, [history, replay]);
+
+  const redo = useCallback(() => {
+    const entry = history.takeRedo();
+    if (!entry) return;
+    replay(
+      entry,
+      "after",
+      () => history.pushUndo(entry),
+      () => {
+        history.remove(entry.id);
+        history.pushRedo(entry);
+      }
+    );
+  }, [history, replay]);
+
   const handleEventUpdate = useCallback(
-    (updatedEvent: EventProps) => applyWithRevert(updatedEvent, onEventUpdate),
-    [applyWithRevert, onEventUpdate]
+    (updatedEvent: EventProps) => {
+      runChange({ kind: "move", event: updatedEvent, before: findCurrent(updatedEvent.id), source: "user" });
+    },
+    [runChange, findCurrent]
   );
 
   const handleEventResize = useCallback(
-    (resizeEvent: EventProps) => applyWithRevert(resizeEvent, onEventResize),
-    [applyWithRevert, onEventResize]
+    (resizeEvent: EventProps) => {
+      runChange({ kind: "resize", event: resizeEvent, before: findCurrent(resizeEvent.id), source: "user" });
+    },
+    [runChange, findCurrent]
   );
 
+  const handleEventReceive = useCallback(
+    (event: EventProps, data?: unknown) => {
+      runChange({ kind: "receive", event, data, source: "user" });
+    },
+    [runChange]
+  );
+
+  const selectAllow = localeConfig.selectAllow;
   const handleDateRangeSelect = useCallback(
     (rangeEvent: EventProps | DateRangeSelection) => {
+      if (selectAllow && selectAllow(rangeEvent as DateRangeSelection) === false) return;
       // A bare range selection has no id, so updateEventsList leaves the
       // events list untouched (parity with the pre-refactor behavior).
       dispatch({ type: "UPDATE_EVENT", payload: rangeEvent as EventProps });
       onDateRangeSelect?.(rangeEvent);
     },
-    [onDateRangeSelect]
+    [onDateRangeSelect, selectAllow]
   );
 
   const handleViewChange = useCallback((newView: string) => {
@@ -453,8 +667,13 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     []
   );
 
+  // A filter plugin passes the events it keeps. Keeping all of them (its
+  // "clear") turns the filter off, so later events (data sources, new ones)
+  // are not hidden by a stale list.
   const handleFilterChangeFromPlugin = useCallback((filtered: EventProps[]) => {
-    dispatch({ type: "SET_PLUGIN_FILTERED_EVENTS", payload: filtered });
+    const ids = new Set(filtered.map((e) => e.id));
+    const keepsAll = normalizedEventsRef.current.every((e) => ids.has(e.id));
+    dispatch({ type: "SET_PLUGIN_FILTER", payload: keepsAll ? null : ids });
   }, []);
 
   const handleSearchFromPlugin = useCallback(
@@ -471,6 +690,14 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     [timeZone]
   );
 
+  const customNavigation = useMemo(
+    () =>
+      activeViewPlugin && (activeViewPlugin.range || activeViewPlugin.step)
+        ? { step: activeViewPlugin.step, rangeOf: customRangeOf }
+        : undefined,
+    [activeViewPlugin, customRangeOf]
+  );
+
   const {
     navigateToday,
     navigateBack,
@@ -483,12 +710,13 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     timeZone,
     setCurrentDate,
     dayRules,
+    custom: customNavigation,
   });
 
   /* --- visible range: onDatesSet / onViewChange / imperative API -------- */
   const visibleRange = useMemo(
-    () => getVisibleRange(state.currentView, state.currentDate, localeConfig),
-    [state.currentView, state.currentDate, localeConfig]
+    () => customRange ?? getVisibleRange(state.currentView, state.currentDate, localeConfig),
+    [customRange, state.currentView, state.currentDate, localeConfig]
   );
   const rangeStartMs = visibleRange.start.getTime();
   const rangeEndMs = visibleRange.end.getTime();
@@ -532,6 +760,11 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
         activeEnd: new Date(rangeEndMs),
       }),
       refetchEvents: refetchDataSources,
+      undo,
+      redo,
+      canUndo: () => history.canUndo(),
+      canRedo: () => history.canRedo(),
+      validate: (change) => previewChange({ ...change, source: "user" }),
     }),
     [
       state.currentDate,
@@ -544,7 +777,45 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       rangeStartMs,
       rangeEndMs,
       refetchDataSources,
+      undo,
+      redo,
+      history,
+      previewChange,
     ]
+  );
+
+  const publicEventClick = useMemo(
+    () => (onEventClick ? (event: EventProps) => onEventClick(toPublicEvent(event)) : undefined),
+    [onEventClick]
+  );
+
+  const gotoDate = useCallback(
+    (date: Date | string) =>
+      setCurrentDate(clampToValidRange(date instanceof Date ? date : new Date(date), dayRules.validRange)),
+    [setCurrentDate, dayRules.validRange]
+  );
+
+  /* --- texts: config, then the view plugins' messages ------------------- */
+  const pluginMessages = useMemo(() => {
+    const lang = (resolvedConfig.lang ?? "en").toLowerCase().replace("_", "-");
+    const base = lang.split("-")[0];
+    const merged: Record<string, string> = {};
+    for (const plugin of customViewPlugins) {
+      const byLang = Object.fromEntries(
+        Object.entries(plugin.messages ?? {}).map(([k, v]) => [k.toLowerCase().replace("_", "-"), v])
+      );
+      Object.assign(merged, byLang.en, byLang[base], byLang[lang]);
+    }
+    return merged;
+  }, [customViewPlugins, resolvedConfig.lang]);
+
+  const t = useCallback(
+    (key: string, vars: Record<string, string | number> = {}, fallback?: string) => {
+      const fromConfig = (resolvedConfig as unknown as Record<string, unknown>)[key];
+      const template = typeof fromConfig === "string" ? fromConfig : pluginMessages[key];
+      return formatMessage(template, vars, fallback ?? key);
+    },
+    [resolvedConfig, pluginMessages]
   );
 
   const navigate = useCallback(
@@ -604,16 +875,27 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ];
     const customViews = customViewPlugins.map((plugin: ViewPlugin) => ({
       name: plugin.viewName,
-      label: plugin.props?.label || plugin.viewName,
+      label:
+        typeof plugin.label === "object"
+          ? t(plugin.label.key, undefined, plugin.viewName)
+          : plugin.label || plugin.props?.label || plugin.viewName,
     }));
-    const all = [...defaultViews, ...customViews];
+    // Resource views: listed by default only when there are resources;
+    // headerViews can always ask for them.
+    const resourceViews = [
+      { name: "resourceDay", label: localeConfig.resourceDayView ?? "Resource day" },
+      { name: "resourceWeek", label: localeConfig.resourceWeekView ?? "Resource week" },
+    ];
+    const all = [...defaultViews, ...resourceViews, ...customViews];
     // headerViews picks and orders the buttons (unknown names are ignored).
     const wanted = localeConfig.headerViews;
-    if (!wanted?.length) return all;
+    if (!wanted?.length) {
+      return resources.length ? all : [...defaultViews, ...customViews];
+    }
     return wanted
       .map((name) => all.find((v) => v.name === name))
       .filter((v): v is { name: string; label: string } => !!v);
-  }, [localeConfig, customViewPlugins]);
+  }, [localeConfig, customViewPlugins, t, resources.length]);
 
   const customViews = useMemo(() => {
     const views: Record<string, FC<any>> = {};
@@ -729,16 +1011,26 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     themePlugins,
     isDataSourceLoading,
     dataSourceError,
-    onEventClick,
+    onEventClick: publicEventClick,
     onDayClick,
     onSlotClick,
+    visibleRange,
+    commitChange,
+    previewChange,
+    undo,
+    redo,
+    canUndo: history.canUndo(),
+    canRedo: history.canRedo(),
     handleEventUpdate,
     handleEventResize,
+    handleEventReceive: onEventReceive ? handleEventReceive : undefined,
     handleDateRangeSelect,
     handleViewChange,
     handleResourceFilterChange,
     handleExport,
     navigate,
+    gotoDate,
+    t,
     canNavigateBack,
     canNavigateForward,
     eventContent,

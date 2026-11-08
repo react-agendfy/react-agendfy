@@ -49,6 +49,46 @@ describe("createGridDragSnap", () => {
     expect(snap.result()).toEqual({ slots: -2, columns: -1 });
   });
 
+  it("keyboard steps count whole units, ignore pixel movement and respect bounds", () => {
+    const { scroller, grid } = setup();
+    const snap = createGridDragSnap();
+    snap.begin(grid, SLOT, COLUMN, { minSlots: -1, maxSlots: 3, minColumns: 0, maxColumns: 2 });
+    snap.step(1, 0);
+    snap.step(1, 1);
+    expect(snap.result()).toEqual({ slots: 2, columns: 1 });
+    // dnd-kit's keyboard sensor may scroll and report any transform: the
+    // preview is drawn from the units, back in viewport space.
+    scroller.scrollTop = 120;
+    expect(move(snap, 999, 37)).toMatchObject({ x: COLUMN, y: 2 * SLOT - 120 });
+    expect(snap.result()).toEqual({ slots: 2, columns: 1 });
+    for (let i = 0; i < 5; i++) snap.step(1, 1);
+    expect(snap.result()).toEqual({ slots: 3, columns: 2 });
+    for (let i = 0; i < 9; i++) snap.step(-1, -1);
+    expect(snap.result()).toEqual({ slots: -1, columns: 0 });
+  });
+
+  it("a keyboard step continues from where the pointer left the preview; end() resets", () => {
+    const { grid } = setup();
+    const snap = createGridDragSnap();
+    snap.begin(grid, SLOT, COLUMN);
+    move(snap, 0, 85); // 2 slots
+    snap.step(1, 0);
+    expect(snap.result()).toEqual({ slots: 3, columns: 0 });
+    snap.end();
+    snap.step(1, 0); // inactive: ignored
+    expect(snap.result()).toBeNull();
+    snap.begin(grid, SLOT, COLUMN);
+    expect(snap.result()).toEqual({ slots: 0, columns: 0 });
+  });
+
+  it("without columns (day view) a keyboard step never moves sideways", () => {
+    const { grid } = setup();
+    const snap = createGridDragSnap();
+    snap.begin(grid, SLOT, 0);
+    snap.step(2, 1);
+    expect(snap.result()).toEqual({ slots: 2, columns: 0 });
+  });
+
   it("is inert without layout (jsdom / no slot size)", () => {
     const { grid } = setup();
     const snap = createGridDragSnap();

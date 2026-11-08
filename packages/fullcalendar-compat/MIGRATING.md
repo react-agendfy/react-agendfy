@@ -20,6 +20,7 @@ on, even where react-agendfy itself defaults differently.
 | `timeGridWeek`, `timeGridDay` | ✅ | |
 | `listDay`, `listWeek`, `listMonth` | ✅ | |
 | `dayGridWeek`, `dayGridDay` | 🟡 | Rendered as the time-grid week/day. |
+| `resourceTimeGridDay`, `resourceTimeGridWeek` | ✅ | One column per resource (and day), with the `resources` option. Only the columns in view are rendered, so hundreds of resources stay fast. `datesAboveResources` is supported. |
 | `listYear`, `multiMonth*`, `resourceTimeline*` | ⛔ | `listYear` falls back to `listMonth`. Use `agendfyPlugins` for custom views (there is a timeline plugin). |
 
 ## Options
@@ -33,7 +34,8 @@ on, even where react-agendfy itself defaults differently.
 | `firstDay`, `weekends`, `hiddenDays` | ✅ | |
 | `validRange` | ✅ | Objects only; the function form is not supported. |
 | `businessHours` | ✅ | `true`, an object or an array. |
-| `slotDuration`, `slotLabelInterval` | ✅ | |
+| `slotDuration`, `slotLabelInterval` | ✅ | Default 30 minutes, as in FullCalendar. |
+| `resources` | 🟡 | The array form: `id`, `title`, `children`, `businessHours` (shaded in the resource columns, and enforced by `eventConstraint: "businessHours"`); other keys go to `extendedProps`. Function and URL sources are not supported. Events use `resourceId` / `resourceIds`. |
 | `slotMinTime`, `slotMaxTime` | 🟡 | Week view: whole hours. |
 | `slotLabelFormat`, `eventTimeFormat` | ✅ | Formatter objects (`{ hour, minute, meridiem, hour12 }`) or date-fns patterns. |
 | `allDaySlot`, `nowIndicator`, `weekNumbers`, `weekNumberCalculation` | ✅ | `weekNumberCalculation` takes `"local"` or `"ISO"`; functions are not supported. |
@@ -42,7 +44,11 @@ on, even where react-agendfy itself defaults differently.
 | `editable`, `eventStartEditable`, `eventDurationEditable`, `selectable` | ✅ | Per-event `editable` is not supported. |
 | `selectMirror` | ⛔ | The selection is always highlighted. |
 | `height`, `contentHeight` | ✅ | `"auto"`, a number or any CSS length. `aspectRatio` is ignored. |
-| `eventOverlap`, `selectOverlap`, `eventAllow`, `selectAllow` | ⛔ | Validate in `eventDrop`/`select` and call `info.revert()`. |
+| `eventOverlap` | 🟡 | `false` or a function `(stillEvent, movingEvent)` that gets `EventApi`s. A refused drop never fires `eventDrop`. Difference: when both events carry resources (`resourceId`/`resourceIds`), events on different resources never overlap, even outside resource views. |
+| `eventConstraint` | ✅ | `"businessHours"` (uses `businessHours`; no constraint when `businessHours` is off), a groupId, a `{ start, end }` range, or business-hours-like objects (`{ startTime, endTime, daysOfWeek }` or a list). |
+| `eventAllow` | 🟡 | Gets `(dropInfo, draggedEvent)`. `dropInfo` has `start`, `end`, `startStr`, `endStr` and `allDay`, but no `resource`. |
+| `selectAllow` | ✅ | Gets `{ start, end, startStr, endStr, allDay }`, with the same exclusive all-day end as `select`. |
+| `selectOverlap` | ✅ | `false`, or a function that gets each `EventApi` under the selection. |
 | `eventClassNames`, `dayCellClassNames` | ✅ | A string, a list, or a function. Event arg: `event`, `view`, `isPast`, `isFuture`. Day arg: `date`, `view`, `isToday`, `isPast`, `isFuture`, `isOther`, `isDisabled`. |
 | `navLinks`, `stickyHeaderDates`, `expandRows`, `eventDisplay`, `droppable`, `dayCellDidMount`, `eventDidMount`, `customButtons`, `views` | ⛔ | Accepted, no effect. |
 
@@ -55,6 +61,7 @@ on, even where react-agendfy itself defaults differently.
 | `id`, `title`, `start`, `end`, `allDay`, `color`/`backgroundColor` | ✅ | `"YYYY-MM-DD"` means all-day. A missing `end` defaults to +1h, or +1 day for all-day events. |
 | `extendedProps`, plus unknown keys moved into it | ✅ | |
 | `rrule` (string or object), `exdate`, `duration` | ✅ | Built in. Occurrences keep the series `id`. |
+| `overlap`, `constraint` | ✅ | Override `eventOverlap` / `eventConstraint` for one event. Same forms as the options. |
 | `groupId`, `url`, `display`, `textColor`, `borderColor` | 🟡 | Exposed on `EventApi`, but not used for rendering. `display: "background"` is not supported. |
 | `startTime`/`endTime`/`daysOfWeek` (simple recurrence) | ⛔ | Use `rrule`. |
 
@@ -63,9 +70,9 @@ on, even where react-agendfy itself defaults differently.
 | Callback | | Notes |
 |---|---|---|
 | `eventClick` | ✅ | `el` and `jsEvent` are `null`. |
-| `dateClick` | ✅ | Time slots (week/day) and days (month). `dayEl` and `jsEvent` are `null`. |
+| `dateClick` | ✅ | Time slots (week/day) and days (month). In the resource views `resource` is the column's `ResourceApi` (`id`, `title`, `extendedProps`). `dayEl` and `jsEvent` are `null`. |
 | `select` | ✅ | `end` is exclusive, as in FullCalendar. |
-| `eventDrop` | ✅ | `event`, `oldEvent`, `delta`, `revert()`. `oldEvent` reflects earlier accepted moves. |
+| `eventDrop` | ✅ | `event`, `oldEvent`, `delta`, `revert()`, and in the resource views `newResource` / `oldResource` when the resource changed. Dragging one copy of an event with several resources swaps only that resource. `oldEvent` reflects earlier accepted moves. |
 | `eventResize` | ✅ | `startDelta`, `endDelta`, `revert()`. Resizing works in the week and month views. |
 | `datesSet` | ✅ | Called on mount and on every navigation or view change. `end` is exclusive. |
 | `eventContent` | ✅ | Return JSX or `{ html }`. `{ domNodes }` is not supported. |

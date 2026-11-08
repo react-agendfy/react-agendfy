@@ -1,6 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import AgendaView from './AgendaView';
+import ListView from './ListView/ListView';
+
+// The agenda view is the list view's "agenda" variant.
+const AgendaView = (props: React.ComponentProps<typeof ListView>) => <ListView variant="agenda" {...props} />;
 
 const dummyConfig: any = {
   timeZone: 'UTC',

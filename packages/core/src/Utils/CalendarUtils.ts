@@ -19,18 +19,14 @@ export const updateEventsList = (
 export const getFilteredEventsList = (
   normalizedEvents: EventProps[],
   localFilteredResources: string[],
-  pluginFilteredEvents: EventProps[],
-  pluginSearchResults: EventProps[],
-  isSearchActive: boolean
+  pluginFilterIds: Set<EventProps["id"]> | null,
+  pluginSearchIds: Set<EventProps["id"]> | null
 ): EventProps[] => {
-  // Plugin filter/search results only decide WHICH events show (by id); the
-  // events themselves always come from the live list. Returning the plugin
-  // copies (as before) froze them at the last sync, so an optimistic move
-  // or resize never showed until the host re-sent the events.
-  const filteredByResource = filterEvents(normalizedEvents, localFilteredResources);
-  const pluginIds = new Set(pluginFilteredEvents.map((e) => e.id));
-  const filteredByPlugin = filteredByResource.filter((event: EventProps) => pluginIds.has(event.id));
-  if (!isSearchActive) return filteredByPlugin;
-  const searchIds = new Set(pluginSearchResults.map((e) => e.id));
-  return filteredByPlugin.filter((event: EventProps) => searchIds.has(event.id));
+  // Plugin filter/search only decide WHICH events show (by id), and only
+  // while active (non-null); the events themselves always come from the
+  // live list (user events, data sources, optimistic moves).
+  let result = filterEvents(normalizedEvents, localFilteredResources);
+  if (pluginFilterIds) result = result.filter((event) => pluginFilterIds.has(event.id));
+  if (pluginSearchIds) result = result.filter((event) => pluginSearchIds.has(event.id));
+  return result;
 }

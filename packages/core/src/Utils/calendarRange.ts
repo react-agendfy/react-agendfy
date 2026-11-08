@@ -1,6 +1,8 @@
 import { TZDate } from "@date-fns/tz";
 import {
   addDays,
+  addMonths,
+  addWeeks,
   endOfDay,
   endOfMonth,
   endOfWeek,
@@ -10,7 +12,7 @@ import {
 } from "date-fns";
 import type { Config, ValidRange, Weekday } from "../types/types";
 import { getLocale } from "./locate";
-import { getNewDate } from "./calendarNavigation";
+import { getNewDate, viewSpan } from "./calendarNavigation";
 
 /*
  * Day-level calendar rules shared by every view: first day of the week,
@@ -109,7 +111,7 @@ export const getViewPeriod = (
   date: Date,
   weekStartsOn: Weekday
 ): { start: Date; end: Date } => {
-  switch (view) {
+  switch (viewSpan(view)) {
     case "day":
       return { start: startOfDay(date), end: endOfDay(date) };
     case "week":
@@ -146,14 +148,43 @@ export const clampToValidRange = (date: Date, range: ResolvedValidRange): Date =
  * Next date for prev/next navigation, or null when the destination period
  * lies entirely outside the valid range. The day view skips hidden weekdays.
  */
+/** Navigation of a custom view plugin (`ViewPlugin.step` / `ViewPlugin.range`). */
+export interface CustomNavigation {
+  step?: { unit: "day" | "week" | "month"; amount?: number };
+  /** The view's [start, end) for a date. */
+  rangeOf?: (date: Date) => { start: Date; end: Date };
+}
+
+const stepDate = (date: Date, step: CustomNavigation["step"], direction: 1 | -1): Date => {
+  const amount = (step?.amount ?? 1) * direction;
+  switch (step?.unit) {
+    case "day":
+      return addDays(date, amount);
+    case "month":
+      return addMonths(date, amount);
+    default:
+      return addWeeks(date, amount);
+  }
+};
+
 export const getNavigationTarget = (
   view: string,
   date: Date,
   direction: 1 | -1,
-  rules: DayRules
+  rules: DayRules,
+  custom?: CustomNavigation
 ): Date | null => {
+  if (custom) {
+    const target = stepDate(date, custom.step, direction);
+    const period = custom.rangeOf
+      ? custom.rangeOf(target)
+      : getViewPeriod("week", target, rules.weekStartsOn);
+    // rangeOf's end is exclusive; periodOverlapsRange expects an inclusive end.
+    const inclusive = custom.rangeOf ? { start: period.start, end: new Date(period.end.getTime() - 1) } : period;
+    return periodOverlapsRange(inclusive, rules.validRange) ? target : null;
+  }
   // The list view navigates by its own span (listRange).
-  const stepView = view === "list" ? rules.listRange : view;
+  const stepView = view === "list" ? rules.listRange : viewSpan(view);
   let target = getNewDate(date, stepView, direction);
   if (stepView === "day") {
     for (let i = 0; i < 7 && rules.isHidden(target); i++) target = addDays(target, direction);
@@ -175,7 +206,7 @@ export const getVisibleRange = (
   config?: RangeConfig & { fixedWeekCount?: boolean }
 ): { start: Date; end: Date } => {
   const weekStartsOn = resolveWeekStartsOn(config);
-  const span = view === "list" ? config?.listRange ?? "month" : view;
+  const span = view === "list" ? config?.listRange ?? "month" : viewSpan(view);
   switch (span) {
     case "day":
       return { start: startOfDay(date), end: addDays(startOfDay(date), 1) };

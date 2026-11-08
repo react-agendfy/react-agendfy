@@ -1,163 +1,134 @@
-import React from 'react';
-import { List, RowComponentProps, useDynamicRowHeight } from "react-window";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  addDays,
-  isWithinInterval,
-  parseISO,
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-} from "date-fns";
+import React from "react";
+import { addDays, endOfDay, endOfMonth, endOfWeek, format, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 import { ListEvent } from "./Components/ListEvent";
+import EventRow from "../../Components/EventRow";
 import DayHeading from "../../Components/DayHeading";
 import { EventProps, ListViewProps } from "../../types/types";
-import { getLocale } from "../../Utils/locate";
+import { formatMessage } from "../../i18n";
 import { getDayRules, resolveWeekStartsOn } from "../../Utils/calendarRange";
 
-interface ListRowData {
-  daysWithEvents: Date[];
-  eventsByDay: Record<string, EventProps[]>;
-  onEventClick?: (event: EventProps) => void;
-  config?: any;
-}
+/*
+ * The list and agenda views: events grouped by day, as a plain list.
+ *
+ * - "list" spans `listRange` (day, week or month — default month);
+ * - "agenda" spans the next 7 days from the navigated date.
+ *
+ * An event shows under its start day, or under the first day of the range
+ * when it started before it (a running multi-day event). It is not
+ * virtualized on purpose: a period's events are a few hundred rows at most,
+ * and the whole list stays reachable by find-in-page, printing and screen
+ * readers.
+ */
 
-const RowComponent = ({
-  index,
-  style,
-  daysWithEvents,
-  eventsByDay,
-  onEventClick,
-  config,
-}: RowComponentProps<ListRowData>): React.ReactElement => {
-  const day = daysWithEvents[index];
-  const dayKey = format(day, "yyyy-MM-dd");
-  const dayEvents = eventsByDay[dayKey] || [];
+export const AGENDA_DAYS = 7;
 
-  const ref = React.useRef<HTMLDivElement>(null);
-  
-  
-  return (
-    <div 
-      ref={ref} 
-      style={{
-        ...style,
-        display: 'flex',
-        flexDirection: 'column',
-      }} 
-      className="react-agendfy-listview-day-container"
-    >
-      <div className="react-agendfy-listview-day-header-wrapper">
-        <DayHeading day={day} config={config} />
-      </div>
-      <div className="react-agendfy-listview-day-events">
-        {dayEvents.map((event: EventProps, idx: number) => (
-          <ListEvent
-            key={`${event.id}-${idx}`}
-            event={event}
-            onEventClick={onEventClick}
-            currentDate={day}
-            config={config}
-          />
-        ))}
-      </div>
-    </div>
-  );
+const toMs = (value: Date | string) => new Date(value).getTime();
+
+/** Midnight → noon of a "yyyy-MM-dd" day in the calendar zone (no offset can move it). */
+const dayFromKey = (key: string, timeZone: string) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new TZDate(y, m - 1, d, 12, 0, timeZone);
 };
 
-const ListView: React.FC<ListViewProps> = ({
+const ListView: React.FC<ListViewProps & { variant?: "list" | "agenda" }> = ({
   events,
   onEventClick,
   config,
   currentDate = new TZDate(new Date(), config?.timeZone),
+  variant = "list",
 }) => {
-  // Span: listRange "day" | "week" | "month" (default month).
+  const timeZone = config?.timeZone || "UTC";
+  const agenda = variant === "agenda";
+
   const { rangeStart, rangeEnd } = React.useMemo(() => {
-    const anchor = new TZDate(currentDate, config?.timeZone || 'UTC');
-    const range = config?.listRange ?? 'month';
-    if (range === 'day') return { rangeStart: startOfDay(anchor), rangeEnd: endOfDay(anchor) };
-    if (range === 'week') {
+    const anchor = new TZDate(currentDate, timeZone);
+    if (agenda) return { rangeStart: startOfDay(anchor), rangeEnd: endOfDay(addDays(startOfDay(anchor), AGENDA_DAYS - 1)) };
+    const range = config?.listRange ?? "month";
+    if (range === "day") return { rangeStart: startOfDay(anchor), rangeEnd: endOfDay(anchor) };
+    if (range === "week") {
       const weekStartsOn = resolveWeekStartsOn(config);
       return { rangeStart: startOfWeek(anchor, { weekStartsOn }), rangeEnd: endOfWeek(anchor, { weekStartsOn }) };
     }
     return { rangeStart: startOfMonth(anchor), rangeEnd: endOfMonth(anchor) };
-  }, [currentDate, config]);
+  }, [currentDate, timeZone, agenda, config]);
 
-const rowHeight = useDynamicRowHeight({
-defaultRowHeight: 10
-});  
   const days = React.useMemo(() => {
-    const dayList: Date[] = [];
-    let day = rangeStart;
     const rules = getDayRules(config);
-    while (day <= rangeEnd) {
-      if (!rules.isHidden(day) && !rules.isDisabled(day)) dayList.push(day);
-      day = addDays(day, 1);
+    const grouped = new Map<string, EventProps[]>();
+    const from = rangeStart.getTime();
+    const to = rangeEnd.getTime();
+    for (const event of events) {
+      // The event touches the range at all.
+      if (toMs(event.end) < from || toMs(event.start) > to) continue;
+      const start = new TZDate(toMs(event.start), timeZone);
+      const day = start.getTime() < from ? rangeStart : startOfDay(start);
+      if (rules.isHidden(day) || rules.isDisabled(day)) continue;
+      const key = format(day, "yyyy-MM-dd");
+      const list = grouped.get(key);
+      if (list) list.push(event);
+      else grouped.set(key, [event]);
     }
-    return dayList;
-  }, [rangeStart, rangeEnd, config]);
-
-  const eventsByDay = React.useMemo(() => {
-    const grouped: Record<string, EventProps[]> = {};
-    
-    days.forEach((day) => {
-      const dayKey = format(day, "yyyy-MM-dd");
-      grouped[dayKey] = [];
-    });
-
-    events.forEach((event: EventProps) => {
-      const eventStartDate = startOfDay(new TZDate(parseISO(event.start.toString()), config?.timeZone));
-      const dayKey = format(eventStartDate, "yyyy-MM-dd");
-
-      if (grouped[dayKey]) {
-        grouped[dayKey].push(event);
-      }
-    });
-
     // Chronological within each day, all-day events first.
-    const startMs = (e: EventProps) => parseISO(e.start.toString()).getTime();
-    Object.values(grouped).forEach((list) =>
-      list.sort((a, b) => Number(Boolean(b.allDay)) - Number(Boolean(a.allDay)) || startMs(a) - startMs(b))
-    );
+    for (const list of grouped.values()) {
+      list.sort((a, b) => Number(Boolean(b.allDay)) - Number(Boolean(a.allDay)) || toMs(a.start) - toMs(b.start));
+    }
+    return [...grouped.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+  }, [events, rangeStart, rangeEnd, timeZone, config]);
 
-    return grouped;
-  }, [days, events, config?.timeZone]);
-
-  const daysWithEvents = React.useMemo(() => {
-    return days.filter((day) => {
-      const dayKey = format(day, "yyyy-MM-dd");
-      return eventsByDay[dayKey] && eventsByDay[dayKey].length > 0;
-    });
-  }, [days, eventsByDay]);
-
-  if (daysWithEvents.length === 0) {
+  if (days.length === 0) {
     return (
       <div className="react-agendfy-listview-empty">
         <p className="react-agendfy-listview-empty-text">
-          {config?.no_events || "There are no events for this period."}
+          {agenda
+            ? formatMessage(config?.agenda_no_events, { days: AGENDA_DAYS }, "There are no events for the next {days} days.")
+            : config?.no_events || "There are no events for this period."}
         </p>
+      </div>
+    );
+  }
+
+  if (agenda) {
+    return (
+      <div className="react-agendfy-agendaview-container">
+        {days.map(([key, dayEvents]) => (
+          <div key={key} className="react-agendfy-agendaview-day">
+            <DayHeading day={dayFromKey(key, timeZone)} config={config} as="h3" />
+            <div className="react-agendfy-agendaview-day-events">
+              {dayEvents.map((event) => (
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  config={config}
+                  view="agenda"
+                  onEventClick={onEventClick}
+                  className="react-agendfy-agendaview-event"
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
     <div className="react-agendfy-listview-container">
-      <List
-        rowComponent={RowComponent}
-        rowCount={daysWithEvents.length}
-        rowHeight={rowHeight}
-        rowProps={{
-          daysWithEvents,
-          eventsByDay,
-          onEventClick,
-          config,
-        }}
-         style={{ width: "100%" }}
-      />
+      {days.map(([key, dayEvents]) => {
+        const day = dayFromKey(key, timeZone);
+        return (
+          <div key={key} className="react-agendfy-listview-day-container">
+            <div className="react-agendfy-listview-day-header-wrapper">
+              <DayHeading day={day} config={config} />
+            </div>
+            <div className="react-agendfy-listview-day-events">
+              {dayEvents.map((event, index) => (
+                <ListEvent key={`${event.id}-${index}`} event={event} onEventClick={onEventClick} currentDate={day} config={config} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
