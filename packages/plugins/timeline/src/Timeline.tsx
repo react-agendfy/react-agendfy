@@ -1,4 +1,4 @@
-import React, { KeyboardEvent, PointerEvent, useMemo, useRef, useState } from "react";
+import React, { KeyboardEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   clockToMinutes,
   complementRanges,
@@ -145,7 +145,7 @@ export default function Timeline({ zoom, options = {} }: { zoom: TimelineZoom; o
     [scale, slotMinutes, labelEvery, windowStart, month, cal.lang, timeZone]
   );
 
-  const now = Date.now();
+  const now = useNow(config.nowIndicator !== false);
   const nowX = config.nowIndicator !== false && now >= range.start.getTime() && now < range.end.getTime() ? scale.toPx(new Date(now)) : null;
   const ariaRange = `${cal.formatDate(range.start, "d MMM")} – ${cal.formatDate(new Date(range.end.getTime() - 1), "d MMM yyyy")}`;
   const toggle = (key: string) =>
@@ -465,4 +465,15 @@ function TimelineEvent({
       )}
     </div>
   );
+}
+
+/** The current time, refreshed every minute while `enabled` (for the now line). */
+function useNow(enabled: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled) return;
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  return now;
 }
