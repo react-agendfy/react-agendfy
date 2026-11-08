@@ -1,0 +1,49 @@
+{
+  "name": "@react-agendfy/gantt",
+  "version": "0.0.0",
+  "description": "Gantt view for @react-agendfy/core: tasks with dependencies, auto-scheduling, critical path.",
+  "license": "MIT",
+  "author": "Márcio Zebedeu <marciozebedeu@gmail.com>",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.umd.js",
+  "module": "./dist/index.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.umd.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./gantt.css": "./dist/gantt.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@date-fns/tz": "^1.2.0",
+    "date-fns": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@react-agendfy/core": "workspace:^",
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@react-agendfy/core": "workspace:^",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vite-plugin-dts": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
