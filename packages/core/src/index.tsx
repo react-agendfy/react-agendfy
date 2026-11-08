@@ -62,8 +62,12 @@ import { ExternalDraggable, type ExternalDraggableProps } from './Components/Ext
 import { useCalendarView, type CalendarViewApi, type SchedulePatch } from './hooks/useCalendarView';
 import { useDropZone, useEventDraggable, type DropZoneTarget } from './hooks/useViewDrag';
 import { eventResourceIds } from './Utils/resources';
-import { createTimeScale, type TimeScale, type TimeScaleOptions, type TimeScaleSegment } from './Utils/timeScale';
+import { clockToMinutes, createTimeScale, type TimeScale, type TimeScaleOptions, type TimeScaleSegment } from './Utils/timeScale';
+import { getContrastText } from './Utils/colorContrast';
+import { getHiddenDays } from './Utils/calendarRange';
 import { useVirtualRange, type VirtualItem, type VirtualRange, type VirtualRangeOptions } from './hooks/useVirtualRange';
+import { layoutLanes, type LaneLayout } from './Utils/lanes';
+import { complementRanges } from './Utils/businessHours';
 import { InteractionProvider as AgendfyDndProvider } from './context/InteractionContext';
 import { ToastProvider } from "./Components/Toast/Toast"; 
 import CalendarComponent from "./View/Calendar";
@@ -96,6 +100,11 @@ export {
   eventResourceIds,
   createTimeScale,
   useVirtualRange,
+  layoutLanes,
+  complementRanges,
+  clockToMinutes,
+  getContrastText,
+  getHiddenDays,
 };
 export type {
   CalendarApi,
@@ -145,6 +154,7 @@ export type {
   VirtualItem,
   VirtualRange,
   VirtualRangeOptions,
+  LaneLayout,
   ChangeContext,
   MiddlewarePlugin,
   ChangeRejectedInfo,
