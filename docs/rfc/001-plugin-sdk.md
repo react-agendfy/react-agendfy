@@ -185,8 +185,10 @@ createTimeScale({ range, zoom: "hour"|"day"|"week"|"month"|"quarter"|"year",
 ## Compatibility
 
 - No breaking change in the core until a v3. v1 view plugins keep working.
-- `fullcalendar-compat` maps `eventAllow`, `eventOverlap`, `eventConstraint`,
-  `selectAllow`, `eventReceive` and `resourceTimeline` as they land, moving
-  them out of `IgnoredFullCalendarOptions`.
+- `fullcalendar-compat` follows the [compat boundary](../../CONTRIBUTING.md#compat-boundary-react-agendfyfullcalendar-compat):
+  no phase changes the core to suit it. `eventAllow`, `eventOverlap`,
+  `eventConstraint`, `selectAllow` and `selectOverlap` are mapped (phase 1).
+  `eventReceive` and `resourceTimeline` follow when their core features land.
+  Undo/redo and middleware plugins stay native-only.
 - `fullcalendar-compat/src/__typecheck__/calendarPro.tsx` must keep compiling
   in every phase.
