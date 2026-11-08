@@ -229,3 +229,81 @@
     min-width: 90%;
   }
 }
+
+/* a group of views (headerViews: [{ label, views }]) */
+.react-agendfy-view-menu {
+  position: relative;
+  display: inline-flex;
+}
+.react-agendfy-button-group > * + .react-agendfy-view-menu,
+.react-agendfy-button-group > .react-agendfy-view-menu + * {
+  border-inline-start: 1px solid var(--agendfy-color-border);
+}
+.react-agendfy-button-group {
+  overflow: visible;
+}
+.react-agendfy-button-group > :first-child,
+.react-agendfy-button-group > :first-child > .react-agendfy-button {
+  border-start-start-radius: inherit;
+  border-end-start-radius: inherit;
+}
+.react-agendfy-button-group > :last-child,
+.react-agendfy-button-group > :last-child > .react-agendfy-button {
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
+}
+.react-agendfy-view-menu .react-agendfy-button {
+  border: none;
+  border-radius: 0;
+  padding: var(--agendfy-space-2) var(--agendfy-space-3);
+  background-color: transparent;
+  color: var(--agendfy-button-fg);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--agendfy-space-1);
+}
+.react-agendfy-view-menu .react-agendfy-button:hover {
+  background-color: var(--agendfy-color-surface-hover);
+  color: var(--agendfy-color-text);
+}
+.react-agendfy-view-menu .react-agendfy-button.react-agendfy-button-active {
+  background-color: var(--agendfy-button-active-bg);
+  color: var(--agendfy-button-active-fg);
+}
+.react-agendfy-view-menu-list {
+  position: absolute;
+  top: 100%;
+  inset-inline-start: 0;
+  z-index: 1000;
+  min-width: 11rem;
+  margin-top: var(--agendfy-space-2);
+  padding: var(--agendfy-space-1) 0;
+  background-color: var(--agendfy-color-surface);
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-popover-radius);
+  box-shadow: var(--agendfy-popover-shadow);
+}
+.react-agendfy-view-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--agendfy-space-2) var(--agendfy-space-4);
+  text-align: start;
+  background: none;
+  border: none;
+  color: var(--agendfy-color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.react-agendfy-view-menu-item:hover,
+.react-agendfy-view-menu-item:focus-visible {
+  background-color: var(--agendfy-color-surface-hover);
+  outline: none;
+}
+.react-agendfy-view-menu-item[aria-checked="true"] {
+  color: var(--agendfy-color-accent);
+  font-weight: 600;
+}

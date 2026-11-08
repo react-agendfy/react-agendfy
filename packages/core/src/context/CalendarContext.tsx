@@ -20,6 +20,7 @@ import {
   EventChange,
   EventProps,
   ExportOption,
+  HeaderViewItem,
   Resource,
 } from "../types/types";
 import {
@@ -184,6 +185,7 @@ export interface CalendarContextValue {
   /** Filtered events with recurrences expanded around the current date — what views render. */
   visibleEvents: EventProps[];
   availableViews: { name: string; label: string }[];
+  viewItems: HeaderViewItem[];
   customViews: Record<string, FC<any>>;
   exportOptions: ExportOption[];
   headerLeftPlugins: ReactNode[];
@@ -517,19 +519,63 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     [timeZone]
   );
 
+  const changeContext = useMemo(
+    () => ({
+      config: localeConfig,
+      eventsInRange,
+      resources,
+      events: () => normalizedEventsRef.current.map(toPublicEvent),
+    }),
+    [localeConfig, eventsInRange, resources]
+  );
+
+  /** The change with the events the middleware plugins move along with it. */
+  const withCascade = useCallback(
+    (change: EventChange): EventChange => {
+      if (change.related || change.source === "history") return change;
+      if (change.before && sameSchedule(change.before, change.event)) return change;
+      const byId = new Map<string, EventProps>();
+      for (const plugin of middlewarePlugins) {
+        for (const event of plugin.cascade?.(change, changeContext) ?? []) {
+          if (String(event.id) !== String(change.event.id)) byId.set(String(event.id), event);
+        }
+      }
+      if (!byId.size) return change;
+      const related = [...byId.values()].map((event) => {
+        const found = normalizedEventsRef.current.find((e) => String(e.id) === String(event.id));
+        return { event, before: found && toPublicEvent(found) };
+      });
+      return { ...change, related };
+    },
+    [middlewarePlugins, changeContext]
+  );
+
   const previewChange = useCallback(
     (change: EventChange): ChangeVerdict => {
       // Dropping in place, or replaying history, is always fine.
       if (change.source === "history") return true;
       if (change.before && sameSchedule(change.before, change.event)) return true;
-      return validateChange(change, { config: localeConfig, eventsInRange, resources }, middlewarePlugins);
+      const full = withCascade(change);
+      const verdict = validateChange(full, changeContext, middlewarePlugins);
+      if (verdict !== true) return verdict;
+      // The events moved along must fit the rules too.
+      for (const item of full.related ?? []) {
+        const related = validateChange(
+          { kind: "move", event: item.event, before: item.before, source: "user" },
+          changeContext,
+          middlewarePlugins
+        );
+        if (related !== true) return related;
+      }
+      return true;
     },
-    [localeConfig, eventsInRange, middlewarePlugins, resources]
+    [withCascade, changeContext, middlewarePlugins]
   );
 
   const runChange = useCallback(
-    (change: EventChange, onReverted?: () => void): ChangeVerdict => {
-      const unchanged = !!change.before && sameSchedule(change.before, change.event);
+    (requested: EventChange, onReverted?: () => void): ChangeVerdict => {
+      const change = withCascade(requested);
+      const unchanged = !!change.before && sameSchedule(change.before, change.event, change.fields);
 
       const verdict = previewChange(change);
       if (verdict !== true) {
@@ -548,21 +594,38 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       // The host gets its own shape back: no resources the calendar derived.
       const event = toPublicEvent(change.event);
       const before = change.before && toPublicEvent(change.before);
+      const related = (change.related ?? []).map((r) => ({
+        event: toPublicEvent(r.event),
+        before: r.before && toPublicEvent(r.before),
+      }));
       dispatch({ type: isReceive ? "ADD_EVENT" : "UPDATE_EVENT", payload: event });
+      related.forEach((r) => dispatch({ type: "UPDATE_EVENT", payload: r.event }));
       const entryId =
         change.kind !== "receive" && change.source === "user" && before && !unchanged
-          ? history.record(change.kind, before, event)
+          ? history.record(
+              change.kind,
+              before,
+              event,
+              related.filter((r) => r.before).map((r) => ({ before: r.before!, after: r.event })),
+              change.fields
+            )
           : null;
       if (entryId !== null) bumpHistory();
       middlewarePlugins.forEach((p) => p.onCommit?.(change));
 
-      const result = isReceive
-        ? onEventReceive?.(event, change.data)
-        : (change.kind === "resize" ? onEventResize : onEventUpdate)?.(event);
-      if (result && typeof (result as Promise<unknown>).then === "function") {
-        (result as Promise<unknown>).then(undefined, () => {
+      // The host is told about every event that moved: the change first,
+      // then the ones moved with it. One refusal reverts them all.
+      const results = [
+        isReceive
+          ? onEventReceive?.(event, change.data)
+          : (change.kind === "resize" ? onEventResize : onEventUpdate)?.(event),
+        ...related.map((r) => onEventUpdate?.(r.event)),
+      ].filter((r): r is Promise<unknown> => !!r && typeof (r as Promise<unknown>).then === "function");
+      if (results.length) {
+        Promise.all(results).then(undefined, () => {
           if (isReceive) dispatch({ type: "REMOVE_EVENT", payload: event.id });
           else if (before) dispatch({ type: "UPDATE_EVENT", payload: before });
+          related.forEach((r) => r.before && dispatch({ type: "UPDATE_EVENT", payload: r.before }));
           if (entryId !== null) {
             history.remove(entryId);
             bumpHistory();
@@ -573,7 +636,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       }
       return true;
     },
-    [previewChange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize, onEventReceive]
+    [withCascade, previewChange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize, onEventReceive]
   );
 
   const commitChange = useCallback((change: EventChange) => runChange(change), [runChange]);
@@ -581,9 +644,22 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   /** Re-applies one side of a history entry; puts the entry back if the host refuses. */
   const replay = useCallback(
     (entry: HistoryEntry, target: "before" | "after", onDone: () => void, onFailed: () => void) => {
-      const current = findCurrent(entry.after.id) ?? entry[target === "before" ? "after" : "before"];
+      const other = target === "before" ? "after" : "before";
+      const current = findCurrent(entry.after.id) ?? entry[other];
+      // The events moved with it go back (or forward) too — never re-cascaded.
+      const related = (entry.related ?? []).map((r) => {
+        const now = findCurrent(r.after.id) ?? r[other];
+        return { event: withSchedule(now, r[target]), before: now };
+      });
       runChange(
-        { kind: entry.kind, event: withSchedule(current, entry[target]), before: current, source: "history" },
+        {
+          kind: entry.kind,
+          event: withSchedule(current, entry[target], entry.fields),
+          before: current,
+          source: "history",
+          ...(entry.fields && { fields: entry.fields }),
+          ...(related.length && { related }),
+        },
         () => {
           onFailed();
           bumpHistory();
@@ -865,7 +941,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   );
 
   /* --- available views & custom views ------------------------------------ */
-  const availableViews = useMemo(() => {
+  const viewItems = useMemo<HeaderViewItem[]>(() => {
     const defaultViews = [
       { name: "month", label: localeConfig.monthView },
       { name: "week", label: localeConfig.weekView },
@@ -892,10 +968,18 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     if (!wanted?.length) {
       return resources.length ? all : [...defaultViews, ...customViews];
     }
-    return wanted
-      .map((name) => all.find((v) => v.name === name))
-      .filter((v): v is { name: string; label: string } => !!v);
+    const find = (name: string) => all.find((v) => v.name === name);
+    return wanted.flatMap((item): HeaderViewItem[] => {
+      if (typeof item === "string") return find(item) ? [find(item)!] : [];
+      const views = item.views.map(find).filter((v): v is { name: string; label: string } => !!v);
+      // A group of one is a plain button.
+      return views.length > 1 ? [{ label: item.label, views }] : views;
+    });
   }, [localeConfig, customViewPlugins, t, resources.length]);
+  const availableViews = useMemo(
+    () => viewItems.flatMap((item) => ("views" in item ? item.views : [item])),
+    [viewItems]
+  );
 
   const customViews = useMemo(() => {
     const views: Record<string, FC<any>> = {};
@@ -1002,6 +1086,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     filteredEvents,
     visibleEvents,
     availableViews,
+    viewItems,
     customViews,
     exportOptions,
     headerLeftPlugins,

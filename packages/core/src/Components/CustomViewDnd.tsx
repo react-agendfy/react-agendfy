@@ -165,14 +165,16 @@ export const CustomViewDnd = ({
     // A pointer drag keeps the grabbed point under the pointer (keyboard
     // drags move the start from zone to zone).
     const anchor = snapshot.active.data.current?.anchor as (() => number) | undefined;
-    const offset = !keyboardZoneRef.current && anchor && !zone.allDay ? anchor() : 0;
+    const offset = !keyboardZoneRef.current && anchor ? anchor() : 0;
     const zoneStart = new Date(zone.date.getTime() - offset);
     let updated: EventProps;
     if (zone.allDay) {
       // All-day events keep their number of days; a timed one becomes one day.
+      // The grab point counts in whole days here.
       const days = dragged.allDay ? Math.max(1, Math.round(duration / (24 * HOUR))) : 1;
-      const end = addDays(new TZDate(zone.date, tz), days);
-      updated = { ...dragged, start: zone.date.toISOString(), end: new Date(end.getTime()).toISOString(), allDay: true };
+      const first = addDays(new TZDate(zone.date, tz), -Math.round(offset / (24 * HOUR)));
+      const end = addDays(first, days);
+      updated = { ...dragged, start: new Date(first.getTime()).toISOString(), end: new Date(end.getTime()).toISOString(), allDay: true };
     } else {
       // A timed zone keeps the duration; an all-day event becomes one hour.
       const length = dragged.allDay ? HOUR : duration;

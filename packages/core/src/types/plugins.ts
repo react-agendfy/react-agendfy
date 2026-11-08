@@ -69,6 +69,8 @@ export interface ChangeContext {
   resources?: Resource[];
   /** Every event (unfiltered, recurrences expanded) overlapping [start, end). */
   eventsInRange: (start: Date, end: Date) => EventProps[];
+  /** Every event (unfiltered, recurring ones as their rule, not expanded). */
+  events?: () => EventProps[];
 }
 
 /**
@@ -78,6 +80,12 @@ export interface ChangeContext {
  */
 export interface MiddlewarePlugin extends BaseCalendarPlugin {
   type: 'middleware';
+  /**
+   * Other events that must move with `change` (e.g. a Gantt pushing the
+   * successors of a task): return them with their new start/end. They are
+   * validated, applied and undone as one change; no cascade runs on undo.
+   */
+  cascade?: (change: EventChange, ctx: ChangeContext) => EventProps[];
   validate?: (change: EventChange, ctx: ChangeContext) => ChangeVerdict | boolean;
   onCommit?: (change: EventChange) => void;
   onRevert?: (change: EventChange) => void;
