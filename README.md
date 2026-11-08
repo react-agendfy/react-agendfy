@@ -30,7 +30,7 @@ for natural-language scheduling.
 | [`@react-agendfy/ai`](packages/ai/README.md) | Bring-your-own-LLM AI layer: NL event parsing, smart scheduling, insights, hooks, Quick Add plugin. |
 | [`@react-agendfy/fullcalendar-compat`](packages/fullcalendar-compat/README.md) | Drop-in `@fullcalendar/react` API (props, callbacks, `getApi()`) on top of the core. |
 | `@react-agendfy/plugin-filter` | Header resource-filter dropdown. |
-| `@react-agendfy/plugin-timeline` | Timeline custom view (`viewName: "timeline"`). |
+| [`@react-agendfy/plugin-timeline`](packages/plugins/timeline/README.md) | Resource timeline views (`timelineDay` / `timelineWeek` / `timelineMonth`): drag between resources, resize, collapsible groups, virtualized. |
 | `@react-agendfy/plugin-theme` | Dark theme plugin (`themeName: "dark"`, scoped CSS variables). |
 | `@react-agendfy/plugin-export-pdf` | PDF export plugin (`formatName: "pdf"`, jsPDF-based). |
 | `@react-agendfy/plugin-export-reports` | CSV, JSON and ICS export plugins (exported as an array). |

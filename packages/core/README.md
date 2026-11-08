@@ -294,14 +294,23 @@ const teamView: CalendarPlugin = {
 `useDropZone(id, { date, allDay?, resourceIds? })`: with `allDay` the
 event becomes all-day (external items use their `startTime`). With the
 keyboard, Space picks an event up and the arrow keys move it to the next
-zone in that direction. `useEventDraggable(event, { id, resourceId })` draws
+zone in that direction. `useEventDraggable(event, { id, resourceId, anchor })` draws
 an event more than once (one copy per resource): dropping one copy on
-another resource swaps just that resource.
+another resource swaps just that resource. `anchor` returns where the
+pointer grabbed the event (the start of the slot under it minus the
+event's start), so a pointer drop moves the event by the same difference —
+a long bar grabbed in the middle does not jump to put its start under the
+pointer, and a day slot keeps the time of day.
 
 For time axes and long lists, `createTimeScale(options)` maps instants to
 pixels by wall clock (a daily window, hidden weekdays, DST days on the same
 grid) and `useVirtualRange({ count, size, viewportRef, axis })` renders only
-the rows or columns in view. The resource views are built with them. A move
+the rows or columns in view. `layoutLanes(events, span?)` stacks events in
+lanes along a horizontal axis (pass pixel spans with a minimum width when
+short events are drawn wider than their duration), and `complementRanges`,
+`getContrastText`, `clockToMinutes` and `getHiddenDays` are exported for
+view authors. The resource views and `@react-agendfy/plugin-timeline` are
+built with them. A move
 between resources updates the field the event already uses (`resourceId`
 or `resourceIds`). Drags start after 5px, so a
 plain click stays a click. The demo's Team view

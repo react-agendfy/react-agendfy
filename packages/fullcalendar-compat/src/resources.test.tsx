@@ -45,6 +45,8 @@ it("maps the resource views and ResourceInput", () => {
   expect(toAgendfyView("resourceTimeGridDay")).toEqual({ view: "resourceDay" });
   expect(toAgendfyView("resourceTimeGridWeek")).toEqual({ view: "resourceWeek" });
   expect(toFcView("resourceDay")).toBe("resourceTimeGridDay");
+  expect(toAgendfyView("resourceTimelineMonth")).toEqual({ view: "timelineMonth" });
+  expect(toFcView("timelineWeek")).toBe("resourceTimelineWeek");
   expect(toAgendfyResources(resources)).toEqual([
     { id: "a", title: "Dr. Ana", specialty: "GP", extendedProps: { specialty: "GP" } },
     {

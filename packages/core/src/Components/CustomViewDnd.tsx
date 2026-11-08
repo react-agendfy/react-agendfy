@@ -162,6 +162,11 @@ export const CustomViewDnd = ({
     }
     const start = new Date(dragged.start).getTime();
     const duration = Math.max(0, new Date(dragged.end).getTime() - start);
+    // A pointer drag keeps the grabbed point under the pointer (keyboard
+    // drags move the start from zone to zone).
+    const anchor = snapshot.active.data.current?.anchor as (() => number) | undefined;
+    const offset = !keyboardZoneRef.current && anchor && !zone.allDay ? anchor() : 0;
+    const zoneStart = new Date(zone.date.getTime() - offset);
     let updated: EventProps;
     if (zone.allDay) {
       // All-day events keep their number of days; a timed one becomes one day.
@@ -173,8 +178,8 @@ export const CustomViewDnd = ({
       const length = dragged.allDay ? HOUR : duration;
       updated = {
         ...dragged,
-        start: zone.date.toISOString(),
-        end: new Date(zone.date.getTime() + length).toISOString(),
+        start: zoneStart.toISOString(),
+        end: new Date(zoneStart.getTime() + length).toISOString(),
         allDay: false,
       };
     }

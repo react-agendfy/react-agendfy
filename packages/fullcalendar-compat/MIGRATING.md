@@ -21,7 +21,8 @@ on, even where react-agendfy itself defaults differently.
 | `listDay`, `listWeek`, `listMonth` | ✅ | |
 | `dayGridWeek`, `dayGridDay` | 🟡 | Rendered as the time-grid week/day. |
 | `resourceTimeGridDay`, `resourceTimeGridWeek` | ✅ | One column per resource (and day), with the `resources` option. Only the columns in view are rendered, so hundreds of resources stay fast. `datesAboveResources` is supported. |
-| `listYear`, `multiMonth*`, `resourceTimeline*` | ⛔ | `listYear` falls back to `listMonth`. Use `agendfyPlugins` for custom views (there is a timeline plugin). |
+| `resourceTimelineDay`, `resourceTimelineWeek`, `resourceTimelineMonth` | ✅ | With `@react-agendfy/plugin-timeline`: `agendfyPlugins={timelinePlugins}` (and its `style.css`). Resources down the side, time across, collapsible groups, drag between resources, resize, keyboard. |
+| `listYear`, `multiMonth*` | ⛔ | `listYear` falls back to `listMonth`. Use `agendfyPlugins` for custom views. |
 
 ## Options
 

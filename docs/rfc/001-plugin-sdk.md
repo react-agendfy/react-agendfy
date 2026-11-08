@@ -214,6 +214,20 @@ SDK. The design gained `Resource.businessHours`, `onSlotClick(date,
   (forward/backward pass, critical path — pure and unit-testable) and a
   column grid. Ships as a `ViewPlugin` and as a standalone `<Gantt>`.
 
+**Status (timeline 3.0):** `@react-agendfy/plugin-timeline` 3.0 implements
+the timeline on the public API. It has three views (`timelineDay`,
+`timelineWeek` and `timelineMonth`, mapped by the compat from
+`resourceTimeline*`), virtualizes both rows and slots, and collapses
+groups. The core gained `layoutLanes(events, span?)` and the drag `anchor`.
+Lessons:
+
+- Lanes on a horizontal axis must follow what each bar covers on screen
+  (pixels with a minimum width), not time alone: in the month view a 1-hour
+  event is a few pixels wide and is drawn wider.
+- A drop on a zone must keep the grab point (`anchor` = start of the
+  grabbed slot minus the event's start, possibly negative). Otherwise long
+  bars jump, and day slots lose the time of day.
+
 ## Phasing
 
 | Release | Scope | Risk |

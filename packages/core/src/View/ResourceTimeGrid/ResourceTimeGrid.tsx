@@ -428,10 +428,20 @@ function TimedEvent({
   const isStart = !segment || segment.isStart;
   const isEnd = !segment || segment.isEnd;
   const resourceId = column.resource.id;
+  // Where the pointer grabbed the event: start of the slot under it minus
+  // the event's start (see useEventDraggable's `anchor`).
+  const grabRef = useRef(0);
+  const onGrab = (e: PointerEvent<HTMLDivElement>) => {
+    const y = top + e.clientY - e.currentTarget.getBoundingClientRect().top;
+    const slotPx = slotMinutes * scale.pxPerMinute;
+    const slotStart = scale.toDate(column.segment.offsetPx + Math.floor(y / slotPx) * slotPx);
+    grabRef.current = slotStart.getTime() - new Date(event.start).getTime();
+  };
   const { setNodeRef, attributes, listeners, isDragging } = useEventDraggable(event, {
     id: `${event.id}@${resourceId}`,
     resourceId,
     disabled: !canMove || !isStart,
+    anchor: () => grabRef.current,
   });
 
   /* --- resize: bottom handle, snapped to slots, validated live ---------- */
@@ -486,6 +496,7 @@ function TimedEvent({
       {...attributes}
       {...listeners}
       onKeyDown={onKeyDown}
+      onPointerDownCapture={onGrab}
       onClick={() => cal.onEventClick(event)}
       className={cx(
         "react-agendfy-rtg-event",

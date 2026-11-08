@@ -46,11 +46,20 @@ export function useEventDraggable(
      * resource swaps just that one, keeping the event's other resources.
      */
     resourceId?: string | number;
+    /**
+     * Where the pointer grabbed the event: the start of the slot under the
+     * pointer minus the event's start, in ms (negative when the slot starts
+     * before the event, e.g. a day slot at midnight). A pointer drop on a zone
+     * then moves the event by the same difference — it keeps its offset from
+     * the grid and its time of day — instead of putting its start on the
+     * zone. Read when the drop resolves.
+     */
+    anchor?: () => number;
   } = {}
 ) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: options.id ?? event.id,
-    data: { event, resourceId: options.resourceId },
+    data: { event, resourceId: options.resourceId, anchor: options.anchor },
     disabled: options.disabled,
   });
   return { setNodeRef, attributes, listeners, isDragging };

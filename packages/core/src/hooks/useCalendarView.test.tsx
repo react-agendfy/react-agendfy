@@ -309,6 +309,22 @@ describe("drag & drop in custom views", () => {
     expect(onEventUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ resourceIds: ["r3"] }));
   });
 
+  it("a pointer drop keeps the grabbed point under the pointer (anchor); a keyboard drop does not", async () => {
+    const onEventUpdate = jest.fn();
+    const long = ev("l", 10, { end: at(12), resourceId: "r1" });
+    renderRows({ onEventUpdate, events: [long] });
+    await screen.findByText("zone-r1");
+    // Grabbed 1h after its start, dropped on the 16:00 zone: it starts at 15:00.
+    act(() =>
+      lastDnd().onDragEnd?.({
+        active: { id: "l", data: { current: { event: long, anchor: () => 3_600_000 } } },
+        over: zone("r1", new Date(at(16))),
+        delta: { x: 0, y: 200 },
+      })
+    );
+    expect(onEventUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ start: at(15), end: at(17) }));
+  });
+
   it("not editable: drops do nothing", async () => {
     const onEventUpdate = jest.fn();
     renderRows({ onEventUpdate, config: { editable: false } });
