@@ -39,7 +39,8 @@ export function renderEventContent({ event, view, timeText }: EventContentArg) {
   const recurring = Boolean(event.isRecurrenceInstance || event.recurrence);
   const startTime = timeText.split(" - ")[0];
 
-  if (view === "month") {
+  // Month chips and timeline bars (timelineDay/Week/Month): one compact line.
+  if (view === "month" || view.startsWith("timeline")) {
     return (
       <span className="ev ev-month">
         <Icon size={12} className="ev-icon" aria-hidden />

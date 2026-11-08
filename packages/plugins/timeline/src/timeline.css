@@ -1,0 +1,195 @@
+/* @react-agendfy/plugin-timeline — resources down the side, time across. */
+.agendfy-timeline {
+  --agendfy-timeline-head-row: 30px;
+  border: 1px solid var(--agendfy-color-border);
+  border-radius: var(--agendfy-radius-md, 8px);
+  overflow: hidden;
+  background: var(--agendfy-color-surface);
+  font-size: var(--agendfy-font-size-sm, 13px);
+}
+
+.agendfy-timeline-viewport {
+  overflow: auto;
+  max-height: var(--agendfy-timeline-max-height, 70vh);
+}
+
+.agendfy-timeline-canvas {
+  position: relative;
+  min-width: 100%;
+}
+
+/* header */
+.agendfy-timeline-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: calc(var(--agendfy-timeline-head-row) * 2);
+  background: var(--agendfy-color-surface);
+  border-bottom: 1px solid var(--agendfy-color-border);
+}
+.agendfy-timeline-corner {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 10px 6px;
+  box-sizing: border-box;
+  background: var(--agendfy-color-surface);
+  border-inline-end: 1px solid var(--agendfy-color-border);
+  font-weight: 600;
+  color: var(--agendfy-color-text-muted);
+}
+.agendfy-timeline-scale {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+.agendfy-timeline-major {
+  position: absolute;
+  top: 0;
+  height: var(--agendfy-timeline-head-row);
+  box-sizing: border-box;
+  border-inline-start: 1px solid var(--agendfy-color-border);
+  border-bottom: 1px solid var(--agendfy-color-border);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.agendfy-timeline-major > span {
+  position: sticky;
+  left: calc(var(--agendfy-timeline-area, 200px) + 8px);
+  display: inline-block;
+  padding: 6px 8px;
+}
+.agendfy-timeline-minor {
+  position: absolute;
+  top: var(--agendfy-timeline-head-row);
+  height: var(--agendfy-timeline-head-row);
+  padding: 7px 4px 0;
+  box-sizing: border-box;
+  border-inline-start: 1px solid var(--agendfy-color-border);
+  font-size: var(--agendfy-font-size-xs, 12px);
+  color: var(--agendfy-color-text-muted);
+  white-space: nowrap;
+}
+
+/* rows */
+.agendfy-timeline-rows {
+  position: relative;
+}
+.agendfy-timeline-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--agendfy-color-border);
+}
+.agendfy-timeline-row--group {
+  background: color-mix(in srgb, var(--agendfy-color-text) 3%, transparent);
+}
+.agendfy-timeline-resource {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  background: var(--agendfy-color-surface);
+  border-inline-end: 1px solid var(--agendfy-color-border);
+  font-weight: 500;
+}
+.agendfy-timeline-row--group .agendfy-timeline-resource {
+  font-weight: 600;
+}
+.agendfy-timeline-resource-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.agendfy-timeline-toggle {
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: inherit;
+  border-radius: 4px;
+}
+.agendfy-timeline-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--agendfy-focus-ring);
+}
+.agendfy-timeline-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.agendfy-timeline-slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  border-inline-start: 1px dashed var(--agendfy-color-border);
+}
+.agendfy-timeline-slot--day {
+  border-inline-start: 1px solid var(--agendfy-color-border-strong);
+}
+.agendfy-timeline-slot--over {
+  background: var(--agendfy-color-selection);
+}
+.agendfy-timeline-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-top: 0;
+  border-inline-start: var(--agendfy-now-line-width) solid var(--agendfy-color-now);
+  z-index: 3;
+}
+
+/* events */
+.agendfy-timeline-event {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  padding: 0 8px;
+  border-radius: var(--agendfy-event-radius);
+  box-shadow: inset 0 0 0 1px var(--agendfy-color-surface);
+  background: var(--agendfy-color-event-default);
+  color: var(--agendfy-color-event-default-fg);
+  font-size: var(--agendfy-font-size-xs, 12px);
+  white-space: nowrap;
+  cursor: grab;
+}
+.agendfy-timeline-event:focus-visible {
+  outline: none;
+  box-shadow: var(--agendfy-focus-ring);
+}
+.agendfy-timeline-event--dragging {
+  opacity: 0.35;
+}
+.agendfy-timeline-event--invalid {
+  outline: 2px solid var(--agendfy-drop-invalid-color);
+  outline-offset: -2px;
+}
+.agendfy-timeline-event-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agendfy-timeline-event-time {
+  opacity: 0.9;
+}
+.agendfy-timeline-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  inset-inline-end: 0;
+  width: 6px;
+  cursor: ew-resize;
+}

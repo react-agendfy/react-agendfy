@@ -2848,6 +2848,7 @@ __metadata:
     "@anthropic-ai/sdk": "npm:^0.71.2"
     "@react-agendfy/ai": "workspace:*"
     "@react-agendfy/core": "workspace:*"
+    "@react-agendfy/plugin-timeline": "workspace:*"
     "@vitejs/plugin-react": "npm:^4.3.4"
     react: "npm:^18 || ^19"
     react-dom: "npm:^18 || ^19"
@@ -2946,16 +2947,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@react-agendfy/plugin-timeline@workspace:packages/plugins/timeline":
+"@react-agendfy/plugin-timeline@workspace:*, @react-agendfy/plugin-timeline@workspace:packages/plugins/timeline":
   version: 0.0.0-use.local
   resolution: "@react-agendfy/plugin-timeline@workspace:packages/plugins/timeline"
   dependencies:
+    "@date-fns/tz": "npm:^1.2.0"
+    "@react-agendfy/core": "workspace:^"
     "@vitejs/plugin-react": "npm:^4.0.0"
+    date-fns: "npm:^4.1.0"
     typescript: "npm:^5.7.3"
     vite: "npm:^6.1.0"
     vite-plugin-dts: "npm:^3.0.0"
   peerDependencies:
-    "@react-agendfy/core": ^2.0.0
+    "@react-agendfy/core": "workspace:^"
     react: ^18 || ^19
     react-dom: ^18 || ^19
   languageName: unknown

@@ -21,14 +21,17 @@ export default defineConfig({
     rollupOptions: {
       // Certifique-se de externalizar dependências que não devem ser empacotadas
       // no seu pacote
-      external: ['react', 'react-dom', 'react/jsx-runtime', '@react-agendfy/core'],
+      external: ['react', 'react-dom', 'react/jsx-runtime', '@react-agendfy/core', 'date-fns', '@date-fns/tz'],
       output: {
+        exports: 'named',
         // Forneça variáveis globais para usar na compilação UMD
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
           'react/jsx-runtime': 'jsxRuntime',
           '@react-agendfy/core': 'ReactAgendfyCore',
+          'date-fns': 'dateFns',
+          '@date-fns/tz': 'dateFnsTz',
         },
       },
     },

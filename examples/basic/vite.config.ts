@@ -8,7 +8,9 @@ export default defineConfig({
     alias: {
       // garante resolução local do core durante desenvolvimento
       '@react-agendfy/core': resolve(__dirname, '../../packages/core/src'),
-      '@react-agendfy/ai': resolve(__dirname, '../../packages/ai/src')
+      '@react-agendfy/ai': resolve(__dirname, '../../packages/ai/src'),
+      // The plugin's sources (its CSS is imported by the entry).
+      '@react-agendfy/plugin-timeline': resolve(__dirname, '../../packages/plugins/timeline/src/index.tsx')
     },
     // One React for the app and the library sources: two copies break hooks
     // ("Invalid hook call").

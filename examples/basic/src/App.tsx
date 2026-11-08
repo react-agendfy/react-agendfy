@@ -15,7 +15,7 @@ import Sidebar, { type DemoOptions, type PendingItem } from "./components/Sideba
 import EventModal, { type EventDraft } from "./components/EventModal";
 import AIDrawer from "./components/AIDrawer";
 import { renderEventContent } from "./components/EventContent";
-import { teamViewPlugin } from "./components/TeamView";
+import timelinePlugins from "@react-agendfy/plugin-timeline";
 import { categoryColor, createDemoEvents, resources, type CategoryId } from "./demoEvents";
 import { accentPresets } from "./themes";
 import { addDaysKey, dayKey, fromZoned, zonedParts } from "./lib/time";
@@ -356,7 +356,8 @@ export default function App() {
           editEvents((prev) => [...prev, { category: "meeting", color: categoryColor("meeting"), ...event }]),
       }),
       ...(exportsPlugin as unknown as CalendarPlugin[]),
-      teamViewPlugin,
+      // Resources down the side, time across: timelineDay/Week/Month.
+      ...timelinePlugins,
     ],
     [editEvents]
   );

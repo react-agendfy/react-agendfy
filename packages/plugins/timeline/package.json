@@ -10,22 +10,25 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.es.js",
-      "require": "./dist/index.umd.js",
-      "types": "./dist/index.d.ts"
-    }
+      "require": "./dist/index.umd.js"
+    },
+    "./style.css": "./dist/plugin-timeline.css"
   },
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "jest"
   },
   "peerDependencies": {
-    "@react-agendfy/core": "^2.0.0",
+    "@react-agendfy/core": "workspace:^",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
   },
   "devDependencies": {
+    "@react-agendfy/core": "workspace:^",
     "@vitejs/plugin-react": "^4.0.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
@@ -33,5 +36,13 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "description": "Resource timeline views (timelineDay/Week/Month) for @react-agendfy/core.",
+  "dependencies": {
+    "@date-fns/tz": "^1.2.0",
+    "date-fns": "^4.1.0"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }
