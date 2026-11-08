@@ -8,6 +8,8 @@
  * attendees: the demo's custom event content renders them.
  */
 
+import { createDemoProject } from "./demoProject";
+
 export interface DemoResource {
   id: string;
   name: string;
@@ -24,13 +26,14 @@ export const resources: DemoResource[] = [
   { id: "r4", name: "Company-wide", type: "group" },
 ];
 
-export type CategoryId = "meeting" | "focus" | "client" | "personal" | "travel" | "release";
+export type CategoryId = "meeting" | "focus" | "client" | "personal" | "travel" | "release" | "project";
 
 export const categories: { id: CategoryId; label: string; color: string }[] = [
   { id: "meeting", label: "Meetings", color: "#6366f1" },
   { id: "client", label: "Clients", color: "#0ea5e9" },
   { id: "focus", label: "Deep work", color: "#14b8a6" },
   { id: "release", label: "Releases", color: "#22c55e" },
+  { id: "project", label: "Project tasks", color: "#8b5cf6" },
   { id: "personal", label: "Personal", color: "#f43f5e" },
   { id: "travel", label: "Travel & time off", color: "#f59e0b" },
 ];
@@ -169,6 +172,13 @@ export function createDemoEvents(now: Date = new Date()) {
   allDay("demo-offsite", 40, 2, "Team offsite", "travel", "Sintra");
   allDay("demo-holiday", -45, 1, "Public holiday", "personal");
   allDay("demo-release", 3, 1, "v2.1 release", "release");
+
+  // --- A project (Gantt): tasks are events with task fields -------------
+  // Moving a task pushes its successors (@react-agendfy/gantt scheduling).
+  // The same project as the "Gantt only" page, as all-day events.
+  for (const task of createDemoProject(now)) {
+    events.push({ ...task, allDay: true, category: "project", color: categoryColor("project"), attendees: [] });
+  }
 
   // --- Recurring events (expanded by the calendar, with an exception) -----
   const standupStart = at(-120, 9, 0);

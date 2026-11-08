@@ -1,6 +1,6 @@
 import React from "react";
 import type { EventContentArg } from "@react-agendfy/core";
-import { Brain, Briefcase, Heart, MapPin, Plane, Repeat, Rocket, Users, type LucideIcon } from "lucide-react";
+import { Brain, Briefcase, GanttChart, Heart, MapPin, Plane, Repeat, Rocket, Users, type LucideIcon } from "lucide-react";
 import { categories } from "../demoEvents";
 import { avatarColor, initials } from "../lib/time";
 
@@ -11,6 +11,7 @@ export const categoryIcons: Record<string, LucideIcon> = {
   release: Rocket,
   personal: Heart,
   travel: Plane,
+  project: GanttChart,
 };
 
 export function Avatars({ people: raw, max = 3 }: { people?: unknown; max?: number }) {
@@ -39,8 +40,8 @@ export function renderEventContent({ event, view, timeText }: EventContentArg) {
   const recurring = Boolean(event.isRecurrenceInstance || event.recurrence);
   const startTime = timeText.split(" - ")[0];
 
-  // Month chips and timeline bars (timelineDay/Week/Month): one compact line.
-  if (view === "month" || view.startsWith("timeline")) {
+  // Month chips, timeline bars (timelineDay/Week/Month) and Gantt bars: one compact line.
+  if (view === "month" || view.startsWith("timeline") || view === "gantt") {
     return (
       <span className="ev ev-month">
         <Icon size={12} className="ev-icon" aria-hidden />

@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, Download, Filter } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { getLocale } from "../Utils/locate";
 import { resolveWeekStartsOn } from "../Utils/calendarRange";
-import { CalendarHeaderProps, Resource } from "../types/types";
+import { CalendarHeaderProps } from "../types/types";
+import ViewMenu from "./ViewMenu";
 
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({ 
   currentView,
   availableViews,
+  viewItems = availableViews,
   onViewChange,
   currentDate,
   onNavigate,
@@ -98,7 +100,10 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
       <div className="react-agendfy-toolbar-chunk">
         <div className="react-agendfy-button-group">
-          {availableViews.map((view) => (
+          {viewItems.map((view) =>
+            "views" in view ? (
+              <ViewMenu key={view.label} group={view} currentView={currentView} onViewChange={onViewChange} />
+            ) : (
             <button
               key={view.name}
               type="button"
@@ -108,7 +113,8 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             >
               {view.label}
             </button>
-          ))}
+            )
+          )}
         </div>
 
         {localeConfig?.export && exportOptions.length > 0 && onExport && (

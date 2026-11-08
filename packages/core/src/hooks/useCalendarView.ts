@@ -7,6 +7,7 @@ import { formatEventTime, formatIn } from "../Utils/displayOptions";
 import { getBusinessHoursIntervalsForDate } from "../Utils/businessHours";
 import { getDayRules } from "../Utils/calendarRange";
 import { TZDate } from "@date-fns/tz";
+import { HISTORY_FIELDS } from "../Utils/changeHistory";
 
 /*
  * The stable surface for views and plugins (RFC 001, layer 2). The calendar
@@ -57,6 +58,12 @@ export interface CalendarViewApi {
   moveEvent: (event: EventProps, patch: SchedulePatch) => ChangeVerdict;
   /** Resizes `event` (same pipeline, `onEventResize`). */
   resizeEvent: (event: EventProps, patch: SchedulePatch) => ChangeVerdict;
+  /**
+   * Changes other fields of `event` (e.g. a task's progress) and hands it to
+   * `onEventUpdate`, as one undoable change. With schedule fields it is a
+   * move (rules, cascade).
+   */
+  updateEvent: (event: EventProps, fields: Partial<EventProps>) => ChangeVerdict;
   /** Checks a change against the rules without applying it. */
   validate: (change: Omit<EventChange, "source">) => ChangeVerdict;
   undo: () => void;
@@ -153,6 +160,14 @@ export function useCalendarView(): CalendarViewApi {
 
     moveEvent: (event, patch) => change("move", event, patch),
     resizeEvent: (event, patch) => change("resize", event, patch),
+    updateEvent: (event, fields) =>
+      commitChange({
+        kind: "move",
+        event: applyPatch(event, fields as SchedulePatch),
+        before: event,
+        source: "user",
+        fields: Object.keys(fields).filter((f) => !(HISTORY_FIELDS as readonly string[]).includes(f)),
+      }),
     validate: (c) => previewChange({ ...c, source: "user" }),
     undo,
     redo,

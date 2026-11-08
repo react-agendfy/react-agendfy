@@ -217,7 +217,7 @@ textarea {
 .topbar-spacer {
   flex: 1;
 }
-.topbar-menu {
+.topbar-menu-drawer {
   display: none;
 }
 
@@ -227,6 +227,18 @@ textarea {
   gap: 20px;
   padding: 20px;
   min-height: 0;
+  transition: grid-template-columns 0.2s ease, column-gap 0.2s ease;
+}
+/* Wide screens: the sidebar hidden, the calendar takes the whole width. */
+@media (min-width: 901px) {
+  .workspace.is-collapsed {
+    grid-template-columns: 0 minmax(0, 1fr);
+    column-gap: 0;
+  }
+  .workspace.is-collapsed > .sidebar {
+    visibility: hidden;
+    overflow: hidden;
+  }
 }
 
 /* --- Sidebar ------------------------------------------------------------- */
@@ -835,6 +847,28 @@ textarea.input {
   flex: 1;
 }
 
+/* --- task form (Gantt page) --------------------------------------------- */
+.task-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.swatches {
+  display: flex;
+  gap: 8px;
+}
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--app-surface);
+  box-shadow: 0 0 0 1px var(--app-border);
+  cursor: pointer;
+}
+.swatch[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--app-text);
+}
+
 /* --- AI drawer ----------------------------------------------------------- */
 .fab {
   position: fixed;
@@ -1055,8 +1089,11 @@ textarea.input {
     grid-template-columns: minmax(0, 1fr);
     padding: 12px;
   }
-  .topbar-menu {
-    display: inline-flex;
+  .topbar-menu-drawer {
+    display: inline;
+  }
+  .topbar-menu-panel {
+    display: none;
   }
   .sidebar {
     position: fixed;
@@ -1189,4 +1226,33 @@ code {
   margin: 0;
   color: var(--muted, #6b7280);
   font-size: 13px;
+}
+
+/* --- Pages: the calendar demo and the Gantt on its own --------------------- */
+.page-switch {
+  display: inline-flex;
+  padding: 3px;
+  margin-left: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-surface);
+}
+.page-switch a {
+  padding: 5px 12px;
+  border-radius: calc(var(--app-radius-sm) - 2px);
+  color: var(--app-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.page-switch a:hover {
+  color: var(--app-text);
+}
+.page-switch a[aria-current="page"] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+/* The Gantt page has no sidebar: the main column is the only one. */
+.workspace.is-collapsed > .gantt-page {
+  grid-column: 1 / -1;
 }

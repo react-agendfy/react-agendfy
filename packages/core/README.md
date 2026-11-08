@@ -172,6 +172,20 @@ the shape you gave them.
 Custom views are added with a `view` plugin and appear in the header's view
 switcher automatically.
 
+`headerViews` picks and orders the view buttons. A `{ label, views }` entry
+groups related views into one button with a menu; the button shows the
+group's active view:
+
+```tsx
+config={{
+  headerViews: [
+    "month", "week", "day",
+    { label: "List", views: ["list", "agenda"] },
+    { label: "Timeline", views: ["timelineDay", "timelineWeek", "timelineMonth"] },
+  ],
+}}
+```
+
 ## Writing a plugin
 
 A plugin is a plain object (see `src/types/plugins.ts`). Every plugin has a
@@ -180,7 +194,7 @@ A plugin is a plain object (see `src/types/plugins.ts`). Every plugin has a
 | Type | Required fields | Injected/used how |
 | --- | --- | --- |
 | `view` | `viewName`, `component` | Rendered as a view; receives `events`, `currentDate`, `config`, callbacks, `resources`, `range`. Optional `range(date, ctx)` and `step` — see below. |
-| `middleware` | — | Optional `validate(change, ctx)`, `onCommit(change)`, `onRevert(change)` — see [Business rules and undo](#business-rules-and-undo). |
+| `middleware` | — | Optional `validate(change, ctx)`, `cascade(change, ctx)`, `onCommit(change)`, `onRevert(change)` — see [Business rules and undo](#business-rules-and-undo). |
 | `filter` / `search` | `component`, `location` (`"left"`/`"right"`) | Rendered in the header; receives `events`, `config`, `resources`, `filteredResources`, `onFilterChange`, `onSearch`, `onResourceFilterChange`, plus your `props`. |
 | `data-source` | `fetchEvents(start, end, config)` | Called for the visible range; returned events are merged with yours (your events win on id collisions). |
 | `export` | `formatName`, `label`, `exportFunction`, `mimeType`, `fileExtension` | Adds an entry to the export menu; the returned `Blob`/string is downloaded. |
@@ -252,6 +266,7 @@ private):
 | `isDisabled(date)`, `isHidden(date)`, `businessHoursFor(date)` | Day rules. |
 | `navigate(dir)`, `gotoDate(date)`, `changeView(view)` | Navigation. |
 | `moveEvent(event, patch)`, `resizeEvent(event, patch)`, `validate(change)` | Changes through the [pipeline](#business-rules-and-undo): rules, callbacks, undo. |
+| `updateEvent(event, fields)` | Changes other fields (a task's `progress`) as one undoable change, through `onEventUpdate`. |
 | `undo()`, `redo()`, `canUndo`, `canRedo` | History. |
 | `onEventClick(event)`, `renderEventContent(event)`, `eventClassName(event)` | The host's click handler, `eventContent` and `eventClassNames`. |
 
@@ -395,6 +410,13 @@ const auditPlugin: CalendarPlugin = {
   onRevert: (change) => log("reverted", change),
 };
 ```
+
+A middleware's `cascade(change, ctx)` returns other events that must move
+with the change, with their new times (`ctx.events()` gives every event).
+They are validated with it (one refused → the whole change is refused),
+applied together, called back with `onEventUpdate` each, and undone with one
+undo. If the host refuses any of them, all of them go back. The Gantt uses it
+to push successor tasks.
 
 `validateChange`, `findOverlapConflicts` and `satisfiesConstraint` are
 exported for code that needs the same checks outside a drag (for example, to

@@ -228,6 +228,30 @@ Lessons:
   grabbed slot minus the event's start, possibly negative). Otherwise long
   bars jump, and day slots lose the time of day.
 
+**Status (gantt 0.1):** `@react-agendfy/gantt` implements the Gantt on the
+public API, with the decisions taken during implementation:
+
+- Tasks are events with task fields (`type`, `progress`, `parentId`,
+  `dependencies`, `baselineStart`/`baselineEnd`) — not a separate model and
+  not `links`: one source of data, so rules, undo, data sources and the other
+  views apply.
+- Moving a task pushes its successors (forward only, in topological order;
+  summaries carry their descendants and span their children). The core
+  gained the batch change for it: `MiddlewarePlugin.cascade(change, ctx)`
+  returns the events that move with it, carried in `EventChange.related`,
+  validated, applied, called back and undone as one change; a refusal of any
+  reverts all. Undo never re-cascades.
+- The core also gained `useCalendarView().updateEvent(event, fields)` (the
+  progress handle) with `EventChange.fields`, so edits to non-schedule fields
+  are undoable, and the drag `anchor` now counts in whole days on all-day
+  zones.
+- Ships as `ganttPlugins` (view + scheduling, which also works in the other
+  views) for calendar apps, and as a standalone `<Gantt>` in project
+  vocabulary (`tasks`, `zoom`, `onTaskChange(task, moved)`, `GanttApi`),
+  with its own toolbar and no calendar views. The engine is shared, but
+  people who only want a Gantt never see events. Each change becomes one
+  `onTaskChange`, grouped through the middleware's `onCommit`.
+
 ## Phasing
 
 | Release | Scope | Risk |

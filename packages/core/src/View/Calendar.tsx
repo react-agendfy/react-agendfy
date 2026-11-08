@@ -29,6 +29,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
     resources,
     visibleEvents,
     availableViews,
+    viewItems,
     customViews,
     exportOptions,
     headerLeftPlugins,
@@ -264,6 +265,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
         currentDate={currentDate}
         currentView={currentView}
         availableViews={availableViews}
+        viewItems={viewItems}
         localeConfig={localeConfig}
         onViewChange={handleViewChange}
         onNavigate={navigate}

@@ -136,6 +136,43 @@ describe("useCalendarView", () => {
     expect(apiRef.current!.canUndo()).toBe(true);
   });
 
+  it("updateEvent changes other fields as one undoable change", async () => {
+    const onEventUpdate = jest.fn();
+    const apiRef = React.createRef<CalendarApi>();
+    const ProgressView = () => {
+      const cal = useCalendarView();
+      const a = cal.events[0];
+      return (
+        <>
+          <span data-testid="progress">{String(a.progress)}</span>
+          <button onClick={() => cal.updateEvent(a, { progress: 60 })}>progress-60</button>
+          <button onClick={() => cal.updateEvent(a, { progress: 60 })}>same</button>
+        </>
+      );
+    };
+    render(
+      <Calendar
+        events={[ev("a", 10, { progress: 20 })]}
+        currentDate={MARCH_11}
+        apiRef={apiRef}
+        onEventUpdate={onEventUpdate}
+        plugins={[team({ component: ProgressView })]}
+        config={{ timeZone: "UTC", defaultView: "team" as never }}
+      />
+    );
+    fireEvent.click(await screen.findByText("progress-60"));
+    expect(onEventUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ id: "a", progress: 60, start: at(10) }));
+    expect(screen.getByTestId("progress").textContent).toBe("60");
+    // Setting the same value again records nothing.
+    fireEvent.click(screen.getByText("same"));
+    act(() => apiRef.current!.undo());
+    expect(screen.getByTestId("progress").textContent).toBe("20");
+    expect(onEventUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ id: "a", progress: 20 }));
+    expect(apiRef.current!.canUndo()).toBe(false);
+    act(() => apiRef.current!.redo());
+    expect(screen.getByTestId("progress").textContent).toBe("60");
+  });
+
   it("gotoDate navigates", async () => {
     const apiRef = React.createRef<CalendarApi>();
     render(<Calendar events={[]} currentDate={MARCH_11} apiRef={apiRef} plugins={[team()]} config={{ timeZone: "UTC", defaultView: "team" as never }} />);

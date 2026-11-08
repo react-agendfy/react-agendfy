@@ -431,3 +431,70 @@ describe("live drop validation (useDropVerdict)", () => {
   });
 });
 
+describe("cascade (batch changes)", () => {
+  /** Keeps b starting at least 1h after a ends (a Gantt-style push). */
+  const pushB = {
+    key: "push",
+    type: "middleware" as const,
+    cascade: (change: EventChange, ctx: { events?: () => EventProps[] }) => {
+      if (change.event.id !== "a") return [];
+      const b = ctx.events!().find((e) => e.id === "b")!;
+      const earliest = new Date(change.event.end).getTime() + 3_600_000;
+      if (new Date(b.start).getTime() >= earliest) return [];
+      const length = new Date(b.end).getTime() - new Date(b.start).getTime();
+      return [{ ...b, start: new Date(earliest).toISOString(), end: new Date(earliest + length).toISOString() }];
+    },
+  };
+
+  it("moves the cascaded events too, calls back for each, and one undo reverts all", async () => {
+    const onEventUpdate = jest.fn();
+    const { apiRef } = renderMove({ onEventUpdate, plugins: [pushB as CalendarPlugin] });
+    // a 14:00–15:00 → b (14–15) must start at 16:00.
+    fireEvent.click(await screen.findByText("move-to-14"));
+    expect(onEventUpdate.mock.calls.map((c) => [c[0].id, c[0].start])).toEqual([
+      ["a", iso(14)],
+      ["b", iso(16)],
+    ]);
+    expect(startOf("b")).toBe(iso(16));
+
+    act(() => apiRef.current!.undo());
+    expect(startOf("a")).toBe(iso(10));
+    expect(startOf("b")).toBe(iso(14));
+    expect(onEventUpdate.mock.calls.slice(2).map((c) => [c[0].id, c[0].start])).toEqual([
+      ["a", iso(10)],
+      ["b", iso(14)],
+    ]);
+
+    act(() => apiRef.current!.redo());
+    expect(startOf("b")).toBe(iso(16));
+  });
+
+  it("a host refusal of any of them reverts the whole batch", async () => {
+    let reject!: (e: unknown) => void;
+    const onEventUpdate = jest.fn((e: EventProps) => (e.id === "b" ? new Promise((_, r) => (reject = r)) : undefined));
+    const { apiRef } = renderMove({ onEventUpdate, plugins: [pushB as CalendarPlugin] });
+    fireEvent.click(await screen.findByText("move-to-14"));
+    expect(startOf("b")).toBe(iso(16));
+    await act(async () => reject(new Error("locked")));
+    expect(startOf("a")).toBe(iso(10));
+    expect(startOf("b")).toBe(iso(14));
+    expect(apiRef.current!.canUndo()).toBe(false);
+  });
+
+  it("the rules check the cascaded events: one refused refuses the change", async () => {
+    const onEventUpdate = jest.fn();
+    const onChangeRejected = jest.fn();
+    // b would be pushed to 16:00, past the 15:30 limit.
+    renderMove({
+      onEventUpdate,
+      onChangeRejected,
+      plugins: [pushB as CalendarPlugin],
+      config: { eventConstraint: { end: "2026-03-11T15:30:00Z" } },
+    });
+    fireEvent.click(await screen.findByText("move-to-14"));
+    expect(onEventUpdate).not.toHaveBeenCalled();
+    expect(onChangeRejected.mock.calls[0][0]).toMatchObject({ reason: "constraint" });
+    expect(startOf("a")).toBe(iso(10));
+  });
+});
+

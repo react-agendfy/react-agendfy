@@ -16,6 +16,10 @@ export interface HistoryEntry {
   kind: "move" | "resize";
   before: EventProps;
   after: EventProps;
+  /** Events moved together with this one (a cascade). */
+  related?: { before: EventProps; after: EventProps }[];
+  /** Fields other than the schedule the change set (restored too). */
+  fields?: string[];
 }
 
 const sameValue = (a: unknown, b: unknown): boolean => {
@@ -35,11 +39,13 @@ const sameValue = (a: unknown, b: unknown): boolean => {
     const tb = Date.parse(b);
     if (!isNaN(ta) && !isNaN(tb) && /T/.test(a) && /T/.test(b)) return ta === tb;
   }
+  if (a && b && typeof a === "object" && typeof b === "object") return JSON.stringify(a) === JSON.stringify(b);
   return a === b;
 };
 
-/** True when `a` and `b` agree on every field a move/resize can change. */
-export const sameSchedule = (a: EventProps, b: EventProps): boolean =>
+/** True when `a` and `b` agree on every field a move/resize can change (and on `fields`). */
+export const sameSchedule = (a: EventProps, b: EventProps, fields: string[] = []): boolean =>
+  fields.every((f) => sameValue(a[f], b[f])) &&
   sameValue(a.start, b.start) &&
   sameValue(a.end, b.end) &&
   !!a.allDay === !!b.allDay &&
@@ -48,9 +54,9 @@ export const sameSchedule = (a: EventProps, b: EventProps): boolean =>
   sameValue(eventResourceIds(a), eventResourceIds(b));
 
 /** `target` with the schedule fields of `source` (absent fields are removed). */
-export const withSchedule = (target: EventProps, source: EventProps): EventProps => {
+export const withSchedule = (target: EventProps, source: EventProps, fields: string[] = []): EventProps => {
   const result: Record<string, unknown> = { ...target };
-  for (const field of HISTORY_FIELDS) {
+  for (const field of [...HISTORY_FIELDS, ...fields]) {
     if (source[field] !== undefined) result[field] = source[field];
     else delete result[field];
   }
@@ -65,9 +71,15 @@ export class ChangeHistory {
   constructor(public limit = 100) {}
 
   /** Records a new change; clears the redo stack. Returns the entry id, or null when disabled. */
-  record(kind: HistoryEntry["kind"], before: EventProps, after: EventProps): number | null {
+  record(
+    kind: HistoryEntry["kind"],
+    before: EventProps,
+    after: EventProps,
+    related?: HistoryEntry["related"],
+    fields?: string[]
+  ): number | null {
     if (this.limit <= 0) return null;
-    const entry = { id: this.nextId++, kind, before, after };
+    const entry = { id: this.nextId++, kind, before, after, ...(related?.length && { related }), ...(fields?.length && { fields }) };
     this.undoStack.push(entry);
     this.redoStack = [];
     this.trim();

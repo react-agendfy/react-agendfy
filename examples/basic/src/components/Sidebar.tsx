@@ -197,7 +197,7 @@ export default function Sidebar(props: SidebarProps) {
   const zones = baseZones.includes(tz) ? baseZones : [tz, ...baseZones];
 
   return (
-    <aside className={`sidebar${props.open ? " is-open" : ""}`} aria-label="Calendar controls">
+    <aside id="demo-sidebar" className={`sidebar${props.open ? " is-open" : ""}`} aria-label="Calendar controls">
       <button className="btn btn-primary btn-block" style={{ height: 42 }} onClick={props.onNewEvent}>
         <Plus size={18} /> New event
       </button>

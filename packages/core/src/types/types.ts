@@ -155,9 +155,10 @@ export interface Config {
   slotHeight?: number;
   /**
    * View buttons shown in the header, in order (built-in or custom view
-   * names). Default: every built-in view, then the custom views.
+   * names). A `{ label, views }` group is one button that opens a menu of
+   * its views. Default: every built-in view, then the custom views.
    */
-  headerViews?: string[];
+  headerViews?: (string | HeaderViewGroup)[];
   /** `false` hides the header (toolbar). Default true. */
   showHeader?: boolean;
   /**
@@ -517,6 +518,17 @@ export interface EventChange {
   source: ChangeSource;
   /** "receive": the `data` of the ExternalDraggable. */
   data?: unknown;
+  /**
+   * Other events this change moves with it (e.g. successor tasks a Gantt
+   * pushes), from the middleware plugins' `cascade`. Validated, applied,
+   * called back and undone together with the change.
+   */
+  related?: { event: EventProps; before?: EventProps }[];
+  /**
+   * Fields other than the schedule this change sets (e.g. a task's
+   * `progress`, from `useCalendarView().updateEvent`): undo restores them too.
+   */
+  fields?: string[];
 }
 
 /** Why a change was refused. Built-in reasons: "overlap", "constraint", "not-allowed". */
@@ -699,9 +711,20 @@ export interface ExportOption {
   label: string;
 }
 
+/** A group of views in the header: one button with a menu. */
+export interface HeaderViewGroup {
+  label: string;
+  views: string[];
+}
+
+/** A view button, or a group of them, as the header shows it. */
+export type HeaderViewItem = { name: string; label: string } | { label: string; views: { name: string; label: string }[] };
+
 export interface CalendarHeaderProps {
   currentView: string;
   availableViews: { name: string; label: string }[];
+  /** The buttons with their groups (default: `availableViews`, one button each). */
+  viewItems?: HeaderViewItem[];
   onViewChange: (view: string) => void;
   currentDate: TZDate | Date;
   onNavigate: (direction: "prev" | "next" | "today") => void;

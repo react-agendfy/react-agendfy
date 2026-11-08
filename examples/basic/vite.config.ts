@@ -10,7 +10,8 @@ export default defineConfig({
       '@react-agendfy/core': resolve(__dirname, '../../packages/core/src'),
       '@react-agendfy/ai': resolve(__dirname, '../../packages/ai/src'),
       // The plugin's sources (its CSS is imported by the entry).
-      '@react-agendfy/plugin-timeline': resolve(__dirname, '../../packages/plugins/timeline/src/index.tsx')
+      '@react-agendfy/plugin-timeline': resolve(__dirname, '../../packages/plugins/timeline/src/index.tsx'),
+      '@react-agendfy/gantt': resolve(__dirname, '../../packages/gantt/src/index.ts')
     },
     // One React for the app and the library sources: two copies break hooks
     // ("Invalid hook call").

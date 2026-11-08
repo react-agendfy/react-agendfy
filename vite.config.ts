@@ -24,6 +24,7 @@ export default defineConfig({
       '@react-agendfy/plugin-theme': pkg('plugins/theme/src'),
       '@react-agendfy/plugin-timeline': pkg('plugins/timeline/src'),
       '@react-agendfy/plugin-filter': pkg('plugins/filters/src'),
+      '@react-agendfy/gantt': pkg('gantt/src'),
     },
     // One React for the demo and every aliased package source.
     dedupe: ['react', 'react-dom'],
