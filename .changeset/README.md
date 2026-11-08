@@ -8,7 +8,7 @@ The repo uses pnpm.
 - To publish:
   1. `pnpm -r publish --access public`. It publishes every package whose
      version isn't on npm yet, and rewrites `workspace:` ranges to real versions.
-  2. `pnpm changeset tag`, then `git push --follow-tags`.
+  2. `pnpm changeset git-tag`, then `git push --follow-tags`.
 
 ## Versioning policy — single source of truth
 
