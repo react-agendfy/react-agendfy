@@ -1134,3 +1134,10 @@ code {
     min-width: 0;
   }
 }
+
+/* Undo / redo (core change pipeline) */
+.history-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 6px;
+}

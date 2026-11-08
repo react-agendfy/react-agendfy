@@ -12,6 +12,9 @@ export interface DemoOptions {
   weekNumbers: boolean;
   hour12: boolean;
   accent: string;
+  /** Scheduling rules (core change pipeline). */
+  noOverlap?: boolean;
+  businessOnly?: boolean;
 }
 
 export const languages = [
@@ -314,6 +317,14 @@ export default function Sidebar(props: SidebarProps) {
         <div className="option-row">
           <label htmlFor="opt-12h">12-hour clock</label>
           <Switch id="opt-12h" checked={options.hour12} onChange={(v) => onOptionsChange({ hour12: v })} />
+        </div>
+        <div className="option-row">
+          <label htmlFor="opt-no-overlap">No overlaps (per resource)</label>
+          <Switch id="opt-no-overlap" checked={!!options.noOverlap} onChange={(v) => onOptionsChange({ noOverlap: v })} />
+        </div>
+        <div className="option-row">
+          <label htmlFor="opt-business-only">Business hours only</label>
+          <Switch id="opt-business-only" checked={!!options.businessOnly} onChange={(v) => onOptionsChange({ businessOnly: v })} />
         </div>
       </div>
 

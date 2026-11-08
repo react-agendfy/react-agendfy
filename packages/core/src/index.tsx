@@ -26,6 +26,14 @@ import {
   ListViewProps,
   MonthViewProps,
   Resource,
+  ChangeRejectedInfo,
+  ChangeRejection,
+  ChangeSource,
+  ChangeVerdict,
+  EventChange,
+  EventConstraintRule,
+  EventOverlapRule,
+  WeeklyInterval,
 } from "./types/types";
 import {
   NotificationServiceConfig,
@@ -38,7 +46,18 @@ import {
   FilterPluginProps,
   SearchPluginProps,
 } from "./types/search";
-import { CalendarPlugin, DataSourcePlugin, EventLike, ExportPlugin, ThemePlugin, ViewPlugin } from "./types/plugins";
+import {
+  CalendarPlugin,
+  ChangeContext,
+  DataSourcePlugin,
+  EventLike,
+  ExportPlugin,
+  MiddlewarePlugin,
+  ThemePlugin,
+  ViewPlugin,
+  ViewRangeContext,
+} from "./types/plugins";
+import { findOverlapConflicts, satisfiesConstraint, validateChange } from './Utils/changeRules';
 import { ToastProvider } from "./Components/Toast/Toast"; 
 import CalendarComponent from "./View/Calendar";
 import { ensureDate } from "./Utils/DateTrannforms";
@@ -54,7 +73,15 @@ const WrappedCalendar = React.forwardRef<HTMLDivElement, CalendarProps>((props, 
 });
 WrappedCalendar.displayName = 'WrappedCalendar';
 
-export { WrappedCalendar as Calendar, ensureDate, downloadBlob, expandRecurrences };
+export {
+  WrappedCalendar as Calendar,
+  ensureDate,
+  downloadBlob,
+  expandRecurrences,
+  validateChange,
+  findOverlapConflicts,
+  satisfiesConstraint,
+};
 export type {
   CalendarApi,
   CalendarProps,
@@ -92,4 +119,15 @@ export type {
   ExportPlugin,
   Resource,
   ViewPlugin,
+  ViewRangeContext,
+  ChangeContext,
+  MiddlewarePlugin,
+  ChangeRejectedInfo,
+  ChangeRejection,
+  ChangeSource,
+  ChangeVerdict,
+  EventChange,
+  EventConstraintRule,
+  EventOverlapRule,
+  WeeklyInterval,
 };

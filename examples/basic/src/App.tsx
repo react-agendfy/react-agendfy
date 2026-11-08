@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, type CalendarApi, type CalendarPlugin, type DatesSetInfo } from "@react-agendfy/core";
+import {
+  Calendar,
+  type CalendarApi,
+  type CalendarPlugin,
+  type ChangeRejectedInfo,
+  type DatesSetInfo,
+} from "@react-agendfy/core";
 import exportsPlugin from "@react-agendfy/plugin-export-reports";
 import { createQuickAddPlugin, go4aiAdapter, httpAdapter } from "@react-agendfy/ai";
 import { ArrowRightLeft, BookOpen, Github, Menu, Moon, Package, RotateCcw, Sparkles, Sun } from "lucide-react";
@@ -158,8 +164,11 @@ export default function App() {
       },
       alerts: { enabled: false, thresholdMinutes: 2 },
       export: true,
+      // Scheduling rules: refused moves never reach onEventUpdate.
+      eventOverlap: options.noOverlap ? false : undefined,
+      eventConstraint: options.businessOnly ? ("businessHours" as const) : undefined,
     }),
-    [tz, options.lang, options.weekStart, options.weekends, options.weekNumbers, options.hour12]
+    [tz, options.lang, options.weekStart, options.weekends, options.weekNumbers, options.hour12, options.noOverlap, options.businessOnly]
   );
 
   /* --- filtering (categories + resources) ---------------------------------- */
@@ -261,6 +270,26 @@ export default function App() {
     },
     [editEvents, notify]
   );
+
+  const onChangeRejected = useCallback(
+    ({ reason, conflicts }: ChangeRejectedInfo) =>
+      notify(
+        reason === "overlap"
+          ? `Overlaps “${conflicts?.[0]?.title ?? "another event"}”: move refused`
+          : reason === "constraint"
+            ? "Outside business hours: move refused"
+            : "Move refused"
+      ),
+    [notify]
+  );
+  const undo = () => {
+    if (apiRef.current?.canUndo()) apiRef.current.undo();
+    else notify("Nothing to undo");
+  };
+  const redo = () => {
+    if (apiRef.current?.canRedo()) apiRef.current.redo();
+    else notify("Nothing to redo");
+  };
 
   const resetDemo = () => {
     write(EVENTS_KEY, null);
@@ -395,6 +424,14 @@ export default function App() {
             <div className="main-head">
               <div>
                 <h1 style={{ textTransform: "capitalize" }}>{rangeLabel || "Calendar"}</h1>
+                <div className="history-actions">
+                  <button type="button" className="btn" onClick={undo} aria-label="Undo (Ctrl/⌘+Z)" title="Undo (Ctrl/⌘+Z)">
+                    Undo
+                  </button>
+                  <button type="button" className="btn" onClick={redo} aria-label="Redo (Ctrl/⌘+Shift+Z)" title="Redo (Ctrl/⌘+Shift+Z)">
+                    Redo
+                  </button>
+                </div>
                 <p>
                   Drag, resize, select a range, or type “lunch tomorrow 1pm” in the quick add · {visibleEvents.length}{" "}
                   events{hiddenCategories.size || activeResources.length ? " (filtered)" : ""}
@@ -422,6 +459,7 @@ export default function App() {
                 onDateRangeSelect={onSelect}
                 onEventUpdate={onEventChange}
                 onEventResize={onEventChange}
+                onChangeRejected={onChangeRejected}
                 onDatesSet={setRange}
               />
             </section>

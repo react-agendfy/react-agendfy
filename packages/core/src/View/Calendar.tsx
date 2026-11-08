@@ -50,6 +50,9 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
     eventContent,
     eventClassNames,
     dayCellClassNames,
+    visibleRange,
+    undo,
+    redo,
   } = useCalendarState();
 
   const { currentDate, currentView } = state;
@@ -103,6 +106,25 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
   const onResize = (localeConfig.eventDurationEditable ?? editable) ? handleEventResize : undefined;
   const onSelect = localeConfig.selectable !== false ? handleDateRangeSelect : undefined;
 
+  // Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z and Ctrl+Y redo — not while typing.
+  const undoShortcuts = localeConfig.undoShortcuts !== false;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!undoShortcuts || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const target = e.target as HTMLElement;
+      if (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || (key === "y" && !e.metaKey)) {
+        e.preventDefault();
+        redo();
+      }
+    },
+    [undoShortcuts, undo, redo]
+  );
+
   const renderViewComponent = () => {
     const CustomViewComponent = customViews[currentView];
     if (CustomViewComponent) {
@@ -118,6 +140,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           onSlotClick={onSlotClick}
           resources={resources}
           filteredResources={state.localFilteredResources}
+          range={visibleRange}
         />
       );
     }
@@ -194,6 +217,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
       dir={direction}
       className={`agendfy react-agendfy-layout theme-${theme}${className ? ` ${className}` : ""}`}
       data-view={currentView}
+      onKeyDown={handleKeyDown}
     >
       <div className="visually-hidden" aria-live="polite" aria-atomic="true">
         {`Current view: ${currentView}. Period: ${currentDate.toLocaleDateString(

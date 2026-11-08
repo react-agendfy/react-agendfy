@@ -1,6 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { TZDate } from "@date-fns/tz";
-import { clampToValidRange, DayRules, getDayRules, getNavigationTarget } from "../Utils/calendarRange";
+import {
+  clampToValidRange,
+  CustomNavigation,
+  DayRules,
+  getDayRules,
+  getNavigationTarget,
+} from "../Utils/calendarRange";
 
 interface UseCalendarNavigationProps {
   currentDate: Date;
@@ -9,6 +15,8 @@ interface UseCalendarNavigationProps {
   setCurrentDate: (date: Date) => void;
   /** Hidden days / valid range; defaults to no restrictions. */
   dayRules?: DayRules;
+  /** Step/range of a custom view plugin (replaces the built-in rules). */
+  custom?: CustomNavigation;
 }
 
 const useCalendarNavigation = ({
@@ -17,16 +25,17 @@ const useCalendarNavigation = ({
   timeZone,
   setCurrentDate,
   dayRules,
+  custom,
 }: UseCalendarNavigationProps) => {
   const rules = useMemo(() => dayRules ?? getDayRules({ timeZone }), [dayRules, timeZone]);
 
   const prevTarget = useMemo(
-    () => getNavigationTarget(defaultView, currentDate, -1, rules),
-    [defaultView, currentDate, rules]
+    () => getNavigationTarget(defaultView, currentDate, -1, rules, custom),
+    [defaultView, currentDate, rules, custom]
   );
   const nextTarget = useMemo(
-    () => getNavigationTarget(defaultView, currentDate, 1, rules),
-    [defaultView, currentDate, rules]
+    () => getNavigationTarget(defaultView, currentDate, 1, rules, custom),
+    [defaultView, currentDate, rules, custom]
   );
 
   const navigateToday = useCallback(() => {

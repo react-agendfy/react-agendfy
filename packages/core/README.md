@@ -75,6 +75,8 @@ plugin types, and more — see `src/index.tsx`).
 | `onDayClick` | `(day: Date) => void` | Fired when a day cell is clicked (month view). |
 | `onSlotClick` | `(slotTime: Date) => void` | Fired when a time slot is clicked (week/day views). |
 | `onDateRangeSelect` | `(selection: EventProps \| DateRangeSelection) => void` | Fired when the user drags across a range of days/slots. |
+| `onChangeRejected` | `(info: ChangeRejectedInfo) => void` | Fired when a move/resize is refused by a [business rule](#business-rules-and-undo); nothing is applied. |
+| `apiRef` | `Ref<CalendarApi>` | Imperative API: navigation, `getView()`, `refetchEvents()`, `undo()`, `redo()`, `canUndo()`, `canRedo()`. |
 | `currentDate` | `Date` | Declared on the type but **not currently consumed** — the calendar always starts at "now" in `config.timeZone`. |
 | `onDateChange` | `(date: Date) => void` | Declared on the type but **not currently consumed**. |
 | `eventContent` | `(arg: EventContentArg) => ReactNode` | Custom event body in every view — see [Customizing the look](#customizing-the-look). |
@@ -163,7 +165,8 @@ A plugin is a plain object (see `src/types/plugins.ts`). Every plugin has a
 
 | Type | Required fields | Injected/used how |
 | --- | --- | --- |
-| `view` | `viewName`, `component` | Rendered as a view; receives `events`, `currentDate`, `config`, callbacks, `resources`. |
+| `view` | `viewName`, `component` | Rendered as a view; receives `events`, `currentDate`, `config`, callbacks, `resources`, `range`. Optional `range(date, ctx)` and `step` — see below. |
+| `middleware` | — | Optional `validate(change, ctx)`, `onCommit(change)`, `onRevert(change)` — see [Business rules and undo](#business-rules-and-undo). |
 | `filter` / `search` | `component`, `location` (`"left"`/`"right"`) | Rendered in the header; receives `events`, `config`, `resources`, `filteredResources`, `onFilterChange`, `onSearch`, `onResourceFilterChange`, plus your `props`. |
 | `data-source` | `fetchEvents(start, end, config)` | Called for the visible range; returned events are merged with yours (your events win on id collisions). |
 | `export` | `formatName`, `label`, `exportFunction`, `mimeType`, `fileExtension` | Adds an entry to the export menu; the returned `Blob`/string is downloaded. |
@@ -218,6 +221,77 @@ const txtExportPlugin: CalendarPlugin = {
 
 Plugins may also declare optional `activate()` / `deactivate()` lifecycle
 hooks and a `description`.
+
+### Custom view range
+
+A view plugin can declare the dates it shows. The calendar then expands
+recurrences, fetches data sources, reports `onDatesSet` / `getView()` and
+checks `validRange` for that range, and passes it to the component as
+`range`. `step` sets how far prev/next move (default one week).
+
+```tsx
+const twoWeeks: CalendarPlugin = {
+  key: "two-weeks",
+  type: "view",
+  viewName: "twoWeeks",
+  range: (date, { weekStartsOn }) => {
+    const start = startOfWeek(date, { weekStartsOn });
+    return { start, end: addDays(start, 14) }; // end is exclusive
+  },
+  step: { unit: "week", amount: 2 },
+  component: ({ events, range }) => <TwoWeekGrid events={events} range={range} />,
+};
+```
+
+## Business rules and undo
+
+Every move and resize goes through one pipeline: **validate → apply →
+`onEventUpdate`/`onEventResize` → history**. A callback that returns a
+rejected Promise still reverts the change.
+
+| Config key | Type | Description |
+| --- | --- | --- |
+| `eventOverlap` | `boolean \| (still, moving) => boolean` | `false` refuses changes that intersect another event. Events on disjoint resources never overlap. An event's own `overlap` field wins. Default `true`. |
+| `eventConstraint` | `"businessHours" \| { start?, end? } \| WeeklyInterval[]` | Where events may go. An event's own `constraint` field wins. All-day events ignore `"businessHours"`. |
+| `eventAllow` | `(change: EventChange) => boolean` | Final say, after the two rules above. |
+| `selectAllow` | `(selection: DateRangeSelection) => boolean` | Refuses a dragged date-range selection. |
+| `historyLimit` | `number` | Undo steps kept. `0` disables history. Default `100`. |
+| `undoShortcuts` | `boolean` | Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z and Ctrl+Y redo while focus is in the calendar (not in inputs). Default `true`. |
+
+```tsx
+<Calendar
+  events={events}
+  config={{ eventOverlap: false, eventConstraint: "businessHours" }}
+  onEventUpdate={save}
+  onChangeRejected={({ reason, conflicts }) =>
+    toast(reason === "overlap" ? `Conflicts with ${conflicts?.[0]?.title}` : "Outside business hours")
+  }
+/>
+```
+
+Undo and redo replay the change through the same callbacks, so your backend
+persists them like any other edit. They restore only the schedule fields
+(`start`, `end`, `allDay`, `resourceId`, `resourceIds`), never validate (the
+state they restore was already accepted), and an undo the host rejects goes
+back on the stack.
+
+A `middleware` plugin sees every change:
+
+```ts
+const auditPlugin: CalendarPlugin = {
+  key: "audit",
+  type: "middleware",
+  validate: (change, { eventsInRange }) =>
+    eventsInRange(new Date(change.event.start), new Date(change.event.end)).length < 3 ||
+    { ok: false, reason: "capacity", message: "Room is full" },
+  onCommit: (change) => log("committed", change),
+  onRevert: (change) => log("reverted", change),
+};
+```
+
+`validateChange`, `findOverlapConflicts` and `satisfiesConstraint` are
+exported for code that needs the same checks outside a drag (for example, to
+suggest free slots).
 
 ## Customizing the look
 

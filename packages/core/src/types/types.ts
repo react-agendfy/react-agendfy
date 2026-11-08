@@ -163,6 +163,29 @@ export interface Config {
   eventDurationEditable?: boolean;
   /** Date ranges can be selected by dragging over the grid. Default true. */
   selectable?: boolean;
+  /**
+   * Last word on whether a drag or resize is allowed (FullCalendar's
+   * `eventAllow`). Runs after `eventOverlap` and `eventConstraint`.
+   */
+  eventAllow?: (change: EventChange) => boolean;
+  /**
+   * Whether events may overlap. `false` rejects a move/resize that
+   * intersects another event; a function decides per pair. An event's own
+   * `overlap` field wins. Events on disjoint resources never overlap.
+   * Default true.
+   */
+  eventOverlap?: EventOverlapRule;
+  /**
+   * Where events may be dropped: `"businessHours"`, a date range, or a list
+   * of weekly intervals. An event's own `constraint` field wins.
+   */
+  eventConstraint?: EventConstraintRule;
+  /** Whether a dragged date-range selection is allowed (FullCalendar's `selectAllow`). */
+  selectAllow?: (selection: DateRangeSelection) => boolean;
+  /** Max undo steps kept (`api.undo()`, Ctrl/⌘+Z). `0` disables history. Default 100. */
+  historyLimit?: number;
+  /** Ctrl/⌘+Z, Ctrl/⌘+Shift+Z and Ctrl+Y undo/redo while focus is inside the calendar. Default true. */
+  undoShortcuts?: boolean;
   defaultView: CalendarView;
   slotDuration: number;
   slotLabelFormat: string;
@@ -435,7 +458,61 @@ export interface CalendarApi {
   getView(): { type: string; activeStart: Date; activeEnd: Date };
   /** Re-runs the data-source plugins. */
   refetchEvents(): void;
+  /** Reverts the last accepted move/resize through the same callbacks. */
+  undo(): void;
+  /** Re-applies the last undone change. */
+  redo(): void;
+  canUndo(): boolean;
+  canRedo(): boolean;
 }
+
+/** What produced a change: the user (drag, resize, keyboard) or undo/redo. */
+export type ChangeSource = "user" | "history";
+
+/** A move or resize, as it flows through validation, callbacks and history. */
+export interface EventChange {
+  kind: "move" | "resize";
+  /** The event with its new times/resources. */
+  event: EventProps;
+  /** The event before the change (undefined when it could not be found). */
+  before?: EventProps;
+  source: ChangeSource;
+}
+
+/** Why a change was refused. Built-in reasons: "overlap", "constraint", "not-allowed". */
+export interface ChangeRejection {
+  ok: false;
+  reason: string;
+  message?: string;
+  /** For "overlap": the events the change would collide with. */
+  conflicts?: EventProps[];
+}
+
+export type ChangeVerdict = true | ChangeRejection;
+
+export interface ChangeRejectedInfo {
+  change: EventChange;
+  reason: string;
+  message?: string;
+  conflicts?: EventProps[];
+}
+
+/** `false` forbids overlaps; a function decides for each (still, moving) pair. */
+export type EventOverlapRule = boolean | ((stillEvent: EventProps, movingEvent: EventProps) => boolean);
+
+/** A weekly interval, same shape as a `businessHours` interval. */
+export interface WeeklyInterval {
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * `"businessHours"` — inside one business-hours interval (all-day events are
+ * not constrained); a range — inside [start, end); intervals — inside one of
+ * them.
+ */
+export type EventConstraintRule = "businessHours" | ValidRange | WeeklyInterval[];
 
 /** Selection emitted when a user drags across a date range. */
 export interface DateRangeSelection {
@@ -472,6 +549,12 @@ export interface CalendarProps {
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
   onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
+  /**
+   * Called when a move/resize is refused by `eventOverlap`,
+   * `eventConstraint`, `eventAllow` or a middleware plugin. Nothing is
+   * applied and `onEventUpdate`/`onEventResize` are not called.
+   */
+  onChangeRejected?: (info: ChangeRejectedInfo) => void;
   /** Called with the displayed date on mount and after every navigation. */
   onDateChange?: (date: Date) => void;
   /**

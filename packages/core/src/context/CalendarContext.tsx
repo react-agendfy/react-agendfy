@@ -14,8 +14,10 @@ import { TZDate } from "@date-fns/tz";
 import {
   CalendarProps,
   CalendarView,
+  ChangeVerdict,
   Config,
   DateRangeSelection,
+  EventChange,
   EventProps,
   ExportOption,
   Resource,
@@ -39,6 +41,8 @@ import usePluginManagement from "../hooks/usePluginManagement";
 import useDataSourceEvents from "../hooks/useDataSourceEvents";
 import { clampToValidRange, getDayRules, getExpansionWindow, getVisibleRange } from "../Utils/calendarRange";
 import { expandRecurrences } from "../Utils/recurrence";
+import { eventSpan, validateChange } from "../Utils/changeRules";
+import { ChangeHistory, HistoryEntry, sameSchedule, withSchedule } from "../Utils/changeHistory";
 
 export const defaultConfig: Config = {
   timeZone: "America/Sao_Paulo",
@@ -179,6 +183,17 @@ export interface CalendarContextValue {
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
 
+  /** Visible range of the active view, [start, end). */
+  visibleRange: { start: Date; end: Date };
+
+  // change pipeline (RFC 001)
+  /** Validates, applies, calls back and records a move/resize. */
+  commitChange: (change: EventChange) => ChangeVerdict;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+
   // handlers
   handleEventUpdate: (event: EventProps) => void;
   handleEventResize: (event: EventProps) => void;
@@ -221,6 +236,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   onDayClick,
   onSlotClick,
   onDateRangeSelect,
+  onChangeRejected,
   onDateChange,
   onDatesSet,
   onViewChange,
@@ -293,6 +309,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     interactionPlugins,
     themePlugins,
     exportPlugins,
+    middlewarePlugins,
   } = usePluginManagement(plugins);
 
   // Theme css variables are applied by CalendarView to the calendar's own
@@ -343,6 +360,32 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     config: localeConfig,
   });
 
+  /* --- day rules + the active custom view's own range ------------------- */
+  const dayRules = useMemo(() => getDayRules(localeConfig), [localeConfig]);
+
+  const activeViewPlugin = useMemo(
+    () => customViewPlugins.find((p: ViewPlugin) => p.viewName === state.currentView),
+    [customViewPlugins, state.currentView]
+  );
+  // A view plugin with `range` reports its own [start, end); used for
+  // recurrence expansion, data sources, onDatesSet, getView() and prev/next.
+  const customRangeOf = useMemo(
+    () =>
+      activeViewPlugin?.range
+        ? (date: Date) =>
+            activeViewPlugin.range!(date, {
+              weekStartsOn: dayRules.weekStartsOn,
+              timeZone,
+              config: localeConfig,
+            })
+        : undefined,
+    [activeViewPlugin, dayRules.weekStartsOn, timeZone, localeConfig]
+  );
+  const customRange = useMemo(
+    () => customRangeOf?.(state.currentDate),
+    [customRangeOf, state.currentDate]
+  );
+
   /* --- data-source plugins (phase-0: fetched events merge into pipeline) -- */
   const stableDataSourcePlugins = useMemo(
     () => dataSourcePlugins,
@@ -352,7 +395,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   const { dataSourceEvents, isDataSourceLoading, dataSourceError, refetch: refetchDataSources } =
     // localeConfig carries the ACTIVE view (resolvedConfig only the initial
     // one), so fetch ranges follow view switches.
-    useDataSourceEvents(stableDataSourcePlugins, localeConfig, state.currentDate);
+    useDataSourceEvents(stableDataSourcePlugins, localeConfig, state.currentDate, customRange);
 
   // Merge events fetched by data-source plugins with the user-provided events,
   // without clobbering user events (user events win on id collisions).
@@ -389,57 +432,179 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ]
   );
 
-  /* --- recurrence expansion + day rules --------------------------------- */
-  const dayRules = useMemo(() => getDayRules(localeConfig), [localeConfig]);
-
+  /* --- recurrence expansion ---------------------------------------------- */
   // Expanded once for a window covering every built-in view of the current
-  // date (month grid ± 1 week), so views never deal with rules themselves.
+  // date (month grid ± 1 week), widened to a custom view's own range, so
+  // views never deal with rules themselves.
   const expansionWindow = getExpansionWindow(state.currentDate, dayRules.weekStartsOn);
-  const windowStart = expansionWindow.start.getTime();
-  const windowEnd = expansionWindow.end.getTime();
+  const windowStart = Math.min(
+    expansionWindow.start.getTime(),
+    customRange ? customRange.start.getTime() : Infinity
+  );
+  const windowEnd = Math.max(
+    expansionWindow.end.getTime(),
+    customRange ? customRange.end.getTime() : -Infinity
+  );
   const visibleEvents = useMemo(
     () => expandRecurrences(filteredEvents, new Date(windowStart), new Date(windowEnd), timeZone),
     [filteredEvents, windowStart, windowEnd, timeZone]
   );
 
-  /* --- handlers ----------------------------------------------------------- */
-  // Optimistic update with FullCalendar-style revert: when the host's
-  // callback returns a Promise that rejects (e.g. the server refused the
-  // move), the event goes back to where it was. A void return is unaffected.
+  /* --- change pipeline (RFC 001, layer 1) --------------------------------- */
+  // validate → apply optimistically → host callback (a rejected Promise
+  // reverts, like FullCalendar's info.revert()) → undo history.
   const eventsRef = useRef(state.events);
   eventsRef.current = state.events;
-  const applyWithRevert = useCallback(
-    (changed: EventProps, callback?: (event: EventProps) => void | Promise<unknown>) => {
-      const previous = eventsRef.current.find((e) => e.id === changed.id);
-      dispatch({ type: "UPDATE_EVENT", payload: changed });
-      const result = callback?.(changed);
-      if (result && typeof (result as Promise<unknown>).then === "function") {
-        (result as Promise<unknown>).then(undefined, () => {
-          if (previous) dispatch({ type: "UPDATE_EVENT", payload: previous });
-        });
-      }
-    },
+  const visibleEventsRef = useRef(visibleEvents);
+  visibleEventsRef.current = visibleEvents;
+  const normalizedEventsRef = useRef(normalizedEvents);
+  normalizedEventsRef.current = normalizedEvents;
+
+  const historyRef = useRef<ChangeHistory | null>(null);
+  if (!historyRef.current) historyRef.current = new ChangeHistory();
+  const history = historyRef.current;
+  history.limit = localeConfig.historyLimit ?? 100;
+  // Re-render when the stacks change (canUndo/canRedo).
+  const [, bumpHistory] = useReducer((n: number) => n + 1, 0);
+
+  /** The event as it is now: a stored event, else a rendered occurrence. */
+  const findCurrent = useCallback(
+    (id: EventProps["id"]) =>
+      eventsRef.current.find((e) => e.id === id) ??
+      visibleEventsRef.current.find((e) => e.id === id),
     []
   );
 
+  const eventsInRange = useCallback(
+    (start: Date, end: Date) => {
+      const from = start.getTime();
+      const to = end.getTime();
+      return expandRecurrences(normalizedEventsRef.current, start, end, timeZone).filter((e) => {
+        const span = eventSpan(e);
+        return span.start < to && from < span.end;
+      });
+    },
+    [timeZone]
+  );
+
+  const runChange = useCallback(
+    (change: EventChange, onReverted?: () => void): ChangeVerdict => {
+      const unchanged = !!change.before && sameSchedule(change.before, change.event);
+
+      if (change.source !== "history" && !unchanged) {
+        const verdict = validateChange(
+          change,
+          { config: localeConfig, eventsInRange },
+          middlewarePlugins
+        );
+        if (verdict !== true) {
+          onChangeRejected?.({
+            change,
+            reason: verdict.reason,
+            message: verdict.message,
+            conflicts: verdict.conflicts,
+          });
+          return verdict;
+        }
+      }
+
+      dispatch({ type: "UPDATE_EVENT", payload: change.event });
+      const entryId =
+        change.source === "user" && change.before && !unchanged
+          ? history.record(change.kind, change.before, change.event)
+          : null;
+      if (entryId !== null) bumpHistory();
+      middlewarePlugins.forEach((p) => p.onCommit?.(change));
+
+      const callback = change.kind === "resize" ? onEventResize : onEventUpdate;
+      const result = callback?.(change.event);
+      if (result && typeof (result as Promise<unknown>).then === "function") {
+        (result as Promise<unknown>).then(undefined, () => {
+          if (change.before) dispatch({ type: "UPDATE_EVENT", payload: change.before });
+          if (entryId !== null) {
+            history.remove(entryId);
+            bumpHistory();
+          }
+          onReverted?.();
+          middlewarePlugins.forEach((p) => p.onRevert?.(change));
+        });
+      }
+      return true;
+    },
+    [localeConfig, eventsInRange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize]
+  );
+
+  const commitChange = useCallback((change: EventChange) => runChange(change), [runChange]);
+
+  /** Re-applies one side of a history entry; puts the entry back if the host refuses. */
+  const replay = useCallback(
+    (entry: HistoryEntry, target: "before" | "after", onDone: () => void, onFailed: () => void) => {
+      const current = findCurrent(entry.after.id) ?? entry[target === "before" ? "after" : "before"];
+      runChange(
+        { kind: entry.kind, event: withSchedule(current, entry[target]), before: current, source: "history" },
+        () => {
+          onFailed();
+          bumpHistory();
+        }
+      );
+      onDone();
+      bumpHistory();
+    },
+    [findCurrent, runChange]
+  );
+
+  const undo = useCallback(() => {
+    const entry = history.takeUndo();
+    if (!entry) return;
+    replay(
+      entry,
+      "before",
+      () => history.pushRedo(entry),
+      () => {
+        history.remove(entry.id);
+        history.pushUndo(entry);
+      }
+    );
+  }, [history, replay]);
+
+  const redo = useCallback(() => {
+    const entry = history.takeRedo();
+    if (!entry) return;
+    replay(
+      entry,
+      "after",
+      () => history.pushUndo(entry),
+      () => {
+        history.remove(entry.id);
+        history.pushRedo(entry);
+      }
+    );
+  }, [history, replay]);
+
   const handleEventUpdate = useCallback(
-    (updatedEvent: EventProps) => applyWithRevert(updatedEvent, onEventUpdate),
-    [applyWithRevert, onEventUpdate]
+    (updatedEvent: EventProps) => {
+      runChange({ kind: "move", event: updatedEvent, before: findCurrent(updatedEvent.id), source: "user" });
+    },
+    [runChange, findCurrent]
   );
 
   const handleEventResize = useCallback(
-    (resizeEvent: EventProps) => applyWithRevert(resizeEvent, onEventResize),
-    [applyWithRevert, onEventResize]
+    (resizeEvent: EventProps) => {
+      runChange({ kind: "resize", event: resizeEvent, before: findCurrent(resizeEvent.id), source: "user" });
+    },
+    [runChange, findCurrent]
   );
 
+  const selectAllow = localeConfig.selectAllow;
   const handleDateRangeSelect = useCallback(
     (rangeEvent: EventProps | DateRangeSelection) => {
+      if (selectAllow && selectAllow(rangeEvent as DateRangeSelection) === false) return;
       // A bare range selection has no id, so updateEventsList leaves the
       // events list untouched (parity with the pre-refactor behavior).
       dispatch({ type: "UPDATE_EVENT", payload: rangeEvent as EventProps });
       onDateRangeSelect?.(rangeEvent);
     },
-    [onDateRangeSelect]
+    [onDateRangeSelect, selectAllow]
   );
 
   const handleViewChange = useCallback((newView: string) => {
@@ -471,6 +636,14 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     [timeZone]
   );
 
+  const customNavigation = useMemo(
+    () =>
+      activeViewPlugin && (activeViewPlugin.range || activeViewPlugin.step)
+        ? { step: activeViewPlugin.step, rangeOf: customRangeOf }
+        : undefined,
+    [activeViewPlugin, customRangeOf]
+  );
+
   const {
     navigateToday,
     navigateBack,
@@ -483,12 +656,13 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     timeZone,
     setCurrentDate,
     dayRules,
+    custom: customNavigation,
   });
 
   /* --- visible range: onDatesSet / onViewChange / imperative API -------- */
   const visibleRange = useMemo(
-    () => getVisibleRange(state.currentView, state.currentDate, localeConfig),
-    [state.currentView, state.currentDate, localeConfig]
+    () => customRange ?? getVisibleRange(state.currentView, state.currentDate, localeConfig),
+    [customRange, state.currentView, state.currentDate, localeConfig]
   );
   const rangeStartMs = visibleRange.start.getTime();
   const rangeEndMs = visibleRange.end.getTime();
@@ -532,6 +706,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
         activeEnd: new Date(rangeEndMs),
       }),
       refetchEvents: refetchDataSources,
+      undo,
+      redo,
+      canUndo: () => history.canUndo(),
+      canRedo: () => history.canRedo(),
     }),
     [
       state.currentDate,
@@ -544,6 +722,9 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       rangeStartMs,
       rangeEndMs,
       refetchDataSources,
+      undo,
+      redo,
+      history,
     ]
   );
 
@@ -732,6 +913,12 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     onEventClick,
     onDayClick,
     onSlotClick,
+    visibleRange,
+    commitChange,
+    undo,
+    redo,
+    canUndo: history.canUndo(),
+    canRedo: history.canRedo(),
     handleEventUpdate,
     handleEventResize,
     handleDateRangeSelect,
