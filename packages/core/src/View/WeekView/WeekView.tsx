@@ -45,6 +45,8 @@ import { useDropVerdict } from "../../hooks/useDropVerdict";
 const pointerOrRect: CollisionDetection = (args) =>
   args.pointerCoordinates ? pointerWithin(args) : rectIntersection(args);
 
+const NO_EVENTS: EventProps[] = [];
+
 const WEEK_DRAG: ViewDragOptions = {
   collisionDetection: pointerOrRect,
   instructions:
@@ -330,23 +332,45 @@ const WeekView = ({
     return slotTime >= start && slotTime <= end;
   }, [isSelecting, selectionStart, selectionEnd]);
 
-  const getEvents = useCallback((slotTime: string) => {
-    const slotDate = new TZDate(slotTime, config?.timeZone);
-    const slotDateFormatted = format(slotDate, "yyyy-MM-dd HH:mm");
-    return events.reduce((acc: EventProps[], event: EventProps) => {
+  // Timed events indexed once per render by the slot they start in
+  // ("yyyy-MM-dd HH:mm", calendar zone). Looking every event up again for
+  // each of the ~200 slots of a week built hundreds of thousands of zoned
+  // dates per render (≈2s per drop on a busy week). A start between slot
+  // lines belongs to the slot below it (WeekTimeSlot offsets it), as in the
+  // day view; exact matching used to drop such events (10:15 with 30-min
+  // slots never showed).
+  const eventsBySlot = useMemo(() => {
+    const tz = config?.timeZone;
+    const index = new Map<string, EventProps[]>();
+    const gridStart = startHour * 60;
+    for (const event of events) {
       // Recurring events arrive pre-expanded from the calendar context.
-      if (isBannerEvent(event, config?.timeZone)) return acc;
-      // Clip timed events to this slot's day so a midnight-crossing event
-      // renders as one segment per day (continuation starts at 00:00 and
-      // therefore matches the day's first slot).
-      const segment = clipEventToDay(event, slotDate, config?.timeZone);
-      if (!segment) return acc;
-      if (format(new TZDate(ensureDate(segment.start), config?.timeZone), "yyyy-MM-dd HH:mm") === slotDateFormatted) {
-        acc.push(segment);
+      if (isBannerEvent(event, tz)) continue;
+      const start = ensureDate(event.start, tz);
+      const lastMs = Math.max(ensureDate(event.end, tz).getTime(), start.getTime() + 1);
+      // One segment per day touched: a midnight-crossing event renders as
+      // clipped segments (the continuation starts at 00:00).
+      for (let day = startOfDay(new TZDate(start, tz)); day.getTime() < lastMs; day = addDays(day, 1)) {
+        const segment = clipEventToDay(event, day, tz);
+        if (!segment) continue;
+        const segStart = new TZDate(ensureDate(segment.start), tz);
+        const fromGrid = segStart.getHours() * 60 + segStart.getMinutes() - gridStart;
+        if (fromGrid < 0) continue; // before slotMin: not on the grid
+        const slotMinutes = gridStart + Math.floor(fromGrid / slotDuration) * slotDuration;
+        const key = `${format(segStart, "yyyy-MM-dd")} ${String(Math.floor(slotMinutes / 60)).padStart(2, "0")}:${String(slotMinutes % 60).padStart(2, "0")}`;
+        const bucket = index.get(key);
+        if (bucket) bucket.push(segment);
+        else index.set(key, [segment]);
       }
-      return acc;
-    }, []);
-  }, [events, config?.timeZone]);
+    }
+    return index;
+  }, [events, config?.timeZone, startHour, slotDuration]);
+
+  const getEvents = useCallback(
+    (slotTime: string) =>
+      eventsBySlot.get(format(new TZDate(slotTime, config?.timeZone), "yyyy-MM-dd HH:mm")) ?? NO_EVENTS,
+    [eventsBySlot, config?.timeZone]
+  );
 
   const isDraggable = useMemo(() => typeof onEventUpdate === "function", [onEventUpdate]);
 

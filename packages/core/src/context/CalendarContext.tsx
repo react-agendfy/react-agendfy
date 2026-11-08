@@ -83,9 +83,13 @@ export interface CalendarState {
   currentDate: TZDate;
   events: EventProps[];
   localFilteredResources: string[];
-  pluginFilteredEvents: EventProps[];
-  pluginSearchResults: EventProps[];
-  isSearchActive: boolean;
+  /**
+   * Ids a filter plugin (`onFilterChange`) lets through; null when no plugin
+   * filter is active. Kept across `events` updates.
+   */
+  pluginFilterIds: Set<EventProps["id"]> | null;
+  /** Ids matching the active plugin search (`onSearch`); null when not searching. */
+  pluginSearchIds: Set<EventProps["id"]> | null;
   currentView: string;
 }
 
@@ -100,7 +104,7 @@ export type CalendarAction =
       type: "SET_RESOURCE_FILTER";
       payload: string[] | ((prev: string[]) => string[]);
     }
-  | { type: "SET_PLUGIN_FILTERED_EVENTS"; payload: EventProps[] }
+  | { type: "SET_PLUGIN_FILTER"; payload: Set<EventProps["id"]> | null }
   | { type: "SET_PLUGIN_SEARCH"; payload: { searchTerm: string; results: EventProps[] } };
 
 export function calendarReducer(
@@ -115,35 +119,25 @@ export function calendarReducer(
     case "UPDATE_EVENT":
       return { ...state, events: updateEventsList(state.events, action.payload) };
     case "ADD_EVENT": {
-      // A new event (dropped from outside) must show: it also joins the
-      // plugin filter/search allow-lists, which were taken at the last sync.
       if (state.events.some((e) => e.id === action.payload.id)) {
         return { ...state, events: updateEventsList(state.events, action.payload) };
       }
+      // An event the user just dropped shows even under an active plugin
+      // filter or search.
+      const withId = (ids: Set<EventProps["id"]> | null) => (ids ? new Set(ids).add(action.payload.id) : ids);
       return {
         ...state,
         events: [...state.events, action.payload],
-        pluginFilteredEvents: [...state.pluginFilteredEvents, action.payload],
-        pluginSearchResults: [...state.pluginSearchResults, action.payload],
+        pluginFilterIds: withId(state.pluginFilterIds),
+        pluginSearchIds: withId(state.pluginSearchIds),
       };
     }
-    case "REMOVE_EVENT": {
-      const keep = (e: EventProps) => e.id !== action.payload;
-      return {
-        ...state,
-        events: state.events.filter(keep),
-        pluginFilteredEvents: state.pluginFilteredEvents.filter(keep),
-        pluginSearchResults: state.pluginSearchResults.filter(keep),
-      };
-    }
+    case "REMOVE_EVENT":
+      return { ...state, events: state.events.filter((e) => e.id !== action.payload) };
     case "SYNC_EVENTS":
-      return {
-        ...state,
-        events: action.payload,
-        pluginFilteredEvents: action.payload,
-        pluginSearchResults: action.payload,
-        isSearchActive: false,
-      };
+      // Plugin filter/search stay as they are: the host saving a drag must
+      // not silently clear them.
+      return { ...state, events: action.payload };
     case "SET_RESOURCE_FILTER":
       return {
         ...state,
@@ -152,13 +146,14 @@ export function calendarReducer(
             ? action.payload(state.localFilteredResources)
             : action.payload,
       };
-    case "SET_PLUGIN_FILTERED_EVENTS":
-      return { ...state, pluginFilteredEvents: action.payload };
+    case "SET_PLUGIN_FILTER":
+      return { ...state, pluginFilterIds: action.payload };
     case "SET_PLUGIN_SEARCH":
       return {
         ...state,
-        pluginSearchResults: action.payload.results,
-        isSearchActive: action.payload.searchTerm.length > 0,
+        pluginSearchIds: action.payload.searchTerm.length > 0
+          ? new Set(action.payload.results.map((e) => e.id))
+          : null,
       };
     default:
       return state;
@@ -289,9 +284,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ),
     events: initialEvents,
     localFilteredResources: filteredResources,
-    pluginFilteredEvents: initialEvents,
-    pluginSearchResults: initialEvents,
-    isSearchActive: false,
+    pluginFilterIds: null,
+    pluginSearchIds: null,
     currentView: config.defaultView || defaultConfig.defaultView,
   }));
 
@@ -448,16 +442,14 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       getFilteredEventsList(
         normalizedEvents,
         state.localFilteredResources,
-        state.pluginFilteredEvents,
-        state.pluginSearchResults,
-        state.isSearchActive
+        state.pluginFilterIds,
+        state.pluginSearchIds
       ),
     [
       normalizedEvents,
       state.localFilteredResources,
-      state.pluginFilteredEvents,
-      state.pluginSearchResults,
-      state.isSearchActive,
+      state.pluginFilterIds,
+      state.pluginSearchIds,
     ]
   );
 
@@ -663,8 +655,13 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     []
   );
 
+  // A filter plugin passes the events it keeps. Keeping all of them (its
+  // "clear") turns the filter off, so later events (data sources, new ones)
+  // are not hidden by a stale list.
   const handleFilterChangeFromPlugin = useCallback((filtered: EventProps[]) => {
-    dispatch({ type: "SET_PLUGIN_FILTERED_EVENTS", payload: filtered });
+    const ids = new Set(filtered.map((e) => e.id));
+    const keepsAll = normalizedEventsRef.current.every((e) => ids.has(e.id));
+    dispatch({ type: "SET_PLUGIN_FILTER", payload: keepsAll ? null : ids });
   }, []);
 
   const handleSearchFromPlugin = useCallback(
