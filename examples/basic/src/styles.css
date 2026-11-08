@@ -847,6 +847,28 @@ textarea.input {
   flex: 1;
 }
 
+/* --- task form (Gantt page) --------------------------------------------- */
+.task-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.swatches {
+  display: flex;
+  gap: 8px;
+}
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--app-surface);
+  box-shadow: 0 0 0 1px var(--app-border);
+  cursor: pointer;
+}
+.swatch[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--app-text);
+}
+
 /* --- AI drawer ----------------------------------------------------------- */
 .fab {
   position: fixed;
