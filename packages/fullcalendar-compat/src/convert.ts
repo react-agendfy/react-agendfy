@@ -30,6 +30,10 @@ const VIEW_MAP: Record<string, AgendfyView> = {
   listYear: { view: "list", listRange: "month" },
   resourceTimeGridDay: { view: "resourceDay" },
   resourceTimeGridWeek: { view: "resourceWeek" },
+  // With @react-agendfy/plugin-timeline in agendfyPlugins.
+  resourceTimelineDay: { view: "timelineDay" },
+  resourceTimelineWeek: { view: "timelineWeek" },
+  resourceTimelineMonth: { view: "timelineMonth" },
 };
 
 /** FullCalendar view name → agendfy view (+ list span). Unknown names pass through. */
@@ -49,6 +53,12 @@ export const toFcView = (view: string, listRange: "day" | "week" | "month" = "we
       return "resourceTimeGridDay";
     case "resourceWeek":
       return "resourceTimeGridWeek";
+    case "timelineDay":
+      return "resourceTimelineDay";
+    case "timelineWeek":
+      return "resourceTimelineWeek";
+    case "timelineMonth":
+      return "resourceTimelineMonth";
     case "list":
       return listRange === "day" ? "listDay" : listRange === "month" ? "listMonth" : "listWeek";
     default:
