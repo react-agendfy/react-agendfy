@@ -1,14 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  CollisionDetection,
-  DragEndEvent,
-  DragMoveEvent,
-  DragOverEvent,
-  DragOverlay,
-  DragStartEvent,
-  pointerWithin,
-  rectIntersection,
-} from "@dnd-kit/core";
+import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent } from "@dnd-kit/core";
+import { pointerOrRect } from "../../Utils/collision";
 import {
   format,
   addMinutes,
@@ -40,10 +32,6 @@ import { ViewDndScope, type DragSnapshot, type DropResolution, type ViewDragOpti
 import { eventFromExternal, externalDragData } from "../../Utils/externalDrag";
 import { useDropVerdict } from "../../hooks/useDropVerdict";
 
-// The slot under the pointer; a keyboard drag has no pointer, so it falls
-// back to the slot under the dragged event.
-const pointerOrRect: CollisionDetection = (args) =>
-  args.pointerCoordinates ? pointerWithin(args) : rectIntersection(args);
 
 const NO_EVENTS: EventProps[] = [];
 

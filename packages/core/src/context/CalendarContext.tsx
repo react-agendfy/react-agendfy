@@ -29,7 +29,7 @@ import {
   ViewPlugin,
 } from "../types/plugins";
 import { getLocale } from "../Utils/locate";
-import { getMessages, getTextDirection } from "../i18n";
+import { formatMessage, getMessages, getTextDirection } from "../i18n";
 import { normalizeEvents } from "../Utils/calendarHelpers";
 import { getFilteredEventsList, updateEventsList } from "../Utils/CalendarUtils";
 import { downloadBlob } from "../Utils/pluginUtils";
@@ -225,6 +225,14 @@ export interface CalendarContextValue {
   handleResourceFilterChange: (selected: string[] | ((prev: string[]) => string[])) => void;
   handleExport: (format: string) => void;
   navigate: (direction: "prev" | "next" | "today") => void;
+  /** Moves to `date` (clamped to `validRange`). */
+  gotoDate: (date: Date | string) => void;
+  /**
+   * Text for `key`: `config[key]`, else the view plugins' `messages` for the
+   * language (exact, base, English), else `fallback` (default: the key).
+   * `{name}` placeholders are filled from `vars`.
+   */
+  t: (key: string, vars?: Record<string, string | number>, fallback?: string) => string;
   /** False when prev/next would leave `validRange`. */
   canNavigateBack: boolean;
   canNavigateForward: boolean;
@@ -536,21 +544,23 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       // A received event is new: added, and removed again on revert. It is
       // not recorded (undoing it would need a remove callback).
       const isReceive = change.kind === "receive";
-      dispatch({ type: isReceive ? "ADD_EVENT" : "UPDATE_EVENT", payload: change.event });
+      const event = change.event;
+      const before = change.before;
+      dispatch({ type: isReceive ? "ADD_EVENT" : "UPDATE_EVENT", payload: event });
       const entryId =
-        change.kind !== "receive" && change.source === "user" && change.before && !unchanged
-          ? history.record(change.kind, change.before, change.event)
+        change.kind !== "receive" && change.source === "user" && before && !unchanged
+          ? history.record(change.kind, before, event)
           : null;
       if (entryId !== null) bumpHistory();
       middlewarePlugins.forEach((p) => p.onCommit?.(change));
 
       const result = isReceive
-        ? onEventReceive?.(change.event, change.data)
-        : (change.kind === "resize" ? onEventResize : onEventUpdate)?.(change.event);
+        ? onEventReceive?.(event, change.data)
+        : (change.kind === "resize" ? onEventResize : onEventUpdate)?.(event);
       if (result && typeof (result as Promise<unknown>).then === "function") {
         (result as Promise<unknown>).then(undefined, () => {
-          if (isReceive) dispatch({ type: "REMOVE_EVENT", payload: change.event.id });
-          else if (change.before) dispatch({ type: "UPDATE_EVENT", payload: change.before });
+          if (isReceive) dispatch({ type: "REMOVE_EVENT", payload: event.id });
+          else if (before) dispatch({ type: "UPDATE_EVENT", payload: before });
           if (entryId !== null) {
             history.remove(entryId);
             bumpHistory();
@@ -770,6 +780,35 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ]
   );
 
+  const gotoDate = useCallback(
+    (date: Date | string) =>
+      setCurrentDate(clampToValidRange(date instanceof Date ? date : new Date(date), dayRules.validRange)),
+    [setCurrentDate, dayRules.validRange]
+  );
+
+  /* --- texts: config, then the view plugins' messages ------------------- */
+  const pluginMessages = useMemo(() => {
+    const lang = (resolvedConfig.lang ?? "en").toLowerCase().replace("_", "-");
+    const base = lang.split("-")[0];
+    const merged: Record<string, string> = {};
+    for (const plugin of customViewPlugins) {
+      const byLang = Object.fromEntries(
+        Object.entries(plugin.messages ?? {}).map(([k, v]) => [k.toLowerCase().replace("_", "-"), v])
+      );
+      Object.assign(merged, byLang.en, byLang[base], byLang[lang]);
+    }
+    return merged;
+  }, [customViewPlugins, resolvedConfig.lang]);
+
+  const t = useCallback(
+    (key: string, vars: Record<string, string | number> = {}, fallback?: string) => {
+      const fromConfig = (resolvedConfig as unknown as Record<string, unknown>)[key];
+      const template = typeof fromConfig === "string" ? fromConfig : pluginMessages[key];
+      return formatMessage(template, vars, fallback ?? key);
+    },
+    [resolvedConfig, pluginMessages]
+  );
+
   const navigate = useCallback(
     (direction: "prev" | "next" | "today") => {
       if (direction === "today") navigateToday();
@@ -827,7 +866,10 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     ];
     const customViews = customViewPlugins.map((plugin: ViewPlugin) => ({
       name: plugin.viewName,
-      label: plugin.props?.label || plugin.viewName,
+      label:
+        typeof plugin.label === "object"
+          ? t(plugin.label.key, undefined, plugin.viewName)
+          : plugin.label || plugin.props?.label || plugin.viewName,
     }));
     const all = [...defaultViews, ...customViews];
     // headerViews picks and orders the buttons (unknown names are ignored).
@@ -836,7 +878,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     return wanted
       .map((name) => all.find((v) => v.name === name))
       .filter((v): v is { name: string; label: string } => !!v);
-  }, [localeConfig, customViewPlugins]);
+  }, [localeConfig, customViewPlugins, t]);
 
   const customViews = useMemo(() => {
     const views: Record<string, FC<any>> = {};
@@ -970,6 +1012,8 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     handleResourceFilterChange,
     handleExport,
     navigate,
+    gotoDate,
+    t,
     canNavigateBack,
     canNavigateForward,
     eventContent,

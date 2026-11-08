@@ -7,6 +7,7 @@ import useCalendarState from "../hooks/useCalendarState";
 import { EventContentProvider } from "../context/EventContentContext";
 import { ClassNamesProvider } from "../context/ClassNamesContext";
 import { InteractionProvider } from "../context/InteractionContext";
+import { CustomViewDnd } from "../Components/CustomViewDnd";
 
 const MonthView = lazy(() => import("./MonthView/MonthView"));
 const WeekView = lazy(() => import("./WeekView/WeekView"));
@@ -130,7 +131,17 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
   const renderViewComponent = () => {
     const CustomViewComponent = customViews[currentView];
     if (CustomViewComponent) {
+      // Custom views get drag & drop through useEventDraggable/useDropZone
+      // and the rest of the calendar through useCalendarView(); the props
+      // below are kept for views written before that API.
       return (
+        <CustomViewDnd
+          config={localeConfig}
+          resources={resources}
+          onEventUpdate={onMove}
+          onEventReceive={handleEventReceive}
+          onEventClick={onEventClick}
+        >
         <CustomViewComponent
           events={visibleEvents}
           currentDate={currentDate}
@@ -144,6 +155,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
           filteredResources={state.localFilteredResources}
           range={visibleRange}
         />
+        </CustomViewDnd>
       );
     }
     switch (currentView) {

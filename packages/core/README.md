@@ -223,6 +223,71 @@ const txtExportPlugin: CalendarPlugin = {
 Plugins may also declare optional `activate()` / `deactivate()` lifecycle
 hooks and a `description`.
 
+### Writing a custom view: `useCalendarView`
+
+A view plugin's component can use the calendar through hooks instead of
+props. `useCalendarView()` is the stable API (the calendar context itself is
+private):
+
+| Field | Description |
+| --- | --- |
+| `view`, `date`, `range` | Active view, navigated date, visible `[start, end)`. |
+| `events`, `resources` | Events to render (filtered, recurrences expanded) and resources. |
+| `config`, `timeZone`, `lang`, `direction`, `weekStartsOn` | Resolved settings. |
+| `t(key, vars?, fallback?)` | Text: a `config` key wins, then the plugin's `messages` for the language (exact, base, English). |
+| `formatDate(date, pattern)`, `formatTime(date)`, `timeText(event)` | Formatting in the calendar zone and language. |
+| `isDisabled(date)`, `isHidden(date)`, `businessHoursFor(date)` | Day rules. |
+| `navigate(dir)`, `gotoDate(date)`, `changeView(view)` | Navigation. |
+| `moveEvent(event, patch)`, `resizeEvent(event, patch)`, `validate(change)` | Changes through the [pipeline](#business-rules-and-undo): rules, callbacks, undo. |
+| `undo()`, `redo()`, `canUndo`, `canRedo` | History. |
+| `onEventClick(event)`, `renderEventContent(event)`, `eventClassName(event)` | The host's click handler, `eventContent` and `eventClassNames`. |
+
+**Drag & drop** comes with two hooks. The calendar does the rest: the
+preview, [live validation](#business-rules-and-undo), click versus drag,
+moving between resources, and items dropped from outside
+([`ExternalDraggable`](#dragging-in-from-outside)).
+
+```tsx
+import { useCalendarView, useDropZone, useEventDraggable, type CalendarPlugin } from "@react-agendfy/core";
+
+function Slot({ date, resourceId }) {
+  // The dropped event starts at `date` (keeping its duration) and moves to the resource.
+  const { setNodeRef, isOver } = useDropZone(`${resourceId}-${date.toISOString()}`, { date, resourceIds: [resourceId] });
+  return <div ref={setNodeRef} className={isOver ? "slot over" : "slot"} />;
+}
+
+function Card({ event }) {
+  const cal = useCalendarView();
+  const { setNodeRef, attributes, listeners, isDragging } = useEventDraggable(event);
+  return (
+    <div ref={setNodeRef} {...attributes} {...listeners} onClick={() => cal.onEventClick(event)}>
+      {cal.renderEventContent(event) ?? `${event.title} · ${cal.timeText(event)}`}
+    </div>
+  );
+}
+
+const teamView: CalendarPlugin = {
+  key: "team",
+  type: "view",
+  viewName: "team",
+  label: { key: "team.label" },
+  messages: { en: { "team.label": "Team" }, pt: { "team.label": "Equipa" } },
+  range: (date, { timeZone }) => oneDay(date, timeZone),
+  step: { unit: "day" },
+  component: TeamView,
+};
+```
+
+`useDropZone(id, { date, allDay?, resourceIds? })`: with `allDay` the
+event becomes all-day (external items use their `startTime`). A move
+between resources updates the field the event already uses: `resourceId`,
+`resourceIds`, or legacy `resources` objects. Drags start after 5px, so a
+plain click stays a click. The demo's Team view
+(`examples/basic/src/components/TeamView.tsx`) is a complete example.
+
+The props passed to view components (`events`, `config`, callbacks…) are
+still passed for views written before this API.
+
 ### Custom view range
 
 A view plugin can declare the dates it shows. The calendar then expands

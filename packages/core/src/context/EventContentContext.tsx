@@ -42,6 +42,9 @@ export const EventContentProvider = ({
 export const formatEventTimeText = (event: EventProps, config?: Partial<Config>): string =>
   `${formatEventTime(ensureDate(event.start), config)} - ${formatEventTime(ensureDate(event.end), config)}`;
 
+/** The active custom-content renderer (`eventContent` prop or plugin), or null. */
+export const useEventContentRenderer = () => useContext(EventContentContext);
+
 /**
  * Custom content for `event` in `view`, or null to render the default body.
  * Works outside a provider (views rendered standalone) by returning null.

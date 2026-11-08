@@ -28,7 +28,7 @@ export const DEFAULT_TIME_FORMAT = "HH:mm";
 export const DEFAULT_DAY_MAX_EVENTS = 3;
 
 /** Formats an instant with a date-fns pattern in the calendar time zone and language. */
-const formatIn = (date: Date | string, pattern: string, config?: DisplayConfig) => {
+export const formatIn = (date: Date | string, pattern: string, config?: DisplayConfig) => {
   const value = typeof date === "string" ? new Date(date) : date;
   const zoned = config?.timeZone ? new TZDate(value, config.timeZone) : value;
   try {

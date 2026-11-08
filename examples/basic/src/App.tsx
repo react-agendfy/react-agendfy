@@ -15,6 +15,7 @@ import Sidebar, { type DemoOptions, type PendingItem } from "./components/Sideba
 import EventModal, { type EventDraft } from "./components/EventModal";
 import AIDrawer from "./components/AIDrawer";
 import { renderEventContent } from "./components/EventContent";
+import { teamViewPlugin } from "./components/TeamView";
 import { categoryColor, createDemoEvents, resources, type CategoryId } from "./demoEvents";
 import { accentPresets } from "./themes";
 import { addDaysKey, dayKey, fromZoned, zonedParts } from "./lib/time";
@@ -265,8 +266,27 @@ export default function App() {
         notify("Recurring events move as a series: open it to edit");
         return Promise.reject(new Error("recurring"));
       }
+      // A move between resources (Team view) sets resourceId/resourceIds, and
+      // undo hands back the original `resources`; the demo stores objects.
+      const movedTo: (string | number)[] | null =
+        ev.resourceIds ??
+        (ev.resourceId !== undefined
+          ? [ev.resourceId]
+          : Array.isArray(ev.resources)
+            ? ev.resources.map((r: { id: string | number }) => r.id).filter((id: string | number) => id !== "default")
+            : null);
       editEvents((prev) =>
-        prev.map((e) => (e.id === ev.id ? { ...e, start: ev.start, end: ev.end, allDay: ev.allDay ?? e.allDay } : e))
+        prev.map((e) =>
+          e.id === ev.id
+            ? {
+                ...e,
+                start: ev.start,
+                end: ev.end,
+                allDay: ev.allDay ?? e.allDay,
+                ...(movedTo && { resources: resources.filter((r) => movedTo.map(String).includes(r.id)) }),
+              }
+            : e
+        )
       );
     },
     [editEvents, notify]
@@ -301,7 +321,12 @@ export default function App() {
   const onEventReceive = useCallback(
     (event: any, data?: unknown) => {
       const item = data as PendingItem;
-      editEvents((prev) => [...prev, { ...event, id: newId(), resources: [] }]);
+      // Dropped on a Team view column: that resource.
+      const ids = event.resourceIds ?? (event.resourceId !== undefined ? [event.resourceId] : []);
+      editEvents((prev) => [
+        ...prev,
+        { ...event, id: newId(), resources: resources.filter((r) => ids.map(String).includes(r.id)) },
+      ]);
       setPending((list) => list.filter((p) => p.id !== item.id));
       notify(`Scheduled “${item.title}”`);
     },
@@ -327,6 +352,7 @@ export default function App() {
           editEvents((prev) => [...prev, { category: "meeting", color: categoryColor("meeting"), ...event }]),
       }),
       ...(exportsPlugin as unknown as CalendarPlugin[]),
+      teamViewPlugin,
     ],
     [editEvents]
   );

@@ -42,6 +42,14 @@ export interface ViewPlugin extends BaseCalendarPlugin {
   type: 'view';
   viewName: string;
   component: FC<any>;
+  /** Button label: a string, or `{ key }` translated with `messages`/config. */
+  label?: string | { key: string };
+  /**
+   * Texts of the view, per language: `{ en: { timeline: "Timeline" }, pt: {…} }`.
+   * Read with `useCalendarView().t(key)`; a key set in `config` wins, and
+   * the lookup falls back to the base language, then English.
+   */
+  messages?: Record<string, Record<string, string>>;
   props?: { label?: string; [key: string]: any };
   /**
    * The dates the view shows for `date`, as [start, end) (end exclusive).

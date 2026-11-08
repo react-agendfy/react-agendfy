@@ -1,4 +1,5 @@
 import type { EventProps } from "../types/types";
+import { defaultResource } from "./calendarHelpers";
 
 /*
  * Undo/redo stacks of the change pipeline (RFC 001, layer 1). An entry keeps
@@ -8,7 +9,7 @@ import type { EventProps } from "../types/types";
  */
 
 /** Fields a move or resize changes — the only ones undo/redo restore. */
-export const HISTORY_FIELDS = ["start", "end", "allDay", "resourceId", "resourceIds"] as const;
+export const HISTORY_FIELDS = ["start", "end", "allDay", "resourceId", "resourceIds", "resources"] as const;
 
 export interface HistoryEntry {
   id: number;
@@ -24,7 +25,9 @@ const sameValue = (a: unknown, b: unknown): boolean => {
     return ta === tb;
   }
   if (Array.isArray(a) && Array.isArray(b)) {
-    return a.length === b.length && a.every((v, i) => String(v) === String(b[i]));
+    // Ids, or resource objects compared by id.
+    const key = (v: unknown) => String(v && typeof v === "object" ? (v as { id?: unknown }).id : v);
+    return a.length === b.length && a.every((v, i) => key(v) === key(b[i]));
   }
   if (typeof a === "string" && typeof b === "string" && a !== b) {
     // "…Z" vs "…+00:00" describe the same instant.
@@ -36,9 +39,17 @@ const sameValue = (a: unknown, b: unknown): boolean => {
 };
 
 /** True when `a` and `b` agree on every field a move/resize can change. */
+/** Real resource objects: the placeholder normalizeEvents adds means "none". */
+const realResources = (value: unknown) =>
+  Array.isArray(value) ? value.filter((r) => r && r !== defaultResource) : [];
+
 export const sameSchedule = (a: EventProps, b: EventProps): boolean =>
   HISTORY_FIELDS.every((field) =>
-    field === "allDay" ? !!a.allDay === !!b.allDay : sameValue(a[field], b[field])
+    field === "allDay"
+      ? !!a.allDay === !!b.allDay
+      : field === "resources"
+        ? sameValue(realResources(a.resources), realResources(b.resources))
+        : sameValue(a[field], b[field])
   );
 
 /** `target` with the schedule fields of `source` (absent fields are removed). */
