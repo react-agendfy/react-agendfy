@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { categories, resources, type CategoryId } from "../demoEvents";
+import { ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
+import { ExternalDraggable } from "@react-agendfy/core";
+import { categories, categoryColor, resources, type CategoryId } from "../demoEvents";
 import { accentPresets } from "../themes";
 import { addDaysKey, dayKey, formatTime, zonedParts } from "../lib/time";
 
@@ -39,8 +40,17 @@ const baseZones = [
   "Australia/Sydney",
 ];
 
+/** An unscheduled item, dragged onto the calendar (ExternalDraggable). */
+export interface PendingItem {
+  id: string;
+  title: string;
+  minutes: number;
+  category: CategoryId;
+}
+
 interface SidebarProps {
   open: boolean;
+  pending: PendingItem[];
   events: any[];
   visibleRange: { start: Date; end: Date; date: Date } | null;
   onGotoDate: (date: Date) => void;
@@ -236,6 +246,33 @@ export default function Sidebar(props: SidebarProps) {
             </label>
           ))}
         </div>
+      </div>
+
+      <div className="panel">
+        <h3 className="panel-title">To schedule</h3>
+        {props.pending.length === 0 ? (
+          <p className="pending-empty">All scheduled.</p>
+        ) : (
+          <ul className="pending-list">
+            {props.pending.map((item) => (
+              <li key={item.id}>
+                <ExternalDraggable
+                  id={item.id}
+                  event={{ title: item.title, color: categoryColor(item.category), category: item.category }}
+                  duration={item.minutes}
+                  startTime="09:00"
+                  data={item}
+                  className="pending-item"
+                >
+                  <GripVertical size={14} aria-hidden />
+                  <span className="pending-dot" style={{ background: categoryColor(item.category) }} />
+                  <span className="pending-title">{item.title}</span>
+                  <span className="pending-minutes">{item.minutes} min</span>
+                </ExternalDraggable>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="panel">

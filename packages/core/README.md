@@ -76,6 +76,7 @@ plugin types, and more — see `src/index.tsx`).
 | `onSlotClick` | `(slotTime: Date) => void` | Fired when a time slot is clicked (week/day views). |
 | `onDateRangeSelect` | `(selection: EventProps \| DateRangeSelection) => void` | Fired when the user drags across a range of days/slots. |
 | `onChangeRejected` | `(info: ChangeRejectedInfo) => void` | Fired when a move/resize is refused by a [business rule](#business-rules-and-undo); nothing is applied. |
+| `onEventReceive` | `(event, data) => void \| Promise` | An `ExternalDraggable` was dropped — see [Dragging in from outside](#dragging-in-from-outside). |
 | `apiRef` | `Ref<CalendarApi>` | Imperative API: navigation, `getView()`, `refetchEvents()`, `undo()`, `redo()`, `canUndo()`, `canRedo()`. |
 | `currentDate` | `Date` | Declared on the type but **not currently consumed** — the calendar always starts at "now" in `config.timeZone`. |
 | `onDateChange` | `(date: Date) => void` | Declared on the type but **not currently consumed**. |
@@ -297,6 +298,54 @@ const auditPlugin: CalendarPlugin = {
 `validateChange`, `findOverlapConflicts` and `satisfiesConstraint` are
 exported for code that needs the same checks outside a drag (for example, to
 suggest free slots).
+
+## Dragging in from outside
+
+Items outside the calendar (a list of pending appointments, a backlog) can
+be dropped on it. Wrap them and the calendar in one `AgendfyDndProvider`
+so they share a drag context, make each item an `ExternalDraggable`, and
+handle `onEventReceive`:
+
+```tsx
+import { AgendfyDndProvider, Calendar, ExternalDraggable } from "@react-agendfy/core";
+
+<AgendfyDndProvider>
+  <ul>
+    {pending.map((p) => (
+      <li key={p.id}>
+        <ExternalDraggable id={p.id} event={{ title: p.title, color: p.color }} duration={30} data={p}>
+          {p.title}
+        </ExternalDraggable>
+      </li>
+    ))}
+  </ul>
+  <Calendar
+    events={events}
+    onEventReceive={(event, item) => {
+      setEvents((prev) => [...prev, event]);
+      setPending((list) => list.filter((p) => p !== item));
+    }}
+  />
+</AgendfyDndProvider>
+```
+
+| `ExternalDraggable` prop | Description |
+| --- | --- |
+| `id` | Unique among the external items. |
+| `event` | The event to create (`title` required; `color`, resources, any field). `start`/`end` come from the drop. |
+| `duration` | Minutes. Default `60`. |
+| `startTime` | Month view: `"HH:mm"` of the created event. Without it a drop on a day creates an all-day event. |
+| `data` | Returned as the second argument of `onEventReceive`. |
+| `disabled`, `className`, `style` | As usual. The element gets `.react-agendfy-external` (and `--dragging` while dragged). |
+
+- In the week and day views the item lands on the slot under the pointer;
+  in the month view, on the day.
+- The [rules](#business-rules-and-undo) apply, with the same live preview;
+  a refused drop calls `onChangeRejected` with `change.kind === "receive"`.
+- A Promise returned by `onEventReceive` that rejects removes the event
+  again. Received events are not in the undo history.
+- Without `onEventReceive` the calendar accepts no external drops.
+- External items are dragged with the pointer (mouse, touch, pen).
 
 ## Customizing the look
 

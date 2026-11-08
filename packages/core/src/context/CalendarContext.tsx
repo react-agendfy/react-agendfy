@@ -93,6 +93,8 @@ export type CalendarAction =
   | { type: "SET_CURRENT_DATE"; payload: TZDate }
   | { type: "SET_VIEW"; payload: string }
   | { type: "UPDATE_EVENT"; payload: EventProps }
+  | { type: "ADD_EVENT"; payload: EventProps }
+  | { type: "REMOVE_EVENT"; payload: EventProps["id"] }
   | { type: "SYNC_EVENTS"; payload: EventProps[] }
   | {
       type: "SET_RESOURCE_FILTER";
@@ -112,6 +114,28 @@ export function calendarReducer(
       return { ...state, currentView: action.payload };
     case "UPDATE_EVENT":
       return { ...state, events: updateEventsList(state.events, action.payload) };
+    case "ADD_EVENT": {
+      // A new event (dropped from outside) must show: it also joins the
+      // plugin filter/search allow-lists, which were taken at the last sync.
+      if (state.events.some((e) => e.id === action.payload.id)) {
+        return { ...state, events: updateEventsList(state.events, action.payload) };
+      }
+      return {
+        ...state,
+        events: [...state.events, action.payload],
+        pluginFilteredEvents: [...state.pluginFilteredEvents, action.payload],
+        pluginSearchResults: [...state.pluginSearchResults, action.payload],
+      };
+    }
+    case "REMOVE_EVENT": {
+      const keep = (e: EventProps) => e.id !== action.payload;
+      return {
+        ...state,
+        events: state.events.filter(keep),
+        pluginFilteredEvents: state.pluginFilteredEvents.filter(keep),
+        pluginSearchResults: state.pluginSearchResults.filter(keep),
+      };
+    }
     case "SYNC_EVENTS":
       return {
         ...state,
@@ -199,6 +223,8 @@ export interface CalendarContextValue {
   // handlers
   handleEventUpdate: (event: EventProps) => void;
   handleEventResize: (event: EventProps) => void;
+  /** Undefined when the calendar accepts no external drops (no `onEventReceive`). */
+  handleEventReceive?: (event: EventProps, data?: unknown) => void;
   handleDateRangeSelect: (event: EventProps | DateRangeSelection) => void;
   handleViewChange: (view: string) => void;
   handleResourceFilterChange: (selected: string[] | ((prev: string[]) => string[])) => void;
@@ -239,6 +265,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
   onSlotClick,
   onDateRangeSelect,
   onChangeRejected,
+  onEventReceive,
   onDateChange,
   onDatesSet,
   onViewChange,
@@ -514,19 +541,24 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
         return verdict;
       }
 
-      dispatch({ type: "UPDATE_EVENT", payload: change.event });
+      // A received event is new: added, and removed again on revert. It is
+      // not recorded (undoing it would need a remove callback).
+      const isReceive = change.kind === "receive";
+      dispatch({ type: isReceive ? "ADD_EVENT" : "UPDATE_EVENT", payload: change.event });
       const entryId =
-        change.source === "user" && change.before && !unchanged
+        change.kind !== "receive" && change.source === "user" && change.before && !unchanged
           ? history.record(change.kind, change.before, change.event)
           : null;
       if (entryId !== null) bumpHistory();
       middlewarePlugins.forEach((p) => p.onCommit?.(change));
 
-      const callback = change.kind === "resize" ? onEventResize : onEventUpdate;
-      const result = callback?.(change.event);
+      const result = isReceive
+        ? onEventReceive?.(change.event, change.data)
+        : (change.kind === "resize" ? onEventResize : onEventUpdate)?.(change.event);
       if (result && typeof (result as Promise<unknown>).then === "function") {
         (result as Promise<unknown>).then(undefined, () => {
-          if (change.before) dispatch({ type: "UPDATE_EVENT", payload: change.before });
+          if (isReceive) dispatch({ type: "REMOVE_EVENT", payload: change.event.id });
+          else if (change.before) dispatch({ type: "UPDATE_EVENT", payload: change.before });
           if (entryId !== null) {
             history.remove(entryId);
             bumpHistory();
@@ -537,7 +569,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       }
       return true;
     },
-    [previewChange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize]
+    [previewChange, middlewarePlugins, onChangeRejected, history, onEventUpdate, onEventResize, onEventReceive]
   );
 
   const commitChange = useCallback((change: EventChange) => runChange(change), [runChange]);
@@ -599,6 +631,13 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       runChange({ kind: "resize", event: resizeEvent, before: findCurrent(resizeEvent.id), source: "user" });
     },
     [runChange, findCurrent]
+  );
+
+  const handleEventReceive = useCallback(
+    (event: EventProps, data?: unknown) => {
+      runChange({ kind: "receive", event, data, source: "user" });
+    },
+    [runChange]
   );
 
   const selectAllow = localeConfig.selectAllow;
@@ -928,6 +967,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
     canRedo: history.canRedo(),
     handleEventUpdate,
     handleEventResize,
+    handleEventReceive: onEventReceive ? handleEventReceive : undefined,
     handleDateRangeSelect,
     handleViewChange,
     handleResourceFilterChange,

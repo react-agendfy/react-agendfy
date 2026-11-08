@@ -276,6 +276,8 @@ export interface LocaleConfig {
 export interface WeekProps  {
   events:EventProps[],
   onEventUpdate?: (event: EventProps) => void;
+  /** An item dragged in from outside the calendar was dropped (ExternalDraggable). */
+  onEventReceive?: (event: EventProps, data?: unknown) => void;
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
   onSlotClick?: (slotTime: Date) => void;
@@ -360,6 +362,8 @@ export interface MonthViewProps {
   currentDate?: TZDate;
   onEventUpdate?: (updatedEvent: EventProps) => void;
   onEventResize?: (updatedEvent: EventProps) => void;
+  /** An item dragged in from outside the calendar was dropped (ExternalDraggable). */
+  onEventReceive?: (event: EventProps, data?: unknown) => void;
   onDateRangeSelect?: (range: EventProps | DateRangeSelection) => void;
   onDayClick?: (day: Date) => void;
   onEventClick?: (event: EventProps) => void;
@@ -475,14 +479,20 @@ export interface CalendarApi {
 /** What produced a change: the user (drag, resize, keyboard) or undo/redo. */
 export type ChangeSource = "user" | "history";
 
-/** A move or resize, as it flows through validation, callbacks and history. */
+/**
+ * A move, a resize, or an item received from outside the calendar
+ * (`ExternalDraggable`), as it flows through validation, callbacks and
+ * history.
+ */
 export interface EventChange {
-  kind: "move" | "resize";
-  /** The event with its new times/resources. */
+  kind: "move" | "resize" | "receive";
+  /** The event with its new times/resources (for "receive": the new event). */
   event: EventProps;
-  /** The event before the change (undefined when it could not be found). */
+  /** The event before the change (undefined for "receive", or when it could not be found). */
   before?: EventProps;
   source: ChangeSource;
+  /** "receive": the `data` of the ExternalDraggable. */
+  data?: unknown;
 }
 
 /** Why a change was refused. Built-in reasons: "overlap", "constraint", "not-allowed". */
@@ -561,6 +571,13 @@ export interface CalendarProps {
    * applied and `onEventUpdate`/`onEventResize` are not called.
    */
   onChangeRejected?: (info: ChangeRejectedInfo) => void;
+  /**
+   * An `ExternalDraggable` was dropped on the calendar (inside an
+   * `AgendfyDndProvider`). `event` is the new event — add it to `events`.
+   * The rules apply, and a rejected Promise removes it again. Without this
+   * prop the calendar accepts no external drops.
+   */
+  onEventReceive?: (event: EventProps, data?: unknown) => void | Promise<unknown>;
   /** Called with the displayed date on mount and after every navigation. */
   onDateChange?: (date: Date) => void;
   /**
@@ -628,6 +645,8 @@ export interface DayViewProps {
   currentDate: TZDate;
   config: Config;
   onEventUpdate?: (event: EventProps) => void;
+  /** An item dragged in from outside the calendar was dropped (ExternalDraggable). */
+  onEventReceive?: (event: EventProps, data?: unknown) => void;
   onEventClick?: (event: EventProps) => void;
   onSlotClick?: (slotTime: Date) => void;
   onEventResize?: (event: EventProps) => void;

@@ -42,6 +42,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
     onSlotClick,
     handleEventUpdate,
     handleEventResize,
+    handleEventReceive,
     handleDateRangeSelect,
     handleViewChange,
     handleExport,
@@ -153,6 +154,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
             slotMin={localeConfig.slotMin}
             slotMax={localeConfig.slotMax}
             onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
             onEventResize={onResize}
             onEventClick={onEventClick}
             onDayClick={onDayClick}
@@ -170,6 +172,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
             onDayClick={onDayClick}
             currentDate={currentDate}
             onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
             onEventResize={onResize}
             showResourceView={true}
             config={localeConfig}
@@ -183,6 +186,7 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
             events={visibleEvents}
             currentDate={currentDate}
             onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
             onSlotClick={onSlotClick}
             config={localeConfig}
             onEventClick={onEventClick}

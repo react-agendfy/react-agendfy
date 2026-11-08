@@ -58,6 +58,8 @@ import {
   ViewRangeContext,
 } from "./types/plugins";
 import { findOverlapConflicts, satisfiesConstraint, validateChange } from './Utils/changeRules';
+import { ExternalDraggable, type ExternalDraggableProps } from './Components/ExternalDraggable';
+import { InteractionProvider as AgendfyDndProvider } from './context/InteractionContext';
 import { ToastProvider } from "./Components/Toast/Toast"; 
 import CalendarComponent from "./View/Calendar";
 import { ensureDate } from "./Utils/DateTrannforms";
@@ -81,6 +83,8 @@ export {
   validateChange,
   findOverlapConflicts,
   satisfiesConstraint,
+  AgendfyDndProvider,
+  ExternalDraggable,
 };
 export type {
   CalendarApi,
@@ -120,6 +124,7 @@ export type {
   Resource,
   ViewPlugin,
   ViewRangeContext,
+  ExternalDraggableProps,
   ChangeContext,
   MiddlewarePlugin,
   ChangeRejectedInfo,

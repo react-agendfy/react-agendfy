@@ -1141,3 +1141,52 @@ code {
   gap: 6px;
   margin-top: 6px;
 }
+
+/* "To schedule" — ExternalDraggable items */
+.pending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  cursor: grab;
+  font-size: 13px;
+  user-select: none;
+}
+.pending-item:focus-visible {
+  outline: 2px solid var(--accent, #6366f1);
+  outline-offset: 2px;
+}
+.pending-item.react-agendfy-external--dragging {
+  opacity: 0.4;
+}
+.pending-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.pending-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pending-minutes {
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+}
+.pending-empty {
+  margin: 0;
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}

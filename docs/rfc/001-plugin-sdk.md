@@ -1,6 +1,6 @@
 # RFC 001 — Change pipeline, plugin SDK and time axis
 
-- **Status:** accepted; phase 1 (core 2.2) implemented on `feat/core-change-pipeline`; phase 2 steps 1–2 on `feat/core-plugin-sdk`
+- **Status:** accepted; phase 1 (core 2.2) implemented on `feat/core-change-pipeline`; phase 2 steps 1–3 on `feat/core-plugin-sdk`
 - **Date:** 2026-11-08
 - **Affects:** `@react-agendfy/core`, `@react-agendfy/plugin-timeline`, `@react-agendfy/fullcalendar-compat`, future `@react-agendfy/gantt`
 
@@ -128,6 +128,12 @@ useDropZone(ref, { resolve: (pt) => ({ start, resourceIds }) | null });
 ```
 
 `createGridDragSnap` becomes axis-generic (`axis: "x" | "y"`).
+
+**Step 3 done:** `AgendfyDndProvider` (the `InteractionProvider`, which
+passes through when nested), `ExternalDraggable` and `onEventReceive`; the
+change kind `"receive"` (added on accept, removed on a rejected Promise,
+not in history). External items resolve by the pointer
+(`externalByPointer`): their rectangle is a list row, not an event.
 
 **Status (core 2.3, steps 1–2 done):** the shared `InteractionProvider`
 and live validation are in. Lessons that shaped the implementation:

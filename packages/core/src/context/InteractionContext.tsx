@@ -27,6 +27,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import type { EventProps } from "../types/types";
+import type { ExternalDragData } from "../Utils/externalDrag";
 
 /*
  * One DndContext per calendar (RFC 001, layer 2). Views no longer own a
@@ -42,6 +44,16 @@ import {
 export interface DragSnapshot {
   active: Active;
   over?: Over | null;
+}
+
+/**
+ * A view's answer to "where would this drag land": the moved event, or the
+ * new event an external item becomes (`external` set, no `dragged`).
+ */
+export interface DropResolution {
+  dragged?: EventProps;
+  updated: EventProps;
+  external?: ExternalDragData;
 }
 
 export interface ViewDragHandlers {

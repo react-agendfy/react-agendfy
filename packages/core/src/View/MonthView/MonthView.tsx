@@ -1,7 +1,8 @@
 // MonthView.tsx
 import React, { useMemo, useCallback, useRef, useState } from 'react';
-import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import { ViewDndScope, type DragSnapshot, type ViewDragOptions } from '../../context/InteractionContext';
+import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent, rectIntersection } from '@dnd-kit/core';
+import { ViewDndScope, type DragSnapshot, type DropResolution, type ViewDragOptions } from '../../context/InteractionContext';
+import { eventFromExternal, eventFromExternalOnDay, externalByPointer, externalDragData } from '../../Utils/externalDrag';
 import { useDropVerdict } from '../../hooks/useDropVerdict';
 import { DragPreviewFrame } from '../../Components/DragPreview';
 import { addDays, endOfWeek, format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
@@ -19,6 +20,7 @@ import { useGridNavigation } from '../../hooks/useGridNavigation';
 
 // Drags start after 5px so a click on an event chip stays a click.
 const MONTH_DRAG: ViewDragOptions = {
+  collisionDetection: externalByPointer(rectIntersection),
   activationConstraint: { distance: 5 },
   instructions:
     'To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new day, then press space or enter again to drop, or press escape to cancel.',
@@ -34,7 +36,8 @@ const MonthView: React.FC<MonthViewProps> = ({
   onDateRangeSelect,
   config,
   showResourceView = false,
-  onEventResize
+  onEventResize,
+  onEventReceive,
 }) => {
   const [activeEvent, setActiveEvent] = useState<EventProps | null>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -80,13 +83,26 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     const cell = containerRef.current?.querySelector('.react-agendfy-calendar-day')?.getBoundingClientRect();
     keyboardStepRef.current = cell?.width ? { x: cell.width, y: cell.height } : null;
     clearDrop();
+    const external = externalDragData(e.active);
+    if (external) {
+      // An item from outside: previewed as the event it would become.
+      setActiveEvent(onEventReceive ? eventFromExternal(external, new Date(), { allDay: !external.startTime }) : null);
+      return;
+    }
     setActiveEvent((e.active.data.current?.event as EventProps) ?? null);
   };
 
   /** The event moved to the day under the drag, or null (same day, disabled, nowhere). */
-  const resolveDrop = (e: DragSnapshot): { dragged: EventProps; updated: EventProps } | null => {
+  const resolveDrop = (e: DragSnapshot): DropResolution | null => {
     const { active, over } = e;
     if (!active || !over) return null;
+
+    const external = externalDragData(active);
+    if (external) {
+      const day = new Date(over.id);
+      if (!onEventReceive || isNaN(day.getTime()) || dayRules.isDisabled(day)) return null;
+      return { updated: eventFromExternalOnDay(external, day, tz), external };
+    }
     const event = active.data.current?.event as EventProps | undefined;
     if (!event) return null;
 
@@ -111,7 +127,7 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
   // Live validation: the preview turns invalid over days the rules refuse.
   const handleDragMove = (e: DragMoveEvent | DragOverEvent) => {
     const result = resolveDrop(e);
-    checkDrop(result?.updated ?? null, result?.dragged);
+    checkDrop(result?.updated ?? null, result?.dragged, result?.external ? 'receive' : 'move');
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -119,6 +135,12 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
     clearDrop();
     const { active, over, delta } = e;
     if (!active || !over) return;
+
+    if (externalDragData(active)) {
+      const received = resolveDrop(e);
+      if (received) onEventReceive?.(received.updated, received.external?.data);
+      return;
+    }
 
     if (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5) {
       onEventClick?.(active.data.current?.event as EventProps);

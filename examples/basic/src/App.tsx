@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AgendfyDndProvider,
   Calendar,
   type CalendarApi,
   type CalendarPlugin,
@@ -10,7 +11,7 @@ import exportsPlugin from "@react-agendfy/plugin-export-reports";
 import { createQuickAddPlugin, go4aiAdapter, httpAdapter } from "@react-agendfy/ai";
 import { ArrowRightLeft, BookOpen, Github, Menu, Moon, Package, RotateCcw, Sparkles, Sun } from "lucide-react";
 import ErrorBoundary from "./components/ErrorBoundary";
-import Sidebar, { type DemoOptions } from "./components/Sidebar";
+import Sidebar, { type DemoOptions, type PendingItem } from "./components/Sidebar";
 import EventModal, { type EventDraft } from "./components/EventModal";
 import AIDrawer from "./components/AIDrawer";
 import { renderEventContent } from "./components/EventContent";
@@ -291,6 +292,22 @@ export default function App() {
     else notify("Nothing to redo");
   };
 
+  /* --- drag in from "To schedule" (ExternalDraggable) ------------------------ */
+  const [pending, setPending] = useState<PendingItem[]>([
+    { id: "p-1", title: "Follow-up — Ana", minutes: 30, category: "client" },
+    { id: "p-2", title: "Write release notes", minutes: 90, category: "focus" },
+    { id: "p-3", title: "Dentist", minutes: 60, category: "personal" },
+  ]);
+  const onEventReceive = useCallback(
+    (event: any, data?: unknown) => {
+      const item = data as PendingItem;
+      editEvents((prev) => [...prev, { ...event, id: newId(), resources: [] }]);
+      setPending((list) => list.filter((p) => p.id !== item.id));
+      notify(`Scheduled “${item.title}”`);
+    },
+    [editEvents, notify]
+  );
+
   const resetDemo = () => {
     write(EVENTS_KEY, null);
     edited.current = false;
@@ -332,6 +349,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      {/* One drag context for the sidebar's "To schedule" list and the calendar. */}
+      <AgendfyDndProvider>
       <div className="app" style={shellAccent as React.CSSProperties}>
         <header className="topbar">
           <button
@@ -392,6 +411,7 @@ export default function App() {
         <div className="workspace">
           {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} />}
           <Sidebar
+            pending={pending}
             open={sidebarOpen}
             events={events}
             visibleRange={range}
@@ -460,6 +480,7 @@ export default function App() {
                 onEventUpdate={onEventChange}
                 onEventResize={onEventChange}
                 onChangeRejected={onChangeRejected}
+                onEventReceive={onEventReceive}
                 onDatesSet={setRange}
               />
             </section>
@@ -506,6 +527,7 @@ export default function App() {
           </div>
         )}
       </div>
+      </AgendfyDndProvider>
     </ErrorBoundary>
   );
 }

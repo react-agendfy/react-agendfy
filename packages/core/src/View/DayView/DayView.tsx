@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent } from "@dnd-kit/core";
+import { DragEndEvent, DragMoveEvent, DragOverEvent, DragOverlay, DragStartEvent, rectIntersection } from "@dnd-kit/core";
 import {
   addMinutes,
   differenceInMinutes,
@@ -24,10 +24,12 @@ import { getBusinessHoursIntervalsForDate } from "../../Utils/businessHours";
 import { getDayRules } from "../../Utils/calendarRange";
 import { getSlotHeight, slotHeightStyle } from "../../Utils/slotHeight";
 import { cx, useDayCellClassNames } from "../../context/ClassNamesContext";
-import { ViewDndScope, type DragSnapshot, type ViewDragOptions } from "../../context/InteractionContext";
+import { ViewDndScope, type DragSnapshot, type DropResolution, type ViewDragOptions } from "../../context/InteractionContext";
+import { eventFromExternal, externalByPointer, externalDragData } from "../../Utils/externalDrag";
 import { useDropVerdict } from "../../hooks/useDropVerdict";
 
 const DAY_DRAG: ViewDragOptions = {
+  collisionDetection: externalByPointer(rectIntersection),
   instructions:
     "To pick up a draggable event, press space or enter. Use the arrow keys to move it to a new time slot, then press space or enter again to drop, or press escape to cancel.",
 };
@@ -35,6 +37,7 @@ const DAY_DRAG: ViewDragOptions = {
 const DayView: React.FC<DayViewProps> = ({
   events,
   onEventUpdate,
+  onEventReceive,
   onEventClick,
   onSlotClick,
   currentDate,
@@ -63,6 +66,16 @@ const DayView: React.FC<DayViewProps> = ({
     (event: DragStartEvent) => {
       lastDragRef.current = event;
       const { active } = event;
+      clearDrop();
+      // An item from outside: no snap (no position in the grid); the slot
+      // under the pointer decides.
+      const external = externalDragData(active);
+      if (external) {
+        keyboardStepRef.current = null;
+        gridSnap.begin(containerRef.current, 0);
+        setActiveDrag(onEventReceive ? eventFromExternal(external, new Date()) : null);
+        return;
+      }
       const slot = containerRef.current?.querySelector(".react-agendfy-timeslot-container");
       const dragged = events.find((ev: EventProps) => ev.id === active?.id) ?? null;
       const step = config?.slotDuration || 30;
@@ -80,19 +93,24 @@ const DayView: React.FC<DayViewProps> = ({
       const slotPx = slot?.getBoundingClientRect().height ?? 0;
       keyboardStepRef.current = slotPx ? { x: 0, y: slotPx } : null;
       gridSnap.begin(containerRef.current, slotPx, 0, bounds);
-      clearDrop();
       setActiveDrag(dragged);
     },
-    [events, gridSnap, config?.timeZone, config?.slotDuration, parsedSlotMin, parsedSlotMax, clearDrop]
+    [events, gridSnap, config?.timeZone, config?.slotDuration, parsedSlotMin, parsedSlotMax, clearDrop, onEventReceive]
   );
 
   /** Where the dragged event lands for this drag state (null: nowhere). */
   const resolveDrop = useCallback(
-    (event: DragSnapshot): { dragged: EventProps; updated: EventProps } | null => {
+    (event: DragSnapshot): DropResolution | null => {
       const snapped = gridSnap.result();
       const { active, over } = event;
       if (!active?.id || !over?.id) return null;
       if (getDayRules(config).isDisabled(new Date(over.id))) return null;
+
+      const external = externalDragData(active);
+      if (external) {
+        const start = new Date(over.id);
+        return onEventReceive && isValid(start) ? { updated: eventFromExternal(external, start), external } : null;
+      }
 
       const baseTime = new TZDate(String(over.id), config?.timeZone || 'UTC');
       if (!isValid(baseTime)) return null;
@@ -121,7 +139,7 @@ const DayView: React.FC<DayViewProps> = ({
         },
       };
     },
-    [events, config, gridSnap]
+    [events, config, gridSnap, onEventReceive]
   );
 
   // Live validation: the preview turns invalid where the drop would be refused.
@@ -129,7 +147,7 @@ const DayView: React.FC<DayViewProps> = ({
     (event: DragMoveEvent | DragOverEvent | DragSnapshot) => {
       lastDragRef.current = event;
       const result = resolveDrop(event);
-      checkDrop(result?.updated ?? null, result?.dragged);
+      checkDrop(result?.updated ?? null, result?.dragged, result?.external ? "receive" : "move");
     },
     [resolveDrop, checkDrop]
   );
@@ -151,6 +169,11 @@ const DayView: React.FC<DayViewProps> = ({
       clearDrop();
       if (!result) return;
 
+      if (result.external) {
+        onEventReceive?.(result.updated, result.external.data);
+        return;
+      }
+
       // Single column: only a vertical move is a drag (see the RFC note on
       // DayView's delta.y click detection).
       if (Math.abs(event.delta.y) < 1 && onEventClick) {
@@ -162,7 +185,7 @@ const DayView: React.FC<DayViewProps> = ({
         onEventUpdate(result.updated);
       }
     },
-    [resolveDrop, gridSnap, clearDrop, onEventClick, onEventUpdate]
+    [resolveDrop, gridSnap, clearDrop, onEventClick, onEventUpdate, onEventReceive]
   );
 
   const handleDragCancel = useCallback(() => {

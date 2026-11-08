@@ -36,7 +36,8 @@ import { createGridDragSnap } from "../../Utils/gridDragSnap";
 import { getDayRules, getVisibleDayOffsets } from "../../Utils/calendarRange";
 import { getSlotHeight, slotHeightStyle } from "../../Utils/slotHeight";
 import { cx, publicEventId, useEventClassNamesResolver } from "../../context/ClassNamesContext";
-import { ViewDndScope, type DragSnapshot, type ViewDragOptions } from "../../context/InteractionContext";
+import { ViewDndScope, type DragSnapshot, type DropResolution, type ViewDragOptions } from "../../context/InteractionContext";
+import { eventFromExternal, externalDragData } from "../../Utils/externalDrag";
 import { useDropVerdict } from "../../hooks/useDropVerdict";
 
 // The slot under the pointer; a keyboard drag has no pointer, so it falls
@@ -53,6 +54,7 @@ const WEEK_DRAG: ViewDragOptions = {
 const WeekView = ({
   events,
   onEventUpdate,
+  onEventReceive,
   onEventClick,
   onEventResize,
   onSlotClick,
@@ -160,6 +162,16 @@ const WeekView = ({
   const handleDragStart = useCallback((event: DragStartEvent) => {
     lastDragRef.current = event;
     const { active } = event;
+    clearDrop();
+    // An item from outside: the preview follows the pointer (no snap — it
+    // has no position in the grid), and the slot under the pointer decides.
+    const external = externalDragData(active);
+    if (external) {
+      keyboardStepRef.current = null;
+      gridSnap.begin(containerRef.current, 0);
+      setActiveDrag(onEventReceive ? eventFromExternal(external, new Date()) : null);
+      return;
+    }
     const dragged = events.find((e: EventProps) => e.id === active?.id);
     const slot = containerRef.current?.querySelector(".react-agendfy-weektimeslot");
     const column = containerRef.current?.querySelector(".react-agendfy-weekview-day-column");
@@ -182,15 +194,22 @@ const WeekView = ({
     const columnPx = column?.getBoundingClientRect().width ?? 0;
     keyboardStepRef.current = slotPx ? { x: columnPx, y: slotPx } : null;
     gridSnap.begin(containerRef.current, slotPx, columnPx, bounds);
-    clearDrop();
     if (dragged) setActiveDrag(dragged);
-  }, [events, gridSnap, config?.timeZone, startHour, endHour, slotDuration, daysOfWeek, dayRules.weekStartsOn, clearDrop]);
+  }, [events, gridSnap, config?.timeZone, startHour, endHour, slotDuration, daysOfWeek, dayRules.weekStartsOn, clearDrop, onEventReceive]);
 
   /** Where the dragged event lands for this drag state (null: nowhere). */
-  const resolveDrop = useCallback((event: DragSnapshot): { dragged: EventProps; updated: EventProps } | null => {
+  const resolveDrop = useCallback((event: DragSnapshot): DropResolution | null => {
     const { active, over } = event;
     const snapped = gridSnap.result();
     if (!active?.id || !over?.id) return null;
+
+    const external = externalDragData(active);
+    if (external) {
+      if (!onEventReceive) return null;
+      const start = new Date(over.id);
+      if (!isValid(start) || dayRules.isDisabled(start)) return null;
+      return { updated: eventFromExternal(external, start), external };
+    }
 
     const baseTime = new TZDate(new Date(over.id), config?.timeZone);
     if (!isValid(baseTime)) return null;
@@ -228,13 +247,13 @@ const WeekView = ({
         end: new Date(addMinutes(newStartTime, duration).getTime()).toISOString(),
       },
     };
-  }, [events, config?.timeZone, slotDuration, gridSnap, daysOfWeek, dayRules.weekStartsOn]);
+  }, [events, config?.timeZone, slotDuration, gridSnap, daysOfWeek, dayRules, onEventReceive]);
 
   // Live validation: the preview turns invalid where the drop would be refused.
   const handleDragMove = useCallback((event: DragMoveEvent | DragOverEvent | DragSnapshot) => {
     lastDragRef.current = event;
     const result = resolveDrop(event);
-    checkDrop(result?.updated ?? null, result?.dragged);
+    checkDrop(result?.updated ?? null, result?.dragged, result?.external ? "receive" : "move");
   }, [resolveDrop, checkDrop]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -245,17 +264,22 @@ const WeekView = ({
     clearDrop();
     if (!result) return;
 
+    if (result.external) {
+      onEventReceive?.(result.updated, result.external.data);
+      return;
+    }
+
     // Consider both axes so a horizontal drag (moving to another day column)
     // is not misclassified as a click and discarded.
     if (!delta || (Math.abs(delta.x) < 5 && Math.abs(delta.y) < 5)) {
-      onEventClick?.(result.dragged);
+      if (result.dragged) onEventClick?.(result.dragged);
       return;
     }
 
     if (typeof onEventUpdate === "function") {
       onEventUpdate(result.updated);
     }
-  }, [resolveDrop, gridSnap, clearDrop, onEventClick, onEventUpdate]);
+  }, [resolveDrop, gridSnap, clearDrop, onEventClick, onEventUpdate, onEventReceive]);
 
   const handleDragCancel = useCallback(() => {
     gridSnap.end();
