@@ -764,6 +764,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       redo,
       canUndo: () => history.canUndo(),
       canRedo: () => history.canRedo(),
+      validate: (change) => previewChange({ ...change, source: "user" }),
     }),
     [
       state.currentDate,
@@ -779,6 +780,7 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       undo,
       redo,
       history,
+      previewChange,
     ]
   );
 

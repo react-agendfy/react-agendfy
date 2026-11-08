@@ -491,6 +491,13 @@ export interface CalendarApi {
   redo(): void;
   canUndo(): boolean;
   canRedo(): boolean;
+  /**
+   * Checks a change against the rules (eventOverlap, eventConstraint,
+   * eventAllow, middleware) without applying it — e.g. an event created or
+   * edited in your own form: `{ kind: "receive", event }` for a new one,
+   * `{ kind: "move", event, before }` for an edit.
+   */
+  validate(change: Omit<EventChange, "source">): ChangeVerdict;
 }
 
 /** What produced a change: the user (drag, resize, keyboard) or undo/redo. */
@@ -618,6 +625,8 @@ export interface CalendarProps {
 }
 
 export interface TimeSlotProps {
+  /** Shade the slot as outside business hours. */
+  isNonBusiness?: boolean;
   index: number;
   slotEvents: EventProps[];
   onEventUpdate?: (event: EventProps) => void;

@@ -239,8 +239,27 @@ export default function App() {
     [range?.view, tz, openNew]
   );
 
+  // One wording for refusals, from a drag or from the event form.
+  const refusal = (reason: string, conflicts?: { title?: string }[]) =>
+    reason === "overlap"
+      ? `Overlaps “${conflicts?.[0]?.title ?? "another event"}”`
+      : reason === "constraint"
+        ? "Outside business hours"
+        : "Not allowed";
+
   const saveEvent = useCallback(
     (ev: any) => {
+      // The form goes through the same rules as a drag (api.validate).
+      if (!ev.__seriesPatch) {
+        const before = ev.id ? events.find((e) => e.id === ev.id) : undefined;
+        const verdict = apiRef.current?.validate(
+          before ? { kind: "move", event: ev, before } : { kind: "receive", event: { ...ev, id: ev.id ?? "new" } }
+        );
+        if (verdict && verdict !== true) {
+          notify(`${refusal(verdict.reason, verdict.conflicts)}: not saved`);
+          return;
+        }
+      }
       if (ev.__seriesPatch) {
         const { __seriesPatch, id, ...patch } = ev;
         editEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
@@ -254,7 +273,9 @@ export default function App() {
       }
       setDraft(null);
     },
-    [editEvents, notify]
+    // `refusal` is a pure helper defined in this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editEvents, notify, events]
   );
   const deleteEvent = useCallback(
     (id: string) => {
@@ -286,14 +307,8 @@ export default function App() {
   );
 
   const onChangeRejected = useCallback(
-    ({ reason, conflicts }: ChangeRejectedInfo) =>
-      notify(
-        reason === "overlap"
-          ? `Overlaps “${conflicts?.[0]?.title ?? "another event"}”: move refused`
-          : reason === "constraint"
-            ? "Outside business hours: move refused"
-            : "Move refused"
-      ),
+    ({ reason, conflicts }: ChangeRejectedInfo) => notify(`${refusal(reason, conflicts)}: move refused`),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [notify]
   );
   const undo = () => {

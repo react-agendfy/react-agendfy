@@ -12,6 +12,7 @@ import { formatSlotLabel, showsSlotLabel } from "../../Utils/displayOptions";
 import { clipEventToDay, isBannerEvent } from "../../Utils/weekViewHelpers";
 import { computeDayLayout, layoutPositionStyle } from "../../Utils/positionedEventsHelper";
 import { eventResourceIds } from "../../Utils/resources";
+import { complementRanges } from "../../Utils/businessHours";
 import { getContrastText } from "../../Utils/colorContrast";
 import { cx, publicEventId } from "../../context/ClassNamesContext";
 
@@ -342,6 +343,14 @@ function ResourceColumn({
     const d = new Date(date);
     return sameDay(d, column.day, cal.timeZone) ? top(d) : height;
   };
+  // Shade the time outside the resource's hours (or the calendar's).
+  const hasHours = !!column.resource.businessHours || !!cal.config.businessHours?.enabled;
+  const offHours = hasHours
+    ? complementRanges(
+        business.map((interval) => ({ from: top(interval.start), to: bottom(interval.end) })),
+        height
+      )
+    : [];
   const slots = [];
   for (let m = dayStart; m < dayEnd; m += slotMinutes) slots.push(m);
 
@@ -356,6 +365,9 @@ function ResourceColumn({
       aria-label={`${resourceLabel(column.resource)}, ${cal.formatDate(column.day, "EEEE d MMMM")}`}
       style={{ left, width, height }}
     >
+      {offHours.map((gap) => (
+        <div key={`off-${gap.from}`} className="react-agendfy-non-business" style={{ top: gap.from, height: gap.to - gap.from }} />
+      ))}
       {business.map((interval, i) => (
         <div
           key={i}

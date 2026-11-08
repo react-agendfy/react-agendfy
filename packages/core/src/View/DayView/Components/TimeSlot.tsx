@@ -20,6 +20,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
   parsedSlotMax,
   config,
   isBusinessHour = false,
+  isNonBusiness = false,
   isDraggable = true,
   isDisabled = false,
   dayLayout,
@@ -59,6 +60,7 @@ export const TimeSlot: React.FC<TimeSlotProps> = ({
       aria-disabled={isDisabled || undefined}
     >
       {isBusinessHour && <div className="react-agendfy-business-hours" style={{ inset: 0 }} />}
+      {isNonBusiness && <div className="react-agendfy-non-business" style={{ inset: 0 }} />}
       <span className="react-agendfy-timeslot-label">
         {showsSlotLabel(index * (config?.slotDuration || 30), config)
           ? formatSlotLabel(new TZDate(slotTime, config?.timeZone), config)

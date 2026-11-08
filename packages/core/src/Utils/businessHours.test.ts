@@ -50,3 +50,20 @@ describe("useBusinessHours hook", () => {
     expect(container2.querySelector("[data-testid='intervals']")?.textContent).toBe("[]");
   });
 });
+
+describe("complementRanges", () => {
+  const { complementRanges } = jest.requireActual("./businessHours");
+  it("returns the gaps between ranges inside the window", () => {
+    expect(complementRanges([{ from: 60, to: 120 }], 300)).toEqual([
+      { from: 0, to: 60 },
+      { from: 120, to: 300 },
+    ]);
+  });
+  it("merges overlaps, clips to the window, handles no ranges", () => {
+    expect(complementRanges([{ from: 50, to: 150 }, { from: 100, to: 200 }, { from: -20, to: 10 }], 180)).toEqual([
+      { from: 10, to: 50 },
+    ]);
+    expect(complementRanges([], 100)).toEqual([{ from: 0, to: 100 }]);
+    expect(complementRanges([{ from: 0, to: 100 }], 100)).toEqual([]);
+  });
+});

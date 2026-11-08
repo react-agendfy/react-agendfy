@@ -71,6 +71,8 @@
   --agendfy-now-line-width: 2px;
   --agendfy-business-hours-bg: var(--agendfy-color-accent-soft);
   --agendfy-business-hours-opacity: 0.45;
+  /* time outside business hours: a light veil of the text colour (works in dark mode) */
+  --agendfy-non-business-bg: color-mix(in srgb, var(--agendfy-color-text) 6%, transparent);
 
   /* month grid */
   --agendfy-month-cell-min-height: 120px;

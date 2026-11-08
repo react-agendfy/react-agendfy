@@ -298,6 +298,7 @@ const DayView: React.FC<DayViewProps> = ({
               parsedSlotMax={parsedSlotMax}
               config={config}
               isBusinessHour={isBusinessHour}
+              isNonBusiness={!!config?.businessHours?.enabled && !isBusinessHour}
               isDraggable={!!onEventUpdate}
               isDisabled={isDisabled}
               dayLayout={dayLayout}

@@ -74,3 +74,12 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* Time outside business hours (week, day and resource views). */
+.react-agendfy-non-business {
+  position: absolute;
+  inset-inline: 0;
+  background: var(--agendfy-non-business-bg);
+  pointer-events: none;
+  z-index: 0;
+}

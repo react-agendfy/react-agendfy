@@ -88,6 +88,30 @@ describe("resourceDay", () => {
     expect(shade("Dr. Rui")).toEqual(["80px+320px"]);
   });
 
+  it("shades the time outside each resource's hours (a day without hours entirely)", async () => {
+    const { container, apiRef } = renderView("resourceDay");
+    await screen.findAllByRole("columnheader");
+    const off = (label: string) =>
+      [...column(container, label).querySelectorAll<HTMLElement>(".react-agendfy-non-business")].map(
+        (s) => `${s.style.top}+${s.style.height}`
+      );
+    // Grid 08:00–18:00 (800px). Calendar 09–17; Dr. Rui 09–13.
+    expect(off("Dr. Ana")).toEqual(["0px+80px", "720px+80px"]);
+    expect(off("Dr. Rui")).toEqual(["0px+80px", "400px+400px"]);
+    // Saturday: no business hours for anyone.
+    act(() => apiRef.current!.gotoDate("2026-03-14T12:00:00Z"));
+    expect(off("Dr. Ana")).toEqual(["0px+800px"]);
+    expect(off("Dr. Rui")).toEqual(["0px+800px"]);
+  });
+
+  it("api.validate checks a form's event against the rules without applying it", async () => {
+    const { apiRef } = renderView("resourceDay", { config: { eventConstraint: "businessHours" } });
+    await screen.findAllByRole("columnheader");
+    const draft = (h: number) => ({ id: "new", title: "Nova", start: at(h), end: at(h + 1), resourceId: "r2" });
+    expect(apiRef.current!.validate({ kind: "receive", event: draft(15) })).toMatchObject({ reason: "constraint" });
+    expect(apiRef.current!.validate({ kind: "receive", event: draft(10) })).toBe(true);
+  });
+
   it("a slot click reports the time and the resource", async () => {
     const onSlotClick = jest.fn();
     const { container } = renderView("resourceDay", { onSlotClick });

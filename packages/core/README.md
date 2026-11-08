@@ -77,7 +77,7 @@ plugin types, and more — see `src/index.tsx`).
 | `onDateRangeSelect` | `(selection: EventProps \| DateRangeSelection) => void` | Fired when the user drags across a range of days/slots. |
 | `onChangeRejected` | `(info: ChangeRejectedInfo) => void` | Fired when a move/resize is refused by a [business rule](#business-rules-and-undo); nothing is applied. |
 | `onEventReceive` | `(event, data) => void \| Promise` | An `ExternalDraggable` was dropped — see [Dragging in from outside](#dragging-in-from-outside). |
-| `apiRef` | `Ref<CalendarApi>` | Imperative API: navigation, `getView()`, `refetchEvents()`, `undo()`, `redo()`, `canUndo()`, `canRedo()`. |
+| `apiRef` | `Ref<CalendarApi>` | Imperative API: navigation, `getView()`, `refetchEvents()`, `undo()`, `redo()`, `canUndo()`, `canRedo()`, and `validate(change)` to check an event from your own form against the [rules](#business-rules-and-undo). |
 | `currentDate` | `Date` | Declared on the type but **not currently consumed** — the calendar always starts at "now" in `config.timeZone`. |
 | `onDateChange` | `(date: Date) => void` | Declared on the type but **not currently consumed**. |
 | `eventContent` | `(arg: EventContentArg) => ReactNode` | Custom event body in every view — see [Customizing the look](#customizing-the-look). |
@@ -100,7 +100,7 @@ plugin types, and more — see `src/index.tsx`).
 | `slotMax` | `"23:59"` | Last visible time of day. |
 | `slotHeight` | `40` | Height in px of one slot in the week/day grids (see [Customizing the look](#customizing-the-look)). |
 | `lang` | `"en"` | Language tag; selects the bundled message catalog. |
-| `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — highlighted in week/day views. A resource's own `businessHours` wins in its columns. |
+| `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — the time outside them is shaded in the week, day and resource views (a day without any, entirely). A resource's own `businessHours` wins in its columns. |
 | `datesAboveResources` | `false` | `resourceWeek`: group columns by date, then resource (default: by resource, then date). |
 | `resourceColumnMinWidth` | `120` | Minimum width of a resource-view column, px; columns stretch to fill. |
 | `alerts` | `{ enabled: false, thresholdMinutes: 15 }` | Event reminders (toast/browser notification/email). |
@@ -362,6 +362,11 @@ drag preview gets `.react-agendfy-drag-preview--invalid` (red outline,
 />
 ```
 
+The rules check drags, resizes and drops. For an event created or edited in
+your own form, call `api.validate({ kind: "receive", event })` (new) or
+`api.validate({ kind: "move", event, before })` (edit) before saving: it
+returns `true` or the rejection, and applies nothing.
+
 Undo and redo replay the change through the same callbacks, so your backend
 persists them like any other edit. They restore only the schedule fields
 (`start`, `end`, `allDay`, `resourceId`, `resourceIds`), never validate (the
@@ -487,6 +492,7 @@ Tokens live in `src/styles/tokens.css`, in three layers:
 | `--agendfy-grid-line-minor` | `1px dashed var(--agendfy-color-border-strong)` | 15-minute lines in week columns. |
 | `--agendfy-now-line-width` | `2px` | Current-time line thickness (color: `--agendfy-color-now`). |
 | `--agendfy-business-hours-bg` / `-opacity` | `var(--agendfy-color-accent-soft)` / `0.45` | Business-hours tint. |
+| `--agendfy-non-business-bg` | 6% of the text colour | Shade of the time outside business hours (a day without any, entirely). |
 | `--agendfy-color-selection` | `var(--agendfy-color-accent-soft)` | Range selection and drop-target background. |
 | `--agendfy-disabled-stripe` / `--agendfy-disabled-opacity` | `var(--agendfy-color-surface-2)` / `0.55` | Days outside `validRange` (striped). |
 | `--agendfy-month-cell-min-height` | `120px` | Month cell height (`-compact`: `80px` at ≤ 640px). |
