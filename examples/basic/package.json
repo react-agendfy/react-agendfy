@@ -12,6 +12,7 @@
     "@react-agendfy/ai": "workspace:*",
     "@react-agendfy/core": "workspace:*",
     "@react-agendfy/gantt": "workspace:*",
+    "@react-agendfy/plugin-export-reports": "workspace:*",
     "@react-agendfy/plugin-timeline": "workspace:*",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"

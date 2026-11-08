@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+  - packages/plugins/*
+  - examples/*
+allowBuilds:
+  '@parcel/watcher': true
+  core-js: true
+  esbuild: true

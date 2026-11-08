@@ -9,7 +9,9 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
+    // CSS side-effect imports are handled by Vite (TypeScript 6+ checks them by default).
+    "noUncheckedSideEffectImports": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,

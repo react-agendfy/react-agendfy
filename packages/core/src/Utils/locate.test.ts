@@ -3,8 +3,10 @@ import { getLocale } from "./locate";
 
 describe("getLocale", () => {
   test("maps pt / pt-PT to European Portuguese and pt-BR to Brazilian Portuguese", () => {
-    expect(getLocale("pt")).toBe(pt);
-    expect(getLocale("pt-PT")).toBe(pt);
+    expect(getLocale("pt").code).toBe(pt.code);
+    expect(getLocale("pt-PT")).toBe(getLocale("pt"));
+    // Monday, even though date-fns 4.4's `pt` says Sunday.
+    expect(getLocale("pt").options?.weekStartsOn).toBe(1);
     expect(getLocale("pt-BR")).toBe(ptBR);
     expect(getLocale("ptBR")).toBe(ptBR);
   });
@@ -16,7 +18,7 @@ describe("getLocale", () => {
   });
 
   test("is case-insensitive and falls back to the base language by region", () => {
-    expect(getLocale("PT-pt")).toBe(pt);
+    expect(getLocale("PT-pt")).toBe(getLocale("pt"));
     expect(getLocale("pt_br")).toBe(ptBR);
     expect(getLocale("de-AT")).toBe(de);
     expect(getLocale("en-GB")).toBe(enGB);

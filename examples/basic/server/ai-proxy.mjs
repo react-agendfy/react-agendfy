@@ -6,7 +6,7 @@
  * exact production pattern, shrunk to one file.
  *
  * Run:   GO4AI_API_KEY=sk-... node server/ai-proxy.mjs
- * Then:  VITE_AI_PROXY=http://localhost:8787/ai yarn dev
+ * Then:  VITE_AI_PROXY=http://localhost:8787/ai pnpm dev
  *
  * Contract (matches httpAdapter in @react-agendfy/ai):
  *   POST /ai  { system?, prompt, schema?, maxTokens? }

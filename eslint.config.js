@@ -4,18 +4,13 @@ import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
-// typescript-eslint is loaded optionally so that JS/JSX linting keeps working
-// even when the dependency has not been installed yet. Run
-// `yarn add -D typescript-eslint` to enable the TS/TSX linting block below.
-let tseslint = null
-try {
-  tseslint = (await import('typescript-eslint')).default
-} catch {
-  tseslint = null
-}
+// typescript-eslint lints every .ts/.tsx file. It must load: if it can't (not
+// installed, or a TypeScript version it doesn't support yet), fail loudly
+// instead of silently skipping all TypeScript.
+import tseslint from 'typescript-eslint'
 
 export default [
-  { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/.yarn/**', '.claude/**', '.vite/**'] },
+  { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '.claude/**', '.vite/**'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
