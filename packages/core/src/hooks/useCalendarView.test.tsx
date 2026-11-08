@@ -285,6 +285,30 @@ describe("drag & drop in custom views", () => {
     expect(onEventUpdate.mock.calls[1][0].resourceId).toBeUndefined();
   });
 
+  it("dragging one copy of a multi-resource event swaps only that resource", async () => {
+    const onEventUpdate = jest.fn();
+    const multi = ev("m", 10, { resourceIds: ["r1", "r3"] });
+    renderRows({ onEventUpdate, events: [multi] });
+    await screen.findByText("zone-r1");
+    act(() =>
+      lastDnd().onDragEnd?.({
+        active: { id: "m@r1", data: { current: { event: multi, resourceId: "r1" } } },
+        over: zone("r2"),
+        delta: { x: 200, y: 0 },
+      })
+    );
+    expect(onEventUpdate).toHaveBeenCalledWith(expect.objectContaining({ resourceIds: ["r2", "r3"] }));
+    // Onto a resource it already has: no duplicate.
+    act(() =>
+      lastDnd().onDragEnd?.({
+        active: { id: "m@r1", data: { current: { event: multi, resourceId: "r1" } } },
+        over: zone("r3"),
+        delta: { x: 200, y: 0 },
+      })
+    );
+    expect(onEventUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ resourceIds: ["r3"] }));
+  });
+
   it("not editable: drops do nothing", async () => {
     const onEventUpdate = jest.fn();
     renderRows({ onEventUpdate, config: { editable: false } });

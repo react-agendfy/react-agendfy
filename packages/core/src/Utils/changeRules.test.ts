@@ -116,6 +116,25 @@ describe("satisfiesConstraint", () => {
     ).toBe(false);
   });
 
+  it("businessHours: resources with their own hours use them (all of them), others the calendar's", () => {
+    const resources = [
+      { id: "r1" },
+      { id: "r2", businessHours: [{ daysOfWeek: [3], startTime: "09:00", endTime: "13:00" }] },
+      { id: "r3", businessHours: [{ daysOfWeek: [3], startTime: "11:00", endTime: "18:00" }] },
+    ];
+    // Calendar 09–17: 14:00 is fine for r1, not for r2 (09–13).
+    expect(satisfiesConstraint(ev("m", 14, 15, { resourceId: "r1" }), "businessHours", config(), resources)).toBe(true);
+    expect(satisfiesConstraint(ev("m", 14, 15, { resourceId: "r2" }), "businessHours", config(), resources)).toBe(false);
+    expect(satisfiesConstraint(ev("m", 10, 11, { resourceId: "r2" }), "businessHours", config(), resources)).toBe(true);
+    // Two resources with own hours: inside both (11–13).
+    expect(satisfiesConstraint(ev("m", 11, 12, { resourceIds: ["r2", "r3"] }), "businessHours", config(), resources)).toBe(true);
+    expect(satisfiesConstraint(ev("m", 10, 11, { resourceIds: ["r2", "r3"] }), "businessHours", config(), resources)).toBe(false);
+    // Own hours apply even when the calendar's business hours are off.
+    expect(
+      satisfiesConstraint(ev("m", 14, 15, { resourceId: "r2" }), "businessHours", config({ businessHours: { enabled: false, intervals: [] } }), resources)
+    ).toBe(false);
+  });
+
   it("per-event constraint wins over the rule", () => {
     expect(satisfiesConstraint(ev("m", 1, 2, { constraint: { start: "2026-03-01" } }), "businessHours", config())).toBe(true);
   });

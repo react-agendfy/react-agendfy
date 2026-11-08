@@ -12,11 +12,14 @@ export interface DemoResource {
   id: string;
   name: string;
   type: string;
+  /** Own working hours (Resource.businessHours): shaded in the resource views. */
+  businessHours?: { daysOfWeek: number[]; startTime: string; endTime: string }[];
 }
 
 export const resources: DemoResource[] = [
   { id: "r1", name: "Atlas room", type: "room" },
-  { id: "r2", name: "John Silva", type: "person" },
+  // Part-time: mornings only, Monday to Friday.
+  { id: "r2", name: "John Silva", type: "person", businessHours: [{ daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "13:00" }] },
   { id: "r3", name: "Projector", type: "equipment" },
   { id: "r4", name: "Company-wide", type: "group" },
 ];

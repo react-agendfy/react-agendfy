@@ -12,7 +12,7 @@ import {
 } from "date-fns";
 import type { Config, ValidRange, Weekday } from "../types/types";
 import { getLocale } from "./locate";
-import { getNewDate } from "./calendarNavigation";
+import { getNewDate, viewSpan } from "./calendarNavigation";
 
 /*
  * Day-level calendar rules shared by every view: first day of the week,
@@ -111,7 +111,7 @@ export const getViewPeriod = (
   date: Date,
   weekStartsOn: Weekday
 ): { start: Date; end: Date } => {
-  switch (view) {
+  switch (viewSpan(view)) {
     case "day":
       return { start: startOfDay(date), end: endOfDay(date) };
     case "week":
@@ -184,7 +184,7 @@ export const getNavigationTarget = (
     return periodOverlapsRange(inclusive, rules.validRange) ? target : null;
   }
   // The list view navigates by its own span (listRange).
-  const stepView = view === "list" ? rules.listRange : view;
+  const stepView = view === "list" ? rules.listRange : viewSpan(view);
   let target = getNewDate(date, stepView, direction);
   if (stepView === "day") {
     for (let i = 0; i < 7 && rules.isHidden(target); i++) target = addDays(target, direction);
@@ -206,7 +206,7 @@ export const getVisibleRange = (
   config?: RangeConfig & { fixedWeekCount?: boolean }
 ): { start: Date; end: Date } => {
   const weekStartsOn = resolveWeekStartsOn(config);
-  const span = view === "list" ? config?.listRange ?? "month" : view;
+  const span = view === "list" ? config?.listRange ?? "month" : viewSpan(view);
   switch (span) {
     case "day":
       return { start: startOfDay(date), end: addDays(startOfDay(date), 1) };

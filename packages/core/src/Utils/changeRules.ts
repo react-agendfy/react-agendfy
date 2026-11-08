@@ -7,6 +7,7 @@ import type {
   EventConstraintRule,
   EventOverlapRule,
   EventProps,
+  Resource,
   WeeklyInterval,
 } from "../types/types";
 import type { ChangeContext, MiddlewarePlugin } from "../types/plugins";
@@ -83,18 +84,28 @@ const fitsWeeklyIntervals = (event: EventProps, intervals: WeeklyInterval[], tim
   );
 };
 
-/** Whether `event` satisfies its own `constraint` or, failing that, `rule`. */
+/**
+ * Whether `event` satisfies its own `constraint` or, failing that, `rule`.
+ * "businessHours" uses the hours of the event's resources that have their
+ * own (`Resource.businessHours`) — the event must fit each of them — and
+ * the calendar's otherwise.
+ */
 export const satisfiesConstraint = (
   event: EventProps,
   rule: EventConstraintRule | undefined,
-  config: Partial<Config>
+  config: Partial<Config>,
+  resources: Resource[] = []
 ): boolean => {
   const constraint: EventConstraintRule | undefined = event.constraint ?? rule;
   if (!constraint) return true;
   const timeZone = config.timeZone;
 
   if (constraint === "businessHours") {
-    if (event.allDay || !config.businessHours?.enabled) return true;
+    if (event.allDay) return true;
+    const ids = new Set(eventResourceIds(event));
+    const own = resources.filter((r) => ids.has(String(r.id)) && r.businessHours);
+    if (own.length) return own.every((r) => fitsWeeklyIntervals(event, r.businessHours!, timeZone));
+    if (!config.businessHours?.enabled) return true;
     return fitsWeeklyIntervals(event, config.businessHours.intervals, timeZone);
   }
   if (Array.isArray(constraint)) {
@@ -134,7 +145,7 @@ export const validateChange = (
   );
   if (conflicts.length) return reject("overlap", { conflicts });
 
-  if (!satisfiesConstraint(moving, config.eventConstraint, config)) return reject("constraint");
+  if (!satisfiesConstraint(moving, config.eventConstraint, config, ctx.resources)) return reject("constraint");
 
   if (config.eventAllow && config.eventAllow(change) === false) return reject("not-allowed");
 

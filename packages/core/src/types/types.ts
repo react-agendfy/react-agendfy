@@ -4,7 +4,7 @@ import { CalendarPlugin } from "./plugins";
 import type { EmailAdapter, NotificationServiceConfig } from "./notification";
 
 /** All view identifiers the calendar can render. */
-export type CalendarView = "month" | "week" | "day" | "list" | "agenda";
+export type CalendarView = "month" | "week" | "day" | "list" | "agenda" | "resourceDay" | "resourceWeek";
 
 /** Text direction accepted by the calendar root. "auto" derives from the language. */
 export type CalendarDirection = "ltr" | "rtl" | "auto";
@@ -138,6 +138,13 @@ export interface Config {
   listRange?: "day" | "week" | "month";
   /** Show the all-day row in the week view. Default true. */
   allDaySlot?: boolean;
+  /**
+   * resourceWeek: group columns by date, then resource. Default false
+   * (by resource, then date), like FullCalendar.
+   */
+  datesAboveResources?: boolean;
+  /** Minimum width of a resource-view column, px (they stretch to fill). Default 120. */
+  resourceColumnMinWidth?: number;
   /** Show the current-time line. Default true. */
   nowIndicator?: boolean;
   /**
@@ -197,6 +204,10 @@ export interface Config {
   weekView: string;
   dayView: string;
   listView: string;
+  /** Label of the resourceDay view. */
+  resourceDayView?: string;
+  /** Label of the resourceWeek view. */
+  resourceWeekView?: string;
   agenda: string;
   all_day: string;
   filter_resources: string;
@@ -444,6 +455,12 @@ export interface Resource {
   name?: string;
   type?: string;
   children?: Resource[];
+  /**
+   * The resource's own working hours (a doctor's shift, a room's opening
+   * hours). Shaded in the resource views, and `eventConstraint:
+   * "businessHours"` keeps its events inside them. Default: the calendar's.
+   */
+  businessHours?: WeeklyInterval[];
   [key: string]: any;
 }
 
@@ -563,7 +580,8 @@ export interface CalendarProps {
   onEventResize?: (event: EventProps) => void | Promise<unknown>;
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
-  onSlotClick?: (slotTime: Date) => void;
+  /** A time slot was clicked; `info.resourceId` in the resource views. */
+  onSlotClick?: (slotTime: Date, info?: { resourceId?: string | number }) => void;
   onDateRangeSelect?: (selection: EventProps | DateRangeSelection) => void;
   /**
    * Called when a move/resize is refused by `eventOverlap`,

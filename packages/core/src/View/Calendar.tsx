@@ -14,6 +14,7 @@ const WeekView = lazy(() => import("./WeekView/WeekView"));
 const DayView = lazy(() => import("./DayView/DayView"));
 const AgendaView = lazy(() => import("./AgendaView"));
 const ListView = lazy(() => import("./ListView/ListView"));
+const ResourceTimeGrid = lazy(() => import("./ResourceTimeGrid/ResourceTimeGrid"));
 
 /**
  * Presentational layer. All state, derived data and handlers come from the
@@ -159,6 +160,20 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
       );
     }
     switch (currentView) {
+      case "resourceDay":
+      case "resourceWeek":
+        // Built on the same SDK as custom views (useCalendarView, drop zones).
+        return (
+          <CustomViewDnd
+            config={localeConfig}
+            resources={resources}
+            onEventUpdate={onMove}
+            onEventReceive={handleEventReceive}
+            onEventClick={onEventClick}
+          >
+            <ResourceTimeGrid span={currentView === "resourceDay" ? "day" : "week"} />
+          </CustomViewDnd>
+        );
       case "week":
         return (
           <WeekView

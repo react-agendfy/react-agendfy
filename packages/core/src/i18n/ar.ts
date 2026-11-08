@@ -9,6 +9,8 @@ const ar: CalendarMessages = {
   monthView: "شهر",
   weekView: "أسبوع",
   dayView: "يوم",
+  resourceDayView: "الموارد (يوم)",
+  resourceWeekView: "الموارد (أسبوع)",
   listView: "قائمة",
   agenda: "جدول الأعمال",
   all_day: "طوال اليوم",

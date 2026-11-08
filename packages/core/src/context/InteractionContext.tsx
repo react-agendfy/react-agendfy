@@ -70,7 +70,23 @@ export interface ViewDragHandlers {
   keyboardStep?: () => { x: number; y: number } | null;
   /** One arrow key press of a keyboard drag (dx/dy are -1, 0 or 1). */
   onKeyboardStep?: (dx: number, dy: number) => void;
+  /**
+   * Keyboard drag by target: where an arrow key moves the dragged element
+   * (its new top-left), or undefined to stay. Takes over from keyboardStep.
+   */
+  keyboardTarget?: (
+    direction: KeyboardDirection,
+    args: Parameters<KeyboardCoordinateGetter>[1]
+  ) => { x: number; y: number } | undefined;
 }
+
+export type KeyboardDirection = "up" | "down" | "left" | "right";
+const DIRECTIONS: Record<string, KeyboardDirection> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
 
 const DEFAULT_STEP = 25;
 
@@ -107,7 +123,11 @@ const DndScope = ({
   // Stable for the scope's lifetime: it only reads the handlers ref when a
   // key is pressed.
   const [coordinateGetter] = useState(
-    (): KeyboardCoordinateGetter => (event, { currentCoordinates: c }) => {
+    (): KeyboardCoordinateGetter => (event, args) => {
+      const c = args.currentCoordinates;
+      const direction = DIRECTIONS[event.code];
+      const byTarget = handlers.current?.keyboardTarget;
+      if (byTarget) return direction ? byTarget(direction, args) ?? c : undefined;
       const step = handlers.current?.keyboardStep?.() ?? null;
       const x = step ? step.x : DEFAULT_STEP;
       const y = step ? step.y : DEFAULT_STEP;

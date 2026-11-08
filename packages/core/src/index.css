@@ -8,6 +8,7 @@
 @import "./css/ListView.css";
 @import "./css/EventRow.css";
 @import "./css/Resource.css";
+@import "./css/ResourceTimeGrid.css";
 
 /* NOTE: the global `html, body { font-family: 'Roboto' }` rule was removed.
    A library must not restyle the host document body. The calendar font is

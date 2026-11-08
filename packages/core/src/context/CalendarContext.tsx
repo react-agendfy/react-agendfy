@@ -201,7 +201,7 @@ export interface CalendarContextValue {
   // user callbacks (pass-through)
   onEventClick?: (event: EventProps) => void;
   onDayClick?: (day: Date) => void;
-  onSlotClick?: (slotTime: Date) => void;
+  onSlotClick?: (slotTime: Date, info?: { resourceId?: string | number }) => void;
 
   /** Visible range of the active view, [start, end). */
   visibleRange: { start: Date; end: Date };
@@ -522,9 +522,9 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
       // Dropping in place, or replaying history, is always fine.
       if (change.source === "history") return true;
       if (change.before && sameSchedule(change.before, change.event)) return true;
-      return validateChange(change, { config: localeConfig, eventsInRange }, middlewarePlugins);
+      return validateChange(change, { config: localeConfig, eventsInRange, resources }, middlewarePlugins);
     },
-    [localeConfig, eventsInRange, middlewarePlugins]
+    [localeConfig, eventsInRange, middlewarePlugins, resources]
   );
 
   const runChange = useCallback(
@@ -878,14 +878,22 @@ export const CalendarProvider: FC<CalendarProviderProps> = ({
           ? t(plugin.label.key, undefined, plugin.viewName)
           : plugin.label || plugin.props?.label || plugin.viewName,
     }));
-    const all = [...defaultViews, ...customViews];
+    // Resource views: listed by default only when there are resources;
+    // headerViews can always ask for them.
+    const resourceViews = [
+      { name: "resourceDay", label: localeConfig.resourceDayView ?? "Resource day" },
+      { name: "resourceWeek", label: localeConfig.resourceWeekView ?? "Resource week" },
+    ];
+    const all = [...defaultViews, ...resourceViews, ...customViews];
     // headerViews picks and orders the buttons (unknown names are ignored).
     const wanted = localeConfig.headerViews;
-    if (!wanted?.length) return all;
+    if (!wanted?.length) {
+      return resources.length ? all : [...defaultViews, ...customViews];
+    }
     return wanted
       .map((name) => all.find((v) => v.name === name))
       .filter((v): v is { name: string; label: string } => !!v);
-  }, [localeConfig, customViewPlugins, t]);
+  }, [localeConfig, customViewPlugins, t, resources.length]);
 
   const customViews = useMemo(() => {
     const views: Record<string, FC<any>> = {};

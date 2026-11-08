@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { ChangeVerdict, Config, EventChange, EventProps, Weekday } from './types';
+import { ChangeVerdict, Config, EventChange, EventProps, Resource, Weekday } from './types';
 
 export interface EventLike extends EventProps {
   [k: string]: any;
@@ -65,6 +65,8 @@ export interface ViewPlugin extends BaseCalendarPlugin {
 /** Passed to `MiddlewarePlugin.validate`. */
 export interface ChangeContext {
   config: Config;
+  /** The calendar's resources (their own `businessHours` apply to their events). */
+  resources?: Resource[];
   /** Every event (unfiltered, recurrences expanded) overlapping [start, end). */
   eventsInRange: (start: Date, end: Date) => EventProps[];
 }

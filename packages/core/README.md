@@ -73,7 +73,7 @@ plugin types, and more — see `src/index.tsx`).
 | `onEventResize` | `(event: EventProps) => void` | Fired after an event is resized. |
 | `onEventClick` | `(event: EventProps) => void` | Fired when an event is clicked/activated. |
 | `onDayClick` | `(day: Date) => void` | Fired when a day cell is clicked (month view). |
-| `onSlotClick` | `(slotTime: Date) => void` | Fired when a time slot is clicked (week/day views). |
+| `onSlotClick` | `(slotTime: Date, info?: { resourceId }) => void` | Fired when a time slot is clicked (week/day views; resource views also pass the column's `resourceId`). |
 | `onDateRangeSelect` | `(selection: EventProps \| DateRangeSelection) => void` | Fired when the user drags across a range of days/slots. |
 | `onChangeRejected` | `(info: ChangeRejectedInfo) => void` | Fired when a move/resize is refused by a [business rule](#business-rules-and-undo); nothing is applied. |
 | `onEventReceive` | `(event, data) => void \| Promise` | An `ExternalDraggable` was dropped — see [Dragging in from outside](#dragging-in-from-outside). |
@@ -100,7 +100,9 @@ plugin types, and more — see `src/index.tsx`).
 | `slotMax` | `"23:59"` | Last visible time of day. |
 | `slotHeight` | `40` | Height in px of one slot in the week/day grids (see [Customizing the look](#customizing-the-look)). |
 | `lang` | `"en"` | Language tag; selects the bundled message catalog. |
-| `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — highlighted in week/day views. |
+| `businessHours` | enabled, Mon–Fri `09:00`–`17:00` | `{ enabled, intervals: [{ daysOfWeek, startTime, endTime }] }` — highlighted in week/day views. A resource's own `businessHours` wins in its columns. |
+| `datesAboveResources` | `false` | `resourceWeek`: group columns by date, then resource (default: by resource, then date). |
+| `resourceColumnMinWidth` | `120` | Minimum width of a resource-view column, px; columns stretch to fill. |
 | `alerts` | `{ enabled: false, thresholdMinutes: 15 }` | Event reminders (toast/browser notification/email). |
 | `export` | `true` | Show the export menu (formats come from export plugins). |
 | `today`, `monthView`, `weekView`, `dayView`, `listView`, `agenda`, `all_day`, `clear_filter`, `filter_resources`, `calendar_export` | English labels | UI strings; normally supplied by the i18n catalog — set them only to override. |
@@ -144,7 +146,9 @@ interface Resource {
 
 Assign a resource with `resourceId` (or several with `resourceIds`) on the
 event; the names and icons shown on events and tooltips come from the
-`resources` prop. The `filteredResources` prop and the resource-filter plugin
+`resources` prop. A resource can have its own `businessHours` (same shape as
+the config intervals): they are shaded in its columns and
+`eventConstraint: "businessHours"` keeps its events inside them. The `filteredResources` prop and the resource-filter plugin
 narrow the visible events by resource, and the overlap rules compare
 resources. `eventResourceIds(event)` returns an event's resource ids (useful
 in custom views).
@@ -162,6 +166,8 @@ the shape you gave them.
 | `day` | Single-day time grid, same interactions as week. |
 | `list` | Chronological list of events for the period. |
 | `agenda` | Upcoming events grouped by day. |
+| `resourceDay` | One column per resource for the day: all-day row, overlap layout, drag between resources, resize, each resource's business hours. Offered in the header when there are `resources`. |
+| `resourceWeek` | The same for the week: a column per resource and day (`datesAboveResources` to group by date). Only the columns in view are rendered. |
 
 Custom views are added with a `view` plugin and appear in the header's view
 switcher automatically.
@@ -286,7 +292,16 @@ const teamView: CalendarPlugin = {
 ```
 
 `useDropZone(id, { date, allDay?, resourceIds? })`: with `allDay` the
-event becomes all-day (external items use their `startTime`). A move
+event becomes all-day (external items use their `startTime`). With the
+keyboard, Space picks an event up and the arrow keys move it to the next
+zone in that direction. `useEventDraggable(event, { id, resourceId })` draws
+an event more than once (one copy per resource): dropping one copy on
+another resource swaps just that resource.
+
+For time axes and long lists, `createTimeScale(options)` maps instants to
+pixels by wall clock (a daily window, hidden weekdays, DST days on the same
+grid) and `useVirtualRange({ count, size, viewportRef, axis })` renders only
+the rows or columns in view. The resource views are built with them. A move
 between resources updates the field the event already uses (`resourceId`
 or `resourceIds`). Drags start after 5px, so a
 plain click stays a click. The demo's Team view

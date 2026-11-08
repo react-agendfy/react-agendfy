@@ -62,6 +62,8 @@ import { ExternalDraggable, type ExternalDraggableProps } from './Components/Ext
 import { useCalendarView, type CalendarViewApi, type SchedulePatch } from './hooks/useCalendarView';
 import { useDropZone, useEventDraggable, type DropZoneTarget } from './hooks/useViewDrag';
 import { eventResourceIds } from './Utils/resources';
+import { createTimeScale, type TimeScale, type TimeScaleOptions, type TimeScaleSegment } from './Utils/timeScale';
+import { useVirtualRange, type VirtualItem, type VirtualRange, type VirtualRangeOptions } from './hooks/useVirtualRange';
 import { InteractionProvider as AgendfyDndProvider } from './context/InteractionContext';
 import { ToastProvider } from "./Components/Toast/Toast"; 
 import CalendarComponent from "./View/Calendar";
@@ -92,6 +94,8 @@ export {
   useEventDraggable,
   useDropZone,
   eventResourceIds,
+  createTimeScale,
+  useVirtualRange,
 };
 export type {
   CalendarApi,
@@ -135,6 +139,12 @@ export type {
   CalendarViewApi,
   SchedulePatch,
   DropZoneTarget,
+  TimeScale,
+  TimeScaleOptions,
+  TimeScaleSegment,
+  VirtualItem,
+  VirtualRange,
+  VirtualRangeOptions,
   ChangeContext,
   MiddlewarePlugin,
   ChangeRejectedInfo,

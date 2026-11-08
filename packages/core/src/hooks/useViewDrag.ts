@@ -35,10 +35,22 @@ export function useDropZone(id: string, target: DropZoneTarget, options: { disab
  * and attach `setNodeRef`; `isDragging` is true for the original while its
  * preview follows the pointer.
  */
-export function useEventDraggable(event: EventProps, options: { disabled?: boolean } = {}) {
+export function useEventDraggable(
+  event: EventProps,
+  options: {
+    disabled?: boolean;
+    /** Draggable id, when the event is drawn more than once (default: the event id). */
+    id?: string;
+    /**
+     * The resource this copy is drawn under: dropping it on another
+     * resource swaps just that one, keeping the event's other resources.
+     */
+    resourceId?: string | number;
+  } = {}
+) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
-    id: event.id,
-    data: { event },
+    id: options.id ?? event.id,
+    data: { event, resourceId: options.resourceId },
     disabled: options.disabled,
   });
   return { setNodeRef, attributes, listeners, isDragging };

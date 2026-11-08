@@ -187,6 +187,22 @@ createTimeScale({ range, zoom: "hour"|"day"|"week"|"month"|"quarter"|"year",
 - Vertical resource view (week/day with one column per resource) ships in the
   core on top of the same drop zones (`resolve` returns `resourceIds`).
 
+**Status (core 2.4, phase 3):** `createTimeScale` (wall clock, daily window, hidden
+days, DST), `useVirtualRange` (own implementation, no dependency: the
+decision on @tanstack/react-virtual was "write our own"), and the
+`resourceDay` / `resourceWeek` views (named like FullCalendar's
+resourceTimeGridDay/Week, which the compat maps 1:1), built on the
+SDK. The design gained `Resource.businessHours`, `onSlotClick(date,
+{ resourceId })` and zone-to-zone keyboard drag for SDK views
+(`keyboardTarget`). Lessons:
+
+- The axis follows the wall clock, not elapsed time: 10:00 stays on the
+  10:00 line on DST days, as in Google Calendar and FullCalendar.
+- Keyboard drags between drop zones track the zone the last key reached;
+  dnd-kit's measured rect is missing on the first key and can lag behind.
+- An event drawn under several resources needs one draggable per copy
+  (`id`), and the drop swaps only the resource it was dragged from.
+
 ### Layer 4 — plugins
 
 - **plugin-timeline 3.0** — rewrite on the time axis: horizontal scale, rows

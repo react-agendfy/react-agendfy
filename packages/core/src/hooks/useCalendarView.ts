@@ -43,8 +43,11 @@ export interface CalendarViewApi {
   isDisabled: (date: Date) => boolean;
   /** Weekday hidden by `hiddenDays` / `weekends: false`. */
   isHidden: (date: Date) => boolean;
-  /** Business-hours intervals of the day containing `date` (empty when off). */
-  businessHoursFor: (date: Date) => { start: Date; end: Date }[];
+  /**
+   * Business-hours intervals of the day containing `date`: the resource's
+   * own `businessHours` when given and set, else the calendar's (empty when off).
+   */
+  businessHoursFor: (date: Date, resource?: Resource) => { start: Date; end: Date }[];
 
   navigate: (direction: "prev" | "next" | "today") => void;
   gotoDate: (date: Date | string) => void;
@@ -63,6 +66,8 @@ export interface CalendarViewApi {
 
   /** The host's `onEventClick`. */
   onEventClick: (event: EventProps) => void;
+  /** The host's `onSlotClick` (with the resource in resource views). */
+  onSlotClick: (date: Date, info?: { resourceId?: string | number }) => void;
   /** Custom body from `eventContent` / an event-rendering plugin, or null for your default. */
   renderEventContent: (event: EventProps, options?: { isStart?: boolean; isEnd?: boolean }) => ReactNode | null;
   /** Classes from the `eventClassNames` prop for `event` in this view. */
@@ -106,6 +111,7 @@ export function useCalendarView(): CalendarViewApi {
     canUndo,
     canRedo,
     onEventClick,
+    onSlotClick,
   } = ctx;
   const view = state.currentView;
   const timeZone = config.timeZone;
@@ -134,10 +140,12 @@ export function useCalendarView(): CalendarViewApi {
     formatTime: (date) => formatEventTime(date, config),
     isDisabled: rules.isDisabled,
     isHidden: rules.isHidden,
-    businessHoursFor: (date) =>
-      config.businessHours?.enabled
-        ? getBusinessHoursIntervalsForDate(new TZDate(date, timeZone), config.businessHours)
-        : [],
+    businessHoursFor: (date, resource) =>
+      resource?.businessHours
+        ? getBusinessHoursIntervalsForDate(new TZDate(date, timeZone), { enabled: true, intervals: resource.businessHours })
+        : config.businessHours?.enabled
+          ? getBusinessHoursIntervalsForDate(new TZDate(date, timeZone), config.businessHours)
+          : [],
 
     navigate,
     gotoDate,
@@ -152,6 +160,7 @@ export function useCalendarView(): CalendarViewApi {
     canRedo,
 
     onEventClick: (event) => onEventClick?.(event),
+    onSlotClick: (date, info) => onSlotClick?.(date, info),
     renderEventContent: (event, options = {}) => {
       if (!renderer) return null;
       const content = renderer({

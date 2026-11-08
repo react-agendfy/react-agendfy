@@ -187,8 +187,8 @@ export default function App() {
 
   /* --- create / edit --------------------------------------------------------- */
   const openNew = useCallback(
-    (start: Date | string, end: Date | string, allDay = false) =>
-      setDraft({ start, end, allDay, category: "meeting", resourceIds: [] }),
+    (start: Date | string, end: Date | string, allDay = false, resourceIds: string[] = []) =>
+      setDraft({ start, end, allDay, category: "meeting", resourceIds }),
     []
   );
   const newAtNextHour = () => {
@@ -216,7 +216,12 @@ export default function App() {
     },
     [tz, openNew]
   );
-  const onSlotClick = useCallback((slot: Date) => openNew(slot, new Date(slot.getTime() + 3600000)), [openNew]);
+  // In the resource views the slot belongs to a resource: the new event gets it.
+  const onSlotClick = useCallback(
+    (slot: Date, info?: { resourceId?: string | number }) =>
+      openNew(slot, new Date(slot.getTime() + 3600000), false, info?.resourceId !== undefined ? [String(info.resourceId)] : []),
+    [openNew]
+  );
   const onSelect = useCallback(
     (sel: any) => {
       const s = new Date(sel.start);
