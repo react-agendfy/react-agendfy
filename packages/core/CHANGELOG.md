@@ -1,5 +1,65 @@
 # @react-agendfy/core
 
+## 2.2.0
+
+### Minor Changes
+
+- 1629b01: Batch changes and undoable field edits, for the Gantt:
+  
+  - `MiddlewarePlugin.cascade(change, ctx)` returns other events that must move with a change (a Gantt pushing successor tasks). They are carried in `EventChange.related`, validated with the change (one refused refuses all), applied together, passed to `onEventUpdate` each, and undone with one undo. If the host refuses any of them, all of them go back. `ChangeContext.events()` gives every event.
+  - `useCalendarView().updateEvent(event, fields)` changes other fields (a task's `progress`) as one undoable change. `EventChange.fields` lists them; undo/redo restore them too.
+  - The drag `anchor` (grab point) now also applies to all-day drop zones, in whole days.
+- cdd1027: Change pipeline (RFC 001, phase 1): every move/resize is validated, applied, passed to the callback and recorded.
+  
+  - Business rules: `eventOverlap`, `eventConstraint`, `eventAllow`, `selectAllow`, per-event `overlap`/`constraint`, and the `onChangeRejected` prop.
+  - Undo/redo: `api.undo()`, `api.redo()`, `api.canUndo()`, `api.canRedo()`, Ctrl/⌘+Z shortcuts, `historyLimit`, `undoShortcuts`.
+  - `middleware` plugins (`validate`, `onCommit`, `onRevert`).
+  - `ViewPlugin.range` / `ViewPlugin.step`: custom views get their own visible range (recurrence expansion, data sources, `onDatesSet`, `getView()`, prev/next) and a `range` prop.
+  - New exports: `validateChange`, `findOverlapConflicts`, `satisfiesConstraint` and the related types.
+- c4ea300: Drag in from outside the calendar (RFC 001, phase 2, step 3): `AgendfyDndProvider`, `ExternalDraggable` and the `onEventReceive` prop. Received events go through the rules (with the live preview), are reverted when the callback's Promise rejects, and land on the slot (week/day) or day (month, all-day or at `startTime`) under the pointer.
+- dd42423: The agenda view is now the list view over the next 7 days: one component, with the same `agenda` view name, classes and empty message. The list view shows a multi-day event that started before the period on its first day (it was missing), and is no longer virtualized. This drops the `react-window` dependency.
+- 0fe86e5: Business hours you can see, and rules for your own forms:
+  
+  - The time outside business hours is now shaded (token `--agendfy-non-business-bg`) in the week, day and resource views, including a day with none at all (a weekend). In the resource views each resource's own hours apply. The light tint of the business hours themselves was nearly invisible.
+  - `api.validate(change)` checks an event created or edited in the host's own form against `eventOverlap`, `eventConstraint`, `eventAllow` and middleware plugins, without applying it.
+- ee23bdf: One resource model: `resourceIds` / `resourceId` on events, with names and icons resolved from the `resources` prop.
+  
+  - Event resource icons, tooltips and the resource filter used to read only `event.resources` objects, while the overlap rules, resource moves and the timeline read `resourceId`/`resourceIds`. Every reader now goes through `eventResourceIds(event)` (new export). Legacy `resources` objects still work.
+  - Callbacks (`onEventUpdate`, `onEventResize`, `onEventReceive`, `onEventClick`) hand events back in the shape the host gave them, without the resource objects the calendar derives for display.
+- df17cad: Resource views and the time axis (RFC 001, phase 3):
+  
+  - New views `resourceDay` and `resourceWeek`: one column per resource (and day), with an all-day row, the overlap layout, drag between resources (a multi-resource event swaps only the resource it is dragged from), resize, live validation and keyboard drag. They appear in the header when there are `resources`. New options `datesAboveResources` and `resourceColumnMinWidth`, and translated labels.
+  - `Resource.businessHours`: a resource's own hours are shaded in its columns and enforced by `eventConstraint: "businessHours"`.
+  - `onSlotClick(date, { resourceId })` in the resource views. The SDK adds `onSlotClick` and `businessHoursFor(date, resource)`.
+  - Keyboard drag in views built on the SDK: the arrow keys move from drop zone to drop zone.
+  - Public building blocks: `createTimeScale` (a wall-clock time axis with daily windows, hidden days and DST) and `useVirtualRange` (windowing with no dependencies).
+- 9744ae1: Shared drag context and live drop validation (RFC 001, phase 2, steps 1–2).
+  
+  - One DndContext per calendar (`InteractionProvider`); views register their drag handlers instead of owning a context. Views rendered on their own keep working.
+  - Live validation: over a drop that `eventOverlap`, `eventConstraint`, `eventAllow` or a middleware plugin would refuse, the drag preview gets `.react-agendfy-drag-preview--invalid` and `data-invalid-reason`. New token `--agendfy-drop-invalid-color`.
+  - Keyboard drag fixed in every view. Arrows move by one slot, column or day, counted in units, so fast presses and scrolling no longer land a slot off. Week view events have a single tab stop (Enter opens, Space picks up). The week view drop also works without a pointer.
+- 8b90c14: For timeline-style views:
+  
+  - `useEventDraggable(event, { anchor })` keeps the grab point on a pointer drop: long bars no longer jump, and day slots keep the time of day. The resource views use it.
+  - `layoutLanes(events, span?)` stacks events in lanes.
+  - Also exported: `complementRanges`, `getContrastText`, `clockToMinutes`, `getHiddenDays`.
+- 1629b01: `headerViews` accepts groups: `{ label, views }` is one header button with a menu of its views (keyboard: arrows, Home/End, Escape). The button shows the group's active view. `HeaderViewGroup` and `HeaderViewItem` are exported.
+- 3ec2622: Public SDK for custom views (RFC 001, phase 2, step 4):
+  
+  - `useCalendarView()`: the stable API for views and plugins. It covers state, texts (`t`), zone-aware formatting, day rules, navigation, `moveEvent`/`resizeEvent`/`validate` through the change pipeline, undo/redo, and the host's click handler, `eventContent` and `eventClassNames`.
+  - `useEventDraggable(event)` and `useDropZone(id, { date, allDay?, resourceIds? })`: drag & drop in custom views with the built-in preview, live validation, click-vs-drag, moves between resources and external drops.
+  - `ViewPlugin.label` (string or `{ key }`) and `ViewPlugin.messages` (per-language texts for `t`).
+  - Undo/redo also restores legacy `resources` objects.
+
+### Patch Changes
+
+- 349f87c: Fixes found while building RFC 001 phase 2 (all predate it):
+  
+  - Events from data-source plugins (e.g. `plugin-google-calendar`) never reached the views. The plugin filter/search was an allow-list of ids taken at the last `events` sync. They now apply only while active, survive `events` updates (saving a drag no longer clears an active filter), and a filter that keeps every event is off.
+  - The week view looked every event up again for each of its ~200 slots and built hundreds of thousands of zoned dates per render (about 2s per drop on a busy week in development). Events are now indexed by slot once per render, about 15× faster.
+  - Week view events starting between slot lines (10:15 with 30-minute slots) were not shown. They now show in the slot below their start, offset to their real time, in both the week and the day view.
+- ca04466: `lang: "pt"` keeps Monday as the first day of the week. date-fns 4.4 changed its `pt` locale to Sunday; without this, updating date-fns moved every European Portuguese calendar.
+
 ## 2.1.1
 
 ### Patch Changes

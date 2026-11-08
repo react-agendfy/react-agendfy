@@ -1,6 +1,6 @@
 {
   "name": "@react-agendfy/gantt",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Gantt view for @react-agendfy/core: tasks with dependencies, auto-scheduling, critical path.",
   "license": "MIT",
   "author": "Márcio Zebedeu <marciozebedeu@gmail.com>",

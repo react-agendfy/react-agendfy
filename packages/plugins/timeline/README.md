@@ -26,7 +26,7 @@ It is built only on the core's public API: `useCalendarView`, `createTimeScale`,
 npm install @react-agendfy/plugin-timeline
 ```
 
-Requires `@react-agendfy/core` 2.4 or later.
+Requires `@react-agendfy/core` 2.2 or later.
 
 ## Use
 

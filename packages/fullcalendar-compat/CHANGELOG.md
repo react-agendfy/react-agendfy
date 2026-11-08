@@ -1,5 +1,13 @@
 # @react-agendfy/fullcalendar-compat
 
+## 1.2.0
+
+### Minor Changes
+
+- 0ec8fd4: `resourceTimelineDay` / `resourceTimelineWeek` / `resourceTimelineMonth` map to the timeline views of `@react-agendfy/plugin-timeline`; pass them with `agendfyPlugins={timelinePlugins}`.
+- 5ad9ab0: `resourceTimeGridDay` / `resourceTimeGridWeek`, the `resources` option (array form, including per-resource `businessHours`), `datesAboveResources`, `dateClick.resource` and `eventDrop.newResource` / `oldResource`. `slotDuration` now defaults to 30 minutes, as in FullCalendar.
+- b0ca71d: `eventOverlap`, `eventConstraint` (including groupId constraints), `eventAllow`, `selectAllow` and `selectOverlap` now work, along with per-event `overlap` and `constraint`. They were previously accepted and ignored. They need `@react-agendfy/core` 2.2.
+
 ## 1.1.0
 
 ### Minor Changes
