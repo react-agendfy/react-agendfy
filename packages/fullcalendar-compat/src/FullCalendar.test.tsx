@@ -206,6 +206,29 @@ describe("FullCalendar compat", () => {
     expect(await screen.findByTestId("custom")).toHaveTextContent("10:00 - 11:00 Consulta Ana");
   });
 
+  it("gives timeText without the end in the month grid, as FullCalendar", async () => {
+    const content = (arg: { timeText: string; event: { title: string } }) => ({
+      html: `<b data-testid="custom">${arg.timeText} ${arg.event.title}</b>`,
+    });
+    const month = render(
+      <FullCalendar initialView="dayGridMonth" initialDate="2026-03-11" timeZone="UTC" events={events} eventContent={content} />
+    );
+    expect((await screen.findAllByTestId("custom"))[0]).toHaveTextContent(/^10:00 Consulta Ana$/);
+    month.unmount();
+
+    render(
+      <FullCalendar
+        initialView="dayGridMonth"
+        initialDate="2026-03-11"
+        timeZone="UTC"
+        events={events}
+        displayEventEnd
+        eventContent={content}
+      />
+    );
+    expect((await screen.findAllByTestId("custom"))[0]).toHaveTextContent("10:00 - 11:00 Consulta Ana");
+  });
+
   it("applies eventClassNames from a function, with the EventApi", async () => {
     const seen: string[] = [];
     const { container } = render(

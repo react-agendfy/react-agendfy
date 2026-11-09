@@ -40,7 +40,8 @@ on, even where react-agendfy itself defaults differently.
 | `slotMinTime`, `slotMaxTime` | 🟡 | Week view: whole hours. |
 | `slotLabelFormat`, `eventTimeFormat` | ✅ | Formatter objects (`{ hour, minute, meridiem, hour12 }`) or date-fns patterns. |
 | `allDaySlot`, `nowIndicator`, `weekNumbers`, `weekNumberCalculation` | ✅ | `weekNumberCalculation` takes `"local"` or `"ISO"`; functions are not supported. |
-| `dayMaxEvents` | ✅ | The "+N more" link opens a popover with the day's events. `dayMaxEventRows` is ignored. |
+| `dayMaxEvents` | ✅ | A number, or `true` for as many as fit in the cell (the month rows share the calendar's `height`). The "+N more" link sits under the events and opens a popover with the day's events. `dayMaxEventRows` is ignored. |
+| `displayEventEnd` | ✅ | The end time in `timeText`. As in FullCalendar, off in `dayGridMonth` and on elsewhere. |
 | `fixedWeekCount` | ✅ | |
 | `editable`, `eventStartEditable`, `eventDurationEditable`, `selectable` | ✅ | Per-event `editable` is not supported. |
 | `selectMirror` | ⛔ | The selection is always highlighted. |

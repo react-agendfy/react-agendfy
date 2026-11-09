@@ -57,10 +57,31 @@ export const showsSlotLabel = (minutesFromStart: number, config?: DisplayConfig)
   return minutesFromStart % interval === 0;
 };
 
+/**
+ * How many of `total` chips fit in `box` (`dayMaxEvents: "fit"`), leaving
+ * room for a "+N" link of `moreHeight` under them when some are hidden.
+ * Chips are `chipHeight` tall with the box's row gap between them. Null
+ * when the box has not been laid out (SSR, jsdom, hidden calendar).
+ */
+export const fitEventCount = (
+  total: number,
+  available: number,
+  chipHeight: number,
+  gap: number,
+  moreHeight: number
+): number | null => {
+  if (available <= 0 || chipHeight <= 0) return null;
+  if (total * chipHeight + Math.max(0, total - 1) * gap <= available) return total;
+  const room = available + gap - (moreHeight > 0 ? moreHeight + gap : 0);
+  return Math.max(0, Math.min(total, Math.floor(room / (chipHeight + gap))));
+};
+
 /** `dayMaxEvents` → number of chips shown per month cell (Infinity = no limit). */
 export const resolveDayMaxEvents = (config?: DisplayConfig): number => {
   const value = config?.dayMaxEvents;
   if (value === false) return Infinity;
+  // "fit" is measured per cell (CalendarDay); this is the count before measuring.
+  if (value === "fit") return DEFAULT_DAY_MAX_EVENTS;
   if (value === true || value === undefined || value === null) return DEFAULT_DAY_MAX_EVENTS;
   return value > 0 ? Math.floor(value) : DEFAULT_DAY_MAX_EVENTS;
 };

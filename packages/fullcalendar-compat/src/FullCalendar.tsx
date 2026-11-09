@@ -197,6 +197,12 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
   const viewRef = useRef(viewApi);
   viewRef.current = viewApi;
 
+  // displayEventEnd: FullCalendar's default depends on the view (off in the
+  // month grid, on elsewhere), so it is resolved for the current view.
+  const displayEventEnd =
+    typeof props.displayEventEnd === "boolean" ? props.displayEventEnd : viewApi.type !== "dayGridMonth";
+  const calendarConfig = useMemo(() => ({ ...config, displayEventEnd }), [config, displayEventEnd]);
+
   /* --- event sources ----------------------------------------------------- */
   const sources = useMemo(() => toSources(props.events, props.eventSources), [props.events, props.eventSources]);
   const [fetched, setFetched] = useState<Record<number, EventInput[]>>({});
@@ -514,7 +520,7 @@ const FullCalendar = forwardRef<FullCalendarHandle, FullCalendarComponentProps>(
       <Calendar
         events={events}
         resources={resources}
-        config={config}
+        config={calendarConfig}
         theme={theme}
         currentDate={initialDate}
         apiRef={agendfyApi}

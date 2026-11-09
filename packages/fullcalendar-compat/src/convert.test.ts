@@ -56,6 +56,14 @@ describe("conversions", () => {
     });
   });
 
+  it('maps dayMaxEvents: true to "fit", with the "+N more" link under the events', () => {
+    expect(toAgendfyConfig({ dayMaxEvents: true }, { view: "month" })).toMatchObject({
+      dayMaxEvents: "fit",
+      moreLinkPosition: "bottom",
+    });
+    expect(toAgendfyConfig({ dayMaxEvents: 2 }, { view: "month" }).dayMaxEvents).toBe(2);
+  });
+
   it("converts EventInput like FullCalendar does", () => {
     const allDay = toAgendfyEvent({ id: 7, title: "Feriado", start: "2026-03-11" })!;
     expect(allDay).toMatchObject({ id: "7", allDay: true });
