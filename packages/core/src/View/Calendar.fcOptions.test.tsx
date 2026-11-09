@@ -8,7 +8,8 @@ import React from "react";
 import { render, screen, fireEvent, within, configure, act } from "@testing-library/react";
 import { Calendar } from "../index";
 import type { EventProps } from "../types/types";
-import { resolveDayMaxEvents, weekNumberOf } from "../Utils/displayOptions";
+import { fitEventCount, resolveDayMaxEvents, weekNumberOf } from "../Utils/displayOptions";
+import { formatEventTimeText } from "../context/EventContentContext";
 
 configure({ asyncUtilTimeout: 5000 });
 
@@ -129,6 +130,91 @@ describe("Calendar FullCalendar options", () => {
     fireEvent.click(items[3]);
     expect(onEventClick).toHaveBeenCalledWith(expect.objectContaining({ id: "d" }));
     expect(container.querySelector(".react-agendfy-more-popover")).toBeNull();
+  });
+
+  describe('dayMaxEvents: "fit"', () => {
+    // jsdom has no layout: the events box is 70px tall, chips 20px, the
+    // bottom "+N" link 16px, no gap.
+    const sizes = (el: HTMLElement) => {
+      if (el.classList.contains("react-agendfy-day-events-fit")) return { client: 70, offset: 70 };
+      if (el.classList.contains("react-agendfy-hidden-events-bottom")) return { client: 16, offset: 16 };
+      if (el.classList.contains("react-agendfy-event-item")) return { client: 20, offset: 20 };
+      return { client: 0, offset: 0 };
+    };
+    let restore: () => void;
+    beforeEach(() => {
+      const client = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
+      const offset = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+        configurable: true,
+        get() { return sizes(this).client; },
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+        configurable: true,
+        get() { return sizes(this).offset; },
+      });
+      restore = () => {
+        if (client) Object.defineProperty(HTMLElement.prototype, "clientHeight", client);
+        if (offset) Object.defineProperty(HTMLElement.prototype, "offsetHeight", offset);
+      };
+    });
+    afterEach(() => restore());
+
+    const five = [ev("a", 11, 8), ev("b", 11, 9), ev("c", 11, 10), ev("d", 11, 11), ev("e", 11, 12)];
+
+    it("counts the chips that fit, leaving room for the link", () => {
+      expect(fitEventCount(3, 70, 20, 0, 16)).toBe(3); // all fit: no link
+      expect(fitEventCount(5, 70, 20, 0, 0)).toBe(3); // link in the header
+      expect(fitEventCount(5, 70, 20, 0, 16)).toBe(2); // link under the chips
+      expect(fitEventCount(5, 70, 20, 4, 16)).toBe(2); // 20+4+20+4+16 = 64
+      expect(fitEventCount(5, 30, 20, 4, 16)).toBe(0); // only the link fits
+      expect(fitEventCount(5, 0, 20, 4, 16)).toBeNull(); // not laid out
+    });
+
+    it("shows what fits in the cell, with the link in the header by default", async () => {
+      const { container } = render(
+        <Calendar events={five} currentDate={MARCH_11} config={{ ...base, defaultView: "month", dayMaxEvents: "fit" }} />
+      );
+      const more = await screen.findByText("+2 mais");
+      const cell = more.closest(".react-agendfy-calendar-day") as HTMLElement;
+      expect(cell).toHaveClass("react-agendfy-calendar-day-fit");
+      expect(cell.querySelectorAll(".react-agendfy-event-item")).toHaveLength(3);
+      expect(more.closest(".react-agendfy-calendar-day-header")).not.toBeNull();
+      expect(container.querySelector(".agendfy")).toHaveClass("react-agendfy-layout-fill");
+      expect(container.querySelector(".react-agendfy-monthview-container")).toHaveClass("react-agendfy-monthview-fill");
+    });
+
+    it('puts the link under the events with moreLinkPosition "bottom"', async () => {
+      render(
+        <Calendar
+          events={five}
+          currentDate={MARCH_11}
+          config={{ ...base, defaultView: "month", dayMaxEvents: "fit", moreLinkPosition: "bottom" }}
+        />
+      );
+      const more = await screen.findByText("+3 mais");
+      expect(more).toHaveClass("react-agendfy-hidden-events-bottom");
+      const box = more.closest(".react-agendfy-day-events") as HTMLElement;
+      expect(box.querySelectorAll(".react-agendfy-event-item")).toHaveLength(2);
+      expect(box.lastElementChild).toBe(more);
+      fireEvent.click(more);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("leaves the layout alone without fit", async () => {
+      const { container } = render(
+        <Calendar events={five} currentDate={MARCH_11} config={{ ...base, defaultView: "month", dayMaxEvents: 2 }} />
+      );
+      await screen.findByText("+3 mais");
+      expect(container.querySelector(".agendfy")).not.toHaveClass("react-agendfy-layout-fill");
+      expect(container.querySelector(".react-agendfy-calendar-day-fit")).toBeNull();
+    });
+  });
+
+  it("drops the end from timeText with displayEventEnd: false", () => {
+    const e = ev("a", 11, 9);
+    expect(formatEventTimeText(e, { timeZone: "UTC" })).toBe("09:00 - 10:00");
+    expect(formatEventTimeText(e, { timeZone: "UTC", displayEventEnd: false })).toBe("09:00");
   });
 
   it("renders 6 rows with fixedWeekCount", async () => {

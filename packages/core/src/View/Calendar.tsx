@@ -249,7 +249,9 @@ const CalendarView = forwardRef<HTMLDivElement, { className?: string }>(({ class
     <div
       ref={setRootRef}
       dir={direction}
-      className={`agendfy react-agendfy-layout theme-${theme}${className ? ` ${className}` : ""}`}
+      className={`agendfy react-agendfy-layout theme-${theme}${
+        currentView === "month" && localeConfig.dayMaxEvents === "fit" ? " react-agendfy-layout-fill" : ""
+      }${className ? ` ${className}` : ""}`}
       data-view={currentView}
       onKeyDown={handleKeyDown}
     >

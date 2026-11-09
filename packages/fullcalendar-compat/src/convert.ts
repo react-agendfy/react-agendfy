@@ -245,8 +245,11 @@ export const toAgendfyConfig = (props: FullCalendarProps, view: AgendfyView): Pa
   set("nowIndicator", props.nowIndicator ?? false); // FullCalendar default: off
   set("weekNumbers", props.weekNumbers);
   set("weekNumberCalculation", props.weekNumberCalculation);
-  // FullCalendar default: no limit (dayMaxEvents false).
-  set("dayMaxEvents", props.dayMaxEvents ?? false);
+  // FullCalendar default: no limit (dayMaxEvents false). `true` means "as
+  // many as fit in the cell", agendfy's "fit"; the "+N more" link sits
+  // under the events, as in FullCalendar.
+  set("dayMaxEvents", props.dayMaxEvents === true ? "fit" : props.dayMaxEvents ?? false);
+  set("moreLinkPosition", "bottom");
   // FullCalendar default: 6 rows.
   set("fixedWeekCount", props.fixedWeekCount ?? true);
   // FullCalendar defaults: not editable, not selectable.

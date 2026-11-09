@@ -324,6 +324,8 @@ export interface FullCalendarProps {
   weekNumbers?: boolean;
   weekNumberCalculation?: "local" | "ISO";
   dayMaxEvents?: boolean | number;
+  /** Show the end time in `timeText`. Default as FullCalendar: false in month, true elsewhere. */
+  displayEventEnd?: boolean;
   fixedWeekCount?: boolean;
   height?: number | string;
   contentHeight?: number | string;
@@ -386,7 +388,6 @@ export interface IgnoredFullCalendarOptions {
   dayCellDidMount?: unknown;
   dayHeaderFormat?: unknown;
   dayMaxEventRows?: unknown;
-  displayEventEnd?: unknown;
   displayEventTime?: unknown;
   droppable?: unknown;
   drop?: unknown;

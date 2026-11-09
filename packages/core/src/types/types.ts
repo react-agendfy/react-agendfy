@@ -130,8 +130,23 @@ export interface Config {
   /**
    * Max events per month cell before the "+N" link (which opens a popover
    * with the day's events). `true` = 3, `false` = no limit. Default 3.
+   * `"fit"` shows as many as fit in the cell (FullCalendar's `true`): the
+   * month rows share the calendar's height, so give it one (e.g. a parent
+   * with a fixed height); without one each row keeps
+   * `--agendfy-month-cell-min-height`.
    */
-  dayMaxEvents?: number | boolean;
+  dayMaxEvents?: number | boolean | "fit";
+  /**
+   * Where a month cell shows its "+N" link: next to the day number
+   * ("header") or under the visible events ("bottom", as FullCalendar).
+   * Default "header".
+   */
+  moreLinkPosition?: "header" | "bottom";
+  /**
+   * Include the end time in an event's `timeText` ("09:00 - 09:30"); false
+   * gives the start only ("09:00"). Default true.
+   */
+  displayEventEnd?: boolean;
   /** Month view always renders 6 rows. Default false (only the weeks of the month). */
   fixedWeekCount?: boolean;
   /** Span of the list view. Default "month". */

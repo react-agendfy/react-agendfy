@@ -215,7 +215,7 @@ const monthStart = useMemo(() => startOfMonth(new TZDate(currentDate, config?.ti
 
       <div
         ref={containerRef}
-        className="react-agendfy-monthview-container"
+        className={`react-agendfy-monthview-container${config?.dayMaxEvents === "fit" ? " react-agendfy-monthview-fill" : ""}`}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         role="grid"

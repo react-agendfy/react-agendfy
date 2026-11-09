@@ -38,9 +38,11 @@ export const EventContentProvider = ({
   return <EventContentContext.Provider value={renderer}>{children}</EventContentContext.Provider>;
 };
 
-/** "start - end" in the calendar time zone, with `eventTimeFormat`. */
-export const formatEventTimeText = (event: EventProps, config?: Partial<Config>): string =>
-  `${formatEventTime(ensureDate(event.start), config)} - ${formatEventTime(ensureDate(event.end), config)}`;
+/** "start - end" (or "start" with `displayEventEnd: false`) in the calendar time zone, with `eventTimeFormat`. */
+export const formatEventTimeText = (event: EventProps, config?: Partial<Config>): string => {
+  const start = formatEventTime(ensureDate(event.start), config);
+  return config?.displayEventEnd === false ? start : `${start} - ${formatEventTime(ensureDate(event.end), config)}`;
+};
 
 /** The active custom-content renderer (`eventContent` prop or plugin), or null. */
 export const useEventContentRenderer = () => useContext(EventContentContext);

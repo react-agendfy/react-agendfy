@@ -315,3 +315,90 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ---- dayMaxEvents: "fit" ----------------------------------------------
+   The month rows share the calendar's height (when it has one) and each
+   cell shows the chips that fit; CalendarDay measures the events box.
+   The box takes the cell's leftover height and never sizes the row
+   (contain: size), so a busy day cannot make its week taller. */
+.react-agendfy-layout-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.react-agendfy-layout-fill > .react-agendfy-layout-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.react-agendfy-monthview-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.react-agendfy-monthview-fill > .react-agendfy-monthview-grid-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* The rows start at the cell's usual min-height (an auto-height calendar
+   looks as before) and grow or shrink together to the calendar's height,
+   down to the day number: the events box never sizes the row. */
+.react-agendfy-monthview-fill .react-agendfy-monthview-week-row {
+  flex: 1 1 var(--agendfy-month-cell-min-height);
+}
+
+.react-agendfy-monthview-fill .react-agendfy-calendar-day,
+.react-agendfy-monthview-fill .react-agendfy-calendar-day-empty {
+  min-height: 0;
+}
+
+.react-agendfy-calendar-day-fit {
+  display: flex;
+  flex-direction: column;
+}
+
+.react-agendfy-calendar-day-fit > .react-agendfy-calendar-day-header {
+  flex: none;
+}
+
+.react-agendfy-day-events.react-agendfy-day-events-fit {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  contain: size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--agendfy-space-1);
+}
+
+.react-agendfy-day-events.react-agendfy-day-events-fit > * {
+  flex: none;
+  margin-top: 0;
+}
+
+/* moreLinkPosition: "bottom" — a plain link under the chips. */
+.react-agendfy-hidden-events.react-agendfy-hidden-events-bottom {
+  align-self: flex-start;
+  background: none;
+  padding: 0 0.125rem;
+  font-weight: 600;
+  color: var(--agendfy-color-accent);
+}
+
+.react-agendfy-hidden-events.react-agendfy-hidden-events-bottom:hover {
+  color: var(--agendfy-color-accent);
+  text-decoration: underline;
+}
+
+.react-agendfy-day-events:not(.react-agendfy-day-events-fit) > .react-agendfy-hidden-events-bottom {
+  display: inline-block;
+}

@@ -1,6 +1,6 @@
 // CalendarDay.tsx
-import React, { useRef, useEffect, useState, memo } from "react";
-import { formatEventTime, resolveDayMaxEvents } from "../../../Utils/displayOptions";
+import React, { useRef, useEffect, useLayoutEffect, useState, memo } from "react";
+import { fitEventCount, formatEventTime, resolveDayMaxEvents } from "../../../Utils/displayOptions";
 import { getLocale } from "../../../Utils/locate";
 import { useDroppable } from "@dnd-kit/core";
 import {
@@ -18,6 +18,30 @@ import { formatMessage } from "../../../i18n";
 import { CalendarDayProps } from "../../../types/types";
 import { EventItem } from "./EventItem";
 import { useDayCellClassNames } from "../../../context/ClassNamesContext";
+
+/** The events that touch `day` (end exclusive), in the calendar time zone. */
+const eventsOnDay = (events: CalendarDayProps["events"] = [], day: Date, timeZone?: string) =>
+  events.filter((e) => {
+    try {
+      const eventStart = ensureDate(e.start, timeZone);
+      const eventEnd = ensureDate(e.end, timeZone);
+      // The end is exclusive (FullCalendar/iCal): an all-day event ending at
+      // 00:00 on the 22nd covers the 21st only. In the calendar time zone.
+      const lastMoment =
+        eventEnd.getTime() > eventStart.getTime()
+          ? new TZDate(eventEnd.getTime() - 1, timeZone)
+          : eventEnd;
+      return isWithinInterval(day, {
+        start: startOfDay(eventStart),
+        end: endOfDay(lastMoment),
+      });
+    } catch (error) {
+      console.error("Erro ao filtrar evento:", error, e);
+      return false;
+    }
+  });
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   day,
@@ -76,6 +100,17 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
   }, [showMore]);
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+
+  // dayMaxEvents "fit": count the chips that fit in the events box. The
+  // box takes the cell's leftover height (flex: 1, contain: size), so the
+  // chips never make the row taller; the count is re-measured on resize.
+  const fit = config?.dayMaxEvents === "fit";
+  const moreAtBottom = config?.moreLinkPosition === "bottom";
+  const eventsRef = useRef<HTMLDivElement>(null);
+  const bottomMoreRef = useRef<HTMLSpanElement>(null);
+  const chipHeightRef = useRef(0);
+  const moreHeightRef = useRef(0);
+  const [fitCount, setFitCount] = useState<number | null>(null);
   const { setNodeRef, isOver } = useDroppable({
     id: day?.toISOString() || "empty",
     disabled: !day || isDisabled,
@@ -92,29 +127,30 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
     day ? { date: day, view: "month", isToday, isDisabled, isOtherMonth } : null
   );
 
+  const dayEvents = day ? eventsOnDay(events, day, config?.timeZone) : [];
+  const total = fit ? dayEvents.length : 0;
+  useIsoLayoutEffect(() => {
+    const box = eventsRef.current;
+    if (!fit || !box) return;
+    const measure = () => {
+      const chip = box.querySelector<HTMLElement>(".react-agendfy-event-item");
+      if (chip?.offsetHeight) chipHeightRef.current = chip.offsetHeight;
+      if (bottomMoreRef.current?.offsetHeight) moreHeightRef.current = bottomMoreRef.current.offsetHeight;
+      const gap = parseFloat(getComputedStyle(box).rowGap) || 0;
+      const moreHeight = moreAtBottom ? moreHeightRef.current || chipHeightRef.current : 0;
+      const next = fitEventCount(total, box.clientHeight, chipHeightRef.current, gap, moreHeight);
+      setFitCount((prev) => (prev === next ? prev : next));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [fit, moreAtBottom, total]);
+
   if (!day) {
     return <div className="react-agendfy-calendar-day-empty" role="gridcell" aria-disabled="true" />;
   }
-
-  const dayEvents = events.filter((e) => {
-    try {
-      const eventStart = ensureDate(e.start, config?.timeZone);
-      const eventEnd = ensureDate(e.end, config?.timeZone);
-      // The end is exclusive (FullCalendar/iCal): an all-day event ending at
-      // 00:00 on the 22nd covers the 21st only. In the calendar time zone.
-      const lastMoment =
-        eventEnd.getTime() > eventStart.getTime()
-          ? new TZDate(eventEnd.getTime() - 1, config?.timeZone)
-          : eventEnd;
-      return isWithinInterval(day, {
-        start: startOfDay(eventStart),
-        end: endOfDay(lastMoment),
-      });
-    } catch (error) {
-      console.error("Erro ao filtrar evento:", error, e);
-      return false;
-    }
-  });
 
   const sorted = [...dayEvents].sort((a, b) => {
     const timeA = ensureDate(a.start, config?.timeZone).getTime();
@@ -126,12 +162,13 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
     return durB - durA;
   });
 
-  const maxVisible = resolveDayMaxEvents(config);
+  const maxVisible = fit && fitCount !== null ? fitCount : resolveDayMaxEvents(config);
   const visible = sorted.slice(0, maxVisible);
   const hidden = Math.max(0, sorted.length - maxVisible);
 
   const classes = [
     "react-agendfy-calendar-day",
+    fit && "react-agendfy-calendar-day-fit",
     isToday && "react-agendfy-calendar-day-today",
     isOver && "react-agendfy-calendar-day-droppable-over",
     isSelected && "react-agendfy-calendar-day-selected",
@@ -146,6 +183,32 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
       onDayClick?.(day);
     }
   };
+
+  const moreLink = (bottom: boolean) => (
+    <span
+      ref={bottom ? bottomMoreRef : undefined}
+      className={`react-agendfy-hidden-events${moreAtBottom ? " react-agendfy-hidden-events-bottom" : ""}`}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        toggleMore(e.currentTarget);
+      }}
+      role="button"
+      tabIndex={0}
+      aria-haspopup="dialog"
+      aria-expanded={showMore}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleMore(e.currentTarget);
+        }
+      }}
+      aria-label={formatMessage(config?.hidden_events, { count: hidden }, "+{count} eventos ocultos")}
+    >
+      {formatMessage(config?.more_events, { count: hidden }, "+{count}")}
+    </span>
+  );
 
   const popover = morePos && (
     <div
@@ -243,32 +306,12 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
             {`${config?.week_number_label ?? "W"}${weekNumber}`}
           </span>
         )}
-        {hidden > 0 && (
-          <span
-            className="react-agendfy-hidden-events"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMore(e.currentTarget);
-            }}
-            role="button"
-            tabIndex={0}
-            aria-haspopup="dialog"
-            aria-expanded={showMore}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleMore(e.currentTarget);
-              }
-            }}
-            aria-label={formatMessage(config?.hidden_events, { count: hidden }, "+{count} eventos ocultos")}
-          >
-            {formatMessage(config?.more_events, { count: hidden }, "+{count}")}
-          </span>
-        )}
+        {hidden > 0 && !moreAtBottom && moreLink(false)}
       </div>
-      <div className="react-agendfy-day-events">
+      <div
+        ref={eventsRef}
+        className={`react-agendfy-day-events${fit ? " react-agendfy-day-events-fit" : ""}`}
+      >
         {visible.map((event) => {
           const s = ensureDate(event.start, config?.timeZone);
           const e = ensureDate(event.end, config?.timeZone);
@@ -294,6 +337,7 @@ const CalendarDayMemo: React.FC<CalendarDayProps> = ({
             />
           );
         })}
+        {hidden > 0 && moreAtBottom && moreLink(true)}
       </div>
       {popover}
     </div>
